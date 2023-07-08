@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <Authors>Kris Ploch</Authors>
+    <Company>Ploch</Company>
+    <Product>Ploch.CommandLine</Product>
+    <PackageProjectUrl>https://github.com/mrploch/ploch-commandline</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mrploch/ploch-commandline.git</RepositoryUrl>
+    <Description>Build advanced console apps with ease.</Description>
+    <Copyright>Kris Ploch $([System.DateTime]::Now.Year)</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <VersionPrefix>0.0.1</VersionPrefix>
+    <VersionSuffix>-prerelease</VersionSuffix>
+    <BuildNumber>$([System.DateTime]::UtcNow.ToString("yyMMddHHmmss"))</BuildNumber>
+    <Version>$(VersionPrefix)$(VersionSuffix)-$(BuildNumber)</Version>
+    <FileVersion>$(InformationalVersion)</FileVersion>
+    <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <LangVersion>default</LangVersion>
+  </PropertyGroup>
+</Project>
