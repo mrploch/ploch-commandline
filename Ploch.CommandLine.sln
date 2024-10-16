@@ -1,0 +1,84 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ploch.Common.CommandLine", "src\CommandLine\Ploch.Common.CommandLine.csproj", "{366D38F6-B002-4D5E-AE20-0DDC96CFE88A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ploch.Common.CommandLine.Autofac", "src\CommandLine.Autofac\Ploch.Common.CommandLine.Autofac.csproj", "{6F878C8F-F02B-4A03-B52B-1883E766FF7F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ploch.Common.CommandLine.Serilog", "src\CommandLine.Serilog\Ploch.Common.CommandLine.Serilog.csproj", "{30E7E52E-9A90-4BF1-8DD8-AAAB1D9ECB4F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ploch.Common.CommandLine.Tests", "src\CommandLine.Tests\Ploch.Common.CommandLine.Tests.csproj", "{73557946-4AA3-4106-AA60-2D4831160499}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1A6200BE-CE7D-4EB4-A84D-5E06858E049B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "src\DemoApp\ConsoleApp1\ConsoleApp1.csproj", "{21E5283C-F619-411D-A4CE-951C63B526BF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{CD6DD54C-9616-4885-86A2-FDE37F08686B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "repository", "repository", "{80297F4A-A678-46F3-AC21-573BA2A13CB7}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "config", "config", "{F5141534-12C7-4B18-9B60-DB079A72F5BE}"
+	ProjectSection(SolutionItems) = preProject
+		.codacy.yml = .codacy.yml
+		.dockerignore = .dockerignore
+		.editorconfig = .editorconfig
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		azure-pipelines.yml = azure-pipelines.yml
+		Directory.Build.props = Directory.Build.props
+		directory.build.targets = directory.build.targets
+		Directory.Packages.props = Directory.Packages.props
+		docker-compose.yml = docker-compose.yml
+		dotcover.settings.xml = dotcover.settings.xml
+		global.json = global.json
+		NuGet.Config = NuGet.Config
+		qodana.sarif.json = qodana.sarif.json
+		qodana.yaml = qodana.yaml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{5F25AF85-581A-4214-8886-325A4DB199E1}"
+	ProjectSection(SolutionItems) = preProject
+		build.cmd = build.cmd
+		build.ps1 = build.ps1
+		build.sh = build.sh
+		build-dotnet-commands.ps1 = build-dotnet-commands.ps1
+		Clean-DocFx.ps1 = Clean-DocFx.ps1
+		Clean-Repository.ps1 = Clean-Repository.ps1
+		publish-nugetorg.ps1 = publish-nugetorg.ps1
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{366D38F6-B002-4D5E-AE20-0DDC96CFE88A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{366D38F6-B002-4D5E-AE20-0DDC96CFE88A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{366D38F6-B002-4D5E-AE20-0DDC96CFE88A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{366D38F6-B002-4D5E-AE20-0DDC96CFE88A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F878C8F-F02B-4A03-B52B-1883E766FF7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F878C8F-F02B-4A03-B52B-1883E766FF7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F878C8F-F02B-4A03-B52B-1883E766FF7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F878C8F-F02B-4A03-B52B-1883E766FF7F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30E7E52E-9A90-4BF1-8DD8-AAAB1D9ECB4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30E7E52E-9A90-4BF1-8DD8-AAAB1D9ECB4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30E7E52E-9A90-4BF1-8DD8-AAAB1D9ECB4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30E7E52E-9A90-4BF1-8DD8-AAAB1D9ECB4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73557946-4AA3-4106-AA60-2D4831160499}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73557946-4AA3-4106-AA60-2D4831160499}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73557946-4AA3-4106-AA60-2D4831160499}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73557946-4AA3-4106-AA60-2D4831160499}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21E5283C-F619-411D-A4CE-951C63B526BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21E5283C-F619-411D-A4CE-951C63B526BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21E5283C-F619-411D-A4CE-951C63B526BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21E5283C-F619-411D-A4CE-951C63B526BF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F5141534-12C7-4B18-9B60-DB079A72F5BE} = {80297F4A-A678-46F3-AC21-573BA2A13CB7}
+		{5F25AF85-581A-4214-8886-325A4DB199E1} = {80297F4A-A678-46F3-AC21-573BA2A13CB7}
+		{21E5283C-F619-411D-A4CE-951C63B526BF} = {CD6DD54C-9616-4885-86A2-FDE37F08686B}
+	EndGlobalSection
+EndGlobal
