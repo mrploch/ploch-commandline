@@ -12,13 +12,3 @@ public interface ICommand
     [SuppressMessage("ReSharper", "UnusedMemberInSuper.Global", Justification = "Called dynamically by the CommandLineUtils library")]
     void OnExecute();
 }
-
-public interface IAsyncCommand
-{
-    /// <summary>
-    ///     Executes the command.
-    /// </summary
-    /// <returns>Executed status code integer</returns>
-    [SuppressMessage("ReSharper", "UnusedMemberInSuper.Global", Justification = "Called dynamically by the CommandLineUtils library")]
-    Task OnExecuteAsync();
-}

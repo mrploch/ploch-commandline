@@ -4,6 +4,9 @@ root = true
 
 max_line_length = 120
 
+# ReSharper properties
+resharper_place_accessorholder_attribute_on_same_line = false
+
 # C# files
 [*.cs]
 
@@ -197,7 +200,7 @@ dotnet_naming_rule.static_field_should_be_pascal_case.style = pascal_case
 
 dotnet_naming_symbols.interface.applicable_kinds = interface
 dotnet_naming_symbols.interface.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
-dotnet_naming_symbols.interface.required_modifiers =
+dotnet_naming_symbols.interface.required_modifiers = 
 
 dotnet_naming_symbols.static_field.applicable_kinds = field
 dotnet_naming_symbols.static_field.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
@@ -205,31 +208,31 @@ dotnet_naming_symbols.static_field.required_modifiers = static
 
 dotnet_naming_symbols.private_or_internal_field.applicable_kinds = field
 dotnet_naming_symbols.private_or_internal_field.applicable_accessibilities = internal, private, private_protected
-dotnet_naming_symbols.private_or_internal_field.required_modifiers =
+dotnet_naming_symbols.private_or_internal_field.required_modifiers = 
 
 dotnet_naming_symbols.types.applicable_kinds = class, struct, interface, enum
 dotnet_naming_symbols.types.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
-dotnet_naming_symbols.types.required_modifiers =
+dotnet_naming_symbols.types.required_modifiers = 
 
 dotnet_naming_symbols.non_field_members.applicable_kinds = property, event, method
 dotnet_naming_symbols.non_field_members.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
-dotnet_naming_symbols.non_field_members.required_modifiers =
+dotnet_naming_symbols.non_field_members.required_modifiers = 
 
 # Naming styles
 
-dotnet_naming_style.pascal_case.required_prefix =
-dotnet_naming_style.pascal_case.required_suffix =
-dotnet_naming_style.pascal_case.word_separator =
+dotnet_naming_style.pascal_case.required_prefix = 
+dotnet_naming_style.pascal_case.required_suffix = 
+dotnet_naming_style.pascal_case.word_separator = 
 dotnet_naming_style.pascal_case.capitalization = pascal_case
 
 dotnet_naming_style.begins_with_i.required_prefix = I
-dotnet_naming_style.begins_with_i.required_suffix =
-dotnet_naming_style.begins_with_i.word_separator =
+dotnet_naming_style.begins_with_i.required_suffix = 
+dotnet_naming_style.begins_with_i.word_separator = 
 dotnet_naming_style.begins_with_i.capitalization = pascal_case
 
 dotnet_naming_style.prefixedcamelcase.required_prefix = _
-dotnet_naming_style.prefixedcamelcase.required_suffix =
-dotnet_naming_style.prefixedcamelcase.word_separator =
+dotnet_naming_style.prefixedcamelcase.required_suffix = 
+dotnet_naming_style.prefixedcamelcase.word_separator = 
 dotnet_naming_style.prefixedcamelcase.capitalization = camel_case
 
 # StyleCop
@@ -249,7 +252,7 @@ dotnet_diagnostic.sa1133.severity = none
 dotnet_diagnostic.sa1009.severity = none
 dotnet_diagnostic.sa1000.severity = none
 dotnet_diagnostic.sa1633.severity = none
-dotnet_diagnostic.SA1649.severity = warning # File name should match first type name.
+dotnet_diagnostic.sa1649.severity = warning # File name should match first type name.
 
 # ReSharper properties
 resharper_csharp_empty_block_style = together
@@ -262,6 +265,22 @@ resharper_keep_existing_enum_arrangement = false
 resharper_keep_existing_expr_member_arrangement = false
 resharper_keep_existing_invocation_parens_arrangement = false
 resharper_keep_existing_property_patterns_arrangement = false
+resharper_align_linq_query = true
+resharper_align_multiline_argument = true
+resharper_align_multiline_array_and_object_initializer = true
+resharper_align_multiline_extends_list = true
+resharper_align_multiline_for_stmt = true
+resharper_align_multiline_list_pattern = true
+resharper_align_multiline_parameter = true
+resharper_align_multiline_property_pattern = true
+resharper_align_multiple_declaration = true
+resharper_align_multline_type_parameter_constrains = true
+resharper_align_multline_type_parameter_list = true
+resharper_align_tuple_components = true
+resharper_csharp_align_first_arg_by_paren = true
+resharper_csharp_allow_far_alignment = true
+resharper_indent_anonymous_method_block = true
+resharper_wrap_chained_method_calls = chop_if_long
 
 # Checks
 

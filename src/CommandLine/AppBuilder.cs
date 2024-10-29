@@ -1,24 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
-using McMaster.Extensions.CommandLineUtils;
 using Microsoft.Extensions.Configuration;
+using McMaster.Extensions.CommandLineUtils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Ploch.Common.CommandLine;
 
+/// <summary>
+///     A builder class for constructing instances of <see cref="CommandLineApplication" />
+///     with custom configurations and dependencies.
+/// </summary>
 public class AppBuilder
 {
     private readonly Func<CommandLineApplication> _appBuildFunc;
     private readonly List<Action<AppConstructionContainer>> _configurationActions = new();
-    private readonly Action<IConfigurationBuilder> _configurationBuilderAction;
-    private readonly List<Action<IConfigurationBuilder>> _configurationBuilderActions = new();
+    private readonly Action<IConfigurationBuilder>? _configurationBuilderAction;
+    private readonly List<Action<IConfigurationBuilder>?> _configurationBuilderActions = new();
 
     private AppBuilder(Func<CommandLineApplication>? appBuildFunc,
-        Action<IConfigurationBuilder> configurationBuilderAction,
-        params Action<AppConstructionContainer>[] configurationActions)
+                       Action<IConfigurationBuilder>? configurationBuilderAction,
+                       params Action<AppConstructionContainer>[] configurationActions)
     {
         _configurationBuilderAction = configurationBuilderAction;
-        // _configurationBuilderActions.Add(builder => ConfigurationSetup.DefaultFileConfiguration(builder));
 
         SetupDefaults();
 
@@ -29,15 +32,42 @@ public class AppBuilder
         }
     }
 
-    public static AppBuilder CreateDefault(Action<IConfigurationBuilder>? configurationAction = null, params string[] args)
+    /// <summary>
+    ///     Creates a default instance of the <see cref="AppBuilder" /> with optional configuration
+    ///     and command-line arguments.
+    /// </summary>
+    /// <param name="commandAppProperties">Properties of the command app, like name or description.</param>
+    /// <param name="configurationAction">
+    ///     An optional action to apply additional configuration settings to the <see cref="IConfigurationBuilder" />.
+    /// </param>
+    /// <param name="args">
+    ///     An array of command-line arguments to be added to the configuration.
+    /// </param>
+    /// <returns>
+    ///     Returns an instance of <see cref="AppBuilder" /> with the default setup and the supplied configuration.
+    /// </returns>
+    public static AppBuilder CreateDefault(CommandAppProperties commandAppProperties, Action<IConfigurationBuilder>? configurationAction = null, params string[] args)
     {
-        var builder = new AppBuilder(() => new CommandLineApplication(),
-            configurationBuilder => configurationBuilder.AddCommandLine(args),
-            container => container.Application.Conventions.UseDefaultConventions().UseCommandAttribute().UseCommandNameFromModelType());
+        var builder = new AppBuilder(() => new CommandLineApplication { Name = commandAppProperties.Name, Description = commandAppProperties.Description },
+                                     null,
+                                     container => container.Application.Conventions.UseDefaultConventions()
+                                         .UseCommandAttribute()
+                                         .UseCommandNameFromModelType());
 
         return builder.WithConfiguration(configurationAction ?? (configurationBuilder => ConfigurationSetup.DefaultFileConfiguration(configurationBuilder)));
     }
 
+    /// <summary>
+    ///     Adds a configuration action to the <see cref="AppBuilder" /> to be executed during the build process.
+    /// </summary>
+    /// <param name="configurationAction">
+    ///     An action that configures the <see cref="AppConstructionContainer" />. Use this to add services, set up the
+    ///     application,
+    ///     or configure other components.
+    /// </param>
+    /// <returns>
+    ///     Returns the instance of <see cref="AppBuilder" />, allowing for method chaining.
+    /// </returns>
     public AppBuilder Configure(Action<AppConstructionContainer> configurationAction)
     {
         _configurationActions.Add(configurationAction);
@@ -45,6 +75,13 @@ public class AppBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Constructs and configures a <see cref="CommandLineApplication" /> instance with all specified
+    ///     configurations and dependencies.
+    /// </summary>
+    /// <returns>
+    ///     Returns a fully constructed and configured instance of <see cref="CommandLineApplication" />.
+    /// </returns>
     public CommandLineApplication Build()
     {
         var app = _appBuildFunc();
@@ -56,7 +93,7 @@ public class AppBuilder
 
         foreach (var configurationBuilderAction in _configurationBuilderActions)
         {
-            configurationBuilderAction(configurationBuilder);
+            configurationBuilderAction?.Invoke(configurationBuilder);
         }
 
         var configuration = configurationBuilder.Build();
@@ -68,7 +105,7 @@ public class AppBuilder
             configurationAction(configurationContainer);
         }
 
-        var serviceProviderFactory = configurationContainer.ServiceProviderFactory ?? (() => configurationContainer.ServiceCollection.BuildServiceProvider());
+        var serviceProviderFactory = configurationContainer.ServiceProviderFactory ?? (() => configurationContainer.Services.BuildServiceProvider());
 
         app.Conventions.UseConstructorInjection(serviceProviderFactory());
 
@@ -80,14 +117,7 @@ public class AppBuilder
         _configurationBuilderActions.Add(builder => ConfigurationSetup.DefaultFileConfiguration(builder));
     }
 
-    private AppBuilder WithDefaultConfiguration(IEnumerable<string>? configurationFileNames = null, Action<IConfigurationBuilder>? configurationBuilderAction = null)
-    {
-        _configurationBuilderActions.Insert(0, builder => ConfigurationSetup.DefaultFileConfiguration(builder, configurationFileNames, configurationBuilderAction));
-
-        return this;
-    }
-
-    private AppBuilder WithConfiguration(Action<IConfigurationBuilder> configurationBuilderAction)
+    private AppBuilder WithConfiguration(Action<IConfigurationBuilder>? configurationBuilderAction)
     {
         _configurationBuilderActions.Add(configurationBuilderAction);
 

@@ -5,20 +5,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Ploch.Common.CommandLine;
 
-public class AppConstructionContainer
+public class AppConstructionContainer(CommandLineApplication application, IServiceCollection services, IConfiguration configuration)
 {
-    public AppConstructionContainer(CommandLineApplication application, IServiceCollection serviceCollection, IConfiguration configuration)
-    {
-        Application = application;
-        ServiceCollection = serviceCollection;
-        Configuration = configuration;
-    }
+    public CommandLineApplication Application { get; } = application;
 
-    public CommandLineApplication Application { get; }
+    public IServiceCollection Services { get; } = services;
 
-    public IServiceCollection ServiceCollection { get; }
-
-    public IConfiguration Configuration { get; }
+    public IConfiguration Configuration { get; } = configuration;
 
     public Func<IServiceProvider>? ServiceProviderFactory { get; set; }
 }

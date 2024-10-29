@@ -16,7 +16,7 @@
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
         <VersionPrefix>0.0.1</VersionPrefix>
         <VersionSuffix>-prerelease</VersionSuffix>
-        <BuildNumber>$([System.DateTime]::UtcNow.ToString("yyMMddHHmm"))</BuildNumber>
+        <BuildNumber>$([System.DateTime]::UtcNow.ToString("yyMMddHH"))</BuildNumber>
 
         <!-- Development versions -->
         <VersionSuffix Condition="'$(RELEASEVERSION)' != 'true'">-prerelease</VersionSuffix>

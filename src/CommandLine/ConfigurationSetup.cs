@@ -9,23 +9,20 @@ namespace Ploch.Common.CommandLine;
 public static class ConfigurationSetup
 {
     public static void DefaultFileConfiguration(IConfigurationBuilder configurationBuilder,
-        IEnumerable<string>? configurationFileNames = null,
-        Action<IConfigurationBuilder>? configurationBuilderAction = null)
+                                                IEnumerable<string>? configurationFileNames = null,
+                                                Action<IConfigurationBuilder>? configurationBuilderAction = null)
     {
         if (configurationFileNames == null)
         {
-            configurationFileNames = new[] { "appsettings.json" };
+            configurationFileNames = ["appsettings.json"];
         }
 
         var basePath = EnvironmentUtilities.GetCurrentAppPath();
 
         var builder = configurationBuilder.SetBasePath(basePath);
-        foreach (var fileName in configurationFileNames)
+        foreach (var fileName in configurationFileNames.Where(f => File.Exists(Path.Combine(basePath, f))))
         {
-            if (File.Exists(Path.Combine(basePath, fileName)))
-            {
-                builder.AddJsonFile(fileName);
-            }
+            builder.AddJsonFile(fileName);
         }
 
         builder.AddCommandLine(EnvironmentUtilities.GetEnvironmentCommandLine().ToArray()).AddEnvironmentVariables();

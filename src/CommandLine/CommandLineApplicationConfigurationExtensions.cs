@@ -4,7 +4,7 @@ using McMaster.Extensions.CommandLineUtils;
 
 namespace Ploch.Common.CommandLine;
 
-public static class CommandLineApplicationExtensions
+public static class CommandLineApplicationConfigurationExtensions
 {
     public static CommandLineApplication<TModel> AddValidator<TModel>(this CommandLineApplication<TModel> application, PreExecuteCommandValidator validator)
         where TModel : class
@@ -15,7 +15,8 @@ public static class CommandLineApplicationExtensions
     }
 
     public static CommandLineApplication<TModel> Command<TModel>(this CommandLineApplication application,
-        Action<CommandLineApplication<TModel>>? configuration = null) where TModel : class
+                                                                 Action<CommandLineApplication<TModel>>? configuration = null)
+        where TModel : class
     {
         var commandType = typeof(TModel);
 
@@ -29,8 +30,7 @@ public static class CommandLineApplicationExtensions
         if (string.IsNullOrEmpty(commandAttribute.Name))
         {
             throw new
-                InvalidOperationException(
-                    $"{nameof(CommandAttribute)} on type {commandType.Name} has to have a non-null or empty {nameof(CommandAttribute.Name)} property");
+                InvalidOperationException($"{nameof(CommandAttribute)} on type {commandType.Name} has to have a non-null or empty {nameof(CommandAttribute.Name)} property");
         }
 
         return application.Command(commandAttribute.Name!, configuration!);
