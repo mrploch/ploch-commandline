@@ -28,26 +28,26 @@ public static class LoggingSetup
     private static void ConfigureServices(IServiceCollection serviceCollection, string? logName = null, string? logPath = null)
     {
         var loggerConfiguration = new LoggerConfiguration().Enrich.FromLogContext()
-            .Enrich.WithThreadId()
-            .Enrich.WithThreadName()
-            .Enrich.FromLogContext()
-            .WriteTo.File(BuildFullLogPath(logName, logPath),
-                          rollOnFileSizeLimit: true,
-                          fileSizeLimitBytes: 2 * 1024 * 1024,
-                          //  outputTemplate: template,
-                          retainedFileCountLimit: 10,
-                          formatProvider: CultureInfo.CurrentCulture)
-            .WriteTo.Logger(l => l.Filter.ByIncludingOnly(logEvent =>
-                                                              logEvent.Level is LogEventLevel.Error
-                                                                  or LogEventLevel.Warning
-                                                                  or LogEventLevel.Fatal))
-            .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
-                          rollOnFileSizeLimit: true,
-                          fileSizeLimitBytes: 2 * 1024 * 1024,
-                          //  outputTemplate: template,
-                          retainedFileCountLimit: 10,
-                          formatProvider: CultureInfo.CurrentCulture)
-            .WriteTo.Console(formatProvider: CultureInfo.CurrentCulture);
+                                                           .Enrich.WithThreadId()
+                                                           .Enrich.WithThreadName()
+                                                           .Enrich.FromLogContext()
+                                                           .WriteTo.File(BuildFullLogPath(logName, logPath),
+                                                                         rollOnFileSizeLimit: true,
+                                                                         fileSizeLimitBytes: 2 * 1024 * 1024,
+                                                                         //  outputTemplate: template,
+                                                                         retainedFileCountLimit: 10,
+                                                                         formatProvider: CultureInfo.CurrentCulture)
+                                                           .WriteTo.Logger(l => l.Filter.ByIncludingOnly(logEvent =>
+                                                                                                             logEvent.Level is LogEventLevel.Error
+                                                                                                                            or LogEventLevel.Warning
+                                                                                                                            or LogEventLevel.Fatal))
+                                                           .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
+                                                                         rollOnFileSizeLimit: true,
+                                                                         fileSizeLimitBytes: 2 * 1024 * 1024,
+                                                                         //  outputTemplate: template,
+                                                                         retainedFileCountLimit: 10,
+                                                                         formatProvider: CultureInfo.CurrentCulture)
+                                                           .WriteTo.Console(formatProvider: CultureInfo.CurrentCulture).MinimumLevel.Error();
 
         serviceCollection.AddLogging(builder => builder.AddSerilog(loggerConfiguration.CreateLogger()));
     }

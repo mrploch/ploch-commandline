@@ -18,7 +18,7 @@ public static class TestCommandLineApp
 
                            appContainer.Application.Command<TestCommand>();
                        })
-            .Build()
+            .BuildConsole()
             .Execute(args);
     }
 }
