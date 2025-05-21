@@ -3,9 +3,11 @@ root = true
 [*]
 
 max_line_length = 120
+insert_final_newline = true
+indent_style = space
 
 # ReSharper properties
-resharper_place_accessorholder_attribute_on_same_line = false
+resharper_place_expr_method_on_single_line = true
 
 # C# files
 [*.cs]
@@ -17,12 +19,10 @@ dotnet_diagnostic.rcs1169.severity = suggestion
 
 # Indentation and spacing
 indent_size = 4
-indent_style = space
 tab_width = 4
 
 # New line preferences
 end_of_line = crlf
-insert_final_newline = false
 
 #### .NET Coding Conventions ####
 
@@ -89,8 +89,8 @@ csharp_style_expression_bodied_constructors = false:silent
 csharp_style_expression_bodied_indexers = true:silent
 csharp_style_expression_bodied_lambdas = true:silent
 csharp_style_expression_bodied_local_functions = false:silent
-csharp_style_expression_bodied_methods = false:silent
-csharp_style_expression_bodied_operators = false:silent
+csharp_style_expression_bodied_methods = true:silent
+csharp_style_expression_bodied_operators = true:silent
 csharp_style_expression_bodied_properties = true:silent
 
 # Pattern matching preferences
@@ -200,7 +200,7 @@ dotnet_naming_rule.static_field_should_be_pascal_case.style = pascal_case
 
 dotnet_naming_symbols.interface.applicable_kinds = interface
 dotnet_naming_symbols.interface.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
-dotnet_naming_symbols.interface.required_modifiers = 
+dotnet_naming_symbols.interface.required_modifiers =
 
 dotnet_naming_symbols.static_field.applicable_kinds = field
 dotnet_naming_symbols.static_field.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
@@ -208,51 +208,55 @@ dotnet_naming_symbols.static_field.required_modifiers = static
 
 dotnet_naming_symbols.private_or_internal_field.applicable_kinds = field
 dotnet_naming_symbols.private_or_internal_field.applicable_accessibilities = internal, private, private_protected
-dotnet_naming_symbols.private_or_internal_field.required_modifiers = 
+dotnet_naming_symbols.private_or_internal_field.required_modifiers =
 
 dotnet_naming_symbols.types.applicable_kinds = class, struct, interface, enum
 dotnet_naming_symbols.types.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
-dotnet_naming_symbols.types.required_modifiers = 
+dotnet_naming_symbols.types.required_modifiers =
 
 dotnet_naming_symbols.non_field_members.applicable_kinds = property, event, method
 dotnet_naming_symbols.non_field_members.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
-dotnet_naming_symbols.non_field_members.required_modifiers = 
+dotnet_naming_symbols.non_field_members.required_modifiers =
 
 # Naming styles
 
-dotnet_naming_style.pascal_case.required_prefix = 
-dotnet_naming_style.pascal_case.required_suffix = 
-dotnet_naming_style.pascal_case.word_separator = 
+dotnet_naming_style.pascal_case.required_prefix =
+dotnet_naming_style.pascal_case.required_suffix =
+dotnet_naming_style.pascal_case.word_separator =
 dotnet_naming_style.pascal_case.capitalization = pascal_case
 
 dotnet_naming_style.begins_with_i.required_prefix = I
-dotnet_naming_style.begins_with_i.required_suffix = 
-dotnet_naming_style.begins_with_i.word_separator = 
+dotnet_naming_style.begins_with_i.required_suffix =
+dotnet_naming_style.begins_with_i.word_separator =
 dotnet_naming_style.begins_with_i.capitalization = pascal_case
 
 dotnet_naming_style.prefixedcamelcase.required_prefix = _
-dotnet_naming_style.prefixedcamelcase.required_suffix = 
-dotnet_naming_style.prefixedcamelcase.word_separator = 
+dotnet_naming_style.prefixedcamelcase.required_suffix =
+dotnet_naming_style.prefixedcamelcase.word_separator =
 dotnet_naming_style.prefixedcamelcase.capitalization = camel_case
 
 # StyleCop
-
-dotnet_diagnostic.sa1600.severity = none
-dotnet_diagnostic.sa1116.severity = none
+dotnet_diagnostic.sa0001.severity = none # XML comment analysis is disabled due to project configuration
+dotnet_diagnostic.sa1000.severity = none
+dotnet_diagnostic.sa1009.severity = none
 dotnet_diagnostic.sa1101.severity = none
-dotnet_diagnostic.sa1413.severity = none
-dotnet_diagnostic.sa1309.severity = none
-dotnet_diagnostic.sa1623.severity = none
-dotnet_diagnostic.sa1640.severity = none
+dotnet_diagnostic.sa1116.severity = none
 dotnet_diagnostic.sa1127.severity = none
-dotnet_diagnostic.sa1200.severity = none
-dotnet_diagnostic.sa1502.severity = none
 dotnet_diagnostic.sa1128.severity = none
 dotnet_diagnostic.sa1133.severity = none
-dotnet_diagnostic.sa1009.severity = none
-dotnet_diagnostic.sa1000.severity = none
+dotnet_diagnostic.sa1200.severity = none
+dotnet_diagnostic.sa1309.severity = none
+dotnet_diagnostic.sa1402.severity = none # File may only contain a single type
+dotnet_diagnostic.sa1413.severity = none
+dotnet_diagnostic.sa1502.severity = none
+dotnet_diagnostic.sa1600.severity = none
+dotnet_diagnostic.sa1623.severity = none
 dotnet_diagnostic.sa1633.severity = none
+dotnet_diagnostic.sa1640.severity = none
 dotnet_diagnostic.sa1649.severity = warning # File name should match first type name.
+
+# Sonar
+dotnet_diagnostic.s4487.severity = none
 
 # ReSharper properties
 resharper_csharp_empty_block_style = together
@@ -281,6 +285,9 @@ resharper_csharp_align_first_arg_by_paren = true
 resharper_csharp_allow_far_alignment = true
 resharper_indent_anonymous_method_block = true
 resharper_wrap_chained_method_calls = chop_if_long
+resharper_method_or_operator_body = expression_body
+resharper_place_accessorholder_attribute_on_same_line = false
+resharper_use_heuristics_for_body_style = true
 
 # Checks
 
@@ -323,9 +330,6 @@ resharper_possible_multiple_enumeration = none
 dotnet_diagnostic.ca1707.severity = none # Identifiers should not contain underscores
 dotnet_diagnostic.ca1851.severity = none # Possible multiple enumerations of IEnumerable collection
 
-dotnet_diagnostic.sa1402.severity = none # File may only contain a single type
-dotnet_diagnostic.sa0001.severity = none # XML comment analysis is disabled due to project configuration
-dotnet_diagnostic.s4487.severity = none
 
 resharper_possible_multiple_enumeration_highlighting = none
 resharper_lambda_expression_can_be_made_static_highlighting = none

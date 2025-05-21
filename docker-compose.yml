@@ -13,3 +13,9 @@ services:
         ACCEPT_EULA: "Y"
     networks:
       - blogapp-network
+
+  hostingsample:
+    image: hostingsample
+    build:
+      context: .
+      dockerfile: HostingSample/Dockerfile

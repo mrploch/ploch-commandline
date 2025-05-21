@@ -394,3 +394,8 @@ codestream.xml
 /.idea/.idea.Ploch.Data/.idea/git_*.xml
 **/.idea/codestream.xml
 /codacy-test-reporter.jar
+/.idea/.idea.Ploch.CommandLine/.idea/indexLayout.xml
+.idea/**
+
+# My custom files
+/notes.md
