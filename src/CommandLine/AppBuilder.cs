@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
 using McMaster.Extensions.CommandLineUtils;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Ploch.Common.CommandLine;
@@ -30,6 +30,26 @@ public class AppBuilder
         {
             _configurationActions.Add(configurationAction);
         }
+    }
+
+    /// <summary>
+    ///     Creates a default instance of the <see cref="AppBuilder" /> with optional configuration
+    ///     and command-line arguments.
+    /// </summary>
+    /// <param name="name">The application name (or title) shown during execution and in the help screens.</param>
+    /// <param name="description">The application description displayed during execution and in the help screens.</param>
+    /// <param name="configurationAction">
+    ///     An optional action to apply additional configuration settings to the <see cref="IConfigurationBuilder" />.
+    /// </param>
+    /// <param name="args">
+    ///     An array of command-line arguments to be added to the configuration.
+    /// </param>
+    /// <returns>
+    ///     Returns an instance of <see cref="AppBuilder" /> with the default setup and the supplied configuration.
+    /// </returns>
+    public static AppBuilder CreateDefault(string name, string description, Action<IConfigurationBuilder>? configurationAction = null, params string[] args)
+    {
+        return CreateDefault(new CommandAppProperties(name, description), configurationAction, args);
     }
 
     /// <summary>
@@ -82,7 +102,7 @@ public class AppBuilder
     /// <returns>
     ///     Returns a fully constructed and configured instance of <see cref="CommandLineApplication" />.
     /// </returns>
-    public CommandLineApplication Build()
+    public CommandLineApplication BuildConsole()
     {
         var app = _appBuildFunc();
         var serviceCollections = new ServiceCollection();

@@ -1,10 +1,10 @@
 using McMaster.Extensions.CommandLineUtils;
 using Ploch.Common.CommandLine;
 
-namespace ConsoleApp1;
+namespace BasicConsoleApp;
 
 [Command(Name = "command1")]
-public class RootCommand1(CommandLineApplication app) : HelpOnlyCommand(app)
+public class SampleRootCommand(CommandLineApplication app) : HelpOnlyCommand(app)
 {
     [Option(Inherited = true)]
     public bool Verbose { get; set; }
