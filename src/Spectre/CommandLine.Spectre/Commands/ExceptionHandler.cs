@@ -1,9 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Ploch.Common;
-using Ploch.Tools.SystemProfiles.UI.ConsoleUI.WeatherForecasts;
 using Spectre.Console;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Commands;
+namespace Ploch.CommandLine.Spectre.Commands;
 
 public class ExceptionHandler<TCommand>(IAnsiConsole console, ILogger<TCommand> logger) : IExceptionHandler<TCommand>
 {

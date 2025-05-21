@@ -1,10 +1,8 @@
-﻿using Ploch.CommandLine.Spectre.Commands;
-using Ploch.Common;
-using Ploch.Tools.SystemProfiles.UI.ConsoleUI.WeatherForecasts;
+﻿using Ploch.Common;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Commands;
+namespace Ploch.CommandLine.Spectre.Commands;
 
 public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings> validator, IExceptionHandler<AppCommand<TSettings>> exceptionHandler)
     : Command<TSettings>

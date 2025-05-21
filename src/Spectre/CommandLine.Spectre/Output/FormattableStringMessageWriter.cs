@@ -1,6 +1,4 @@
-﻿using Ploch.Tools.SystemProfiles.Core;
-
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+﻿namespace Ploch.CommandLine.Spectre.Output;
 
 public class FormattableStringMessageWriter(IOutput output) : TypeMessageWriter<FormattableString>
 {

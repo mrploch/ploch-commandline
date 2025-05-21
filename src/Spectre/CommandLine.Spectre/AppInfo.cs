@@ -1,7 +1,7 @@
 ﻿using Ploch.Common;
 using Spectre.Console;
 
-namespace Ploch.Tools.SystemProfiles.UI.ConsoleUI;
+namespace Ploch.CommandLine.Spectre;
 
 public class AppInfo
 {

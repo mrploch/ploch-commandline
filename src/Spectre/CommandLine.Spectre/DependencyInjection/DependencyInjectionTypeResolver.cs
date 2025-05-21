@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.DependencyInjection;
+namespace Ploch.CommandLine.Spectre.DependencyInjection;
 
 /// <summary>
 ///     Provides a type resolver implementation that resolves types using dependency injection through an

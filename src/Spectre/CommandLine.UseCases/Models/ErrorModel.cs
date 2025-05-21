@@ -1,6 +1,6 @@
 using System;
 
-namespace Ploch.Tools.SystemProfiles.UseCases.Models;
+namespace Ploch.CommandLine.UseCases.Models;
 
 public class ErrorModel(string message, string errorCode, Type? exceptionType)
 {

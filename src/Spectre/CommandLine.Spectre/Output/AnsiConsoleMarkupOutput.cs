@@ -1,8 +1,7 @@
-using Ploch.Tools.SystemProfiles.Core;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public class AnsiConsoleMarkupOutput(IMessageFormatterProcessor formatterProcessor) : IOutput
 {

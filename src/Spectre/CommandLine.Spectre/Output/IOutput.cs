@@ -1,6 +1,6 @@
 using Spectre.Console.Rendering;
 
-namespace Ploch.Tools.SystemProfiles.Core;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public interface IOutput
 {

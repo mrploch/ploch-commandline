@@ -1,6 +1,6 @@
 ﻿using Ploch.Common;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public class BaseExceptionMessageFormatter<TException> : TypeMessageFormatter<TException>
     where TException : Exception

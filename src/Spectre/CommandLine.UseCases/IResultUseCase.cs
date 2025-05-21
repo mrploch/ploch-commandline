@@ -1,6 +1,6 @@
 using Ardalis.Result;
 
-namespace Ploch.Tools.SystemProfiles.UseCases;
+namespace Ploch.CommandLine.UseCases;
 
 public interface IResultUseCase<TRequest, TResponse> : IUseCase<TRequest, Result<TResponse>>
 { }

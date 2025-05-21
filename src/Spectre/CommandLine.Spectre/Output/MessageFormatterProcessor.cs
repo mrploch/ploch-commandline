@@ -1,4 +1,4 @@
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters, IEnumerable<IMessageWriter> writers) : IMessageFormatterProcessor
 {

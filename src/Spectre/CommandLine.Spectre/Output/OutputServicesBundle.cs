@@ -1,8 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Ploch.Common.DependencyInjection;
-using Ploch.Tools.SystemProfiles.Core;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public class OutputServicesBundle : IServicesBundle
 {

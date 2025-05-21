@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ploch.Tools.SystemProfiles.UseCases;
+namespace Ploch.CommandLine.UseCases;
 
 /// <summary>
 ///     Defines a use case with a request and response.

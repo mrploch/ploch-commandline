@@ -3,10 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.DependencyInjection;
 using Ploch.Common.DependencyInjection;
-using Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.DependencyInjection;
 using Spectre.Console.Cli;
 
-namespace Ploch.Tools.SystemProfiles.UI.ConsoleUI;
+namespace Ploch.CommandLine.Spectre;
 
 /// <summary>
 ///     Provides a builder for configuring and constructing a command-line application.

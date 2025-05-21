@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Ploch.Common;
 using Spectre.Console.Cli;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.DependencyInjection;
+namespace Ploch.CommandLine.Spectre.DependencyInjection;
 
 /// <summary>
 ///     Provides an implementation of Spectre.Console's <see cref="ITypeRegistrar" /> that integrates with

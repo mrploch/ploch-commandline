@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public class Win32ExceptionMessageFormatter : BaseExceptionMessageFormatter<Win32Exception>
 {

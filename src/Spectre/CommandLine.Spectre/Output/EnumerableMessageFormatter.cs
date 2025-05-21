@@ -2,7 +2,7 @@
 using System.Text;
 using Spectre.Console;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public class EnumerableMessageFormatter<TEnumerable> : TypeMessageFormatter<TEnumerable>
     where TEnumerable : IEnumerable

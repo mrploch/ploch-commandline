@@ -1,10 +1,8 @@
-using Ploch.CommandLine.Spectre.Commands;
 using Ploch.Common;
-using Ploch.Tools.SystemProfiles.UI.ConsoleUI.WeatherForecasts;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Commands;
+namespace Ploch.CommandLine.Spectre.Commands;
 
 public abstract class AsyncAppCommand<TSettings>(ICommandSettingsValidator<TSettings> validator, IExceptionHandler<AsyncAppCommand<TSettings>> exceptionHandler)
     : AsyncCommand<TSettings>

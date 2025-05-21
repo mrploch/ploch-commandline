@@ -1,12 +1,9 @@
 using System.Threading.Tasks;
 using Ardalis.Result;
 using Ploch.CommandLine.Spectre.Commands;
-using Ploch.Tools.SystemProfiles.UI.ConsoleUI.WeatherForecasts;
-using Ploch.Tools.SystemProfiles.UseCases;
-using Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Commands;
 using Spectre.Console.Cli;
 
-namespace Ploch.Tools.SystemProfiles.UI.ConsoleUI.Commands.Commands;
+namespace Ploch.CommandLine.UseCases;
 
 public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>(
     TUseCase useCase,

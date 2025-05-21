@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.Common.DependencyInjection;
-using Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Commands;
 using Spectre.Console;
 
 namespace Ploch.CommandLine.Spectre.DependencyInjection;

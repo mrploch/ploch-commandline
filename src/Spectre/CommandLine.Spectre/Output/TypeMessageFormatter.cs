@@ -1,4 +1,4 @@
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 
 public abstract class TypeMessageFormatter<TMessage> : TypeMessageHandler<TMessage>, IMessageFormatter<TMessage>
 {

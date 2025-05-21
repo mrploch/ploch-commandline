@@ -1,4 +1,4 @@
-﻿namespace Ploch.Tools.SystemProfiles.UI.ConsoleUI.WeatherForecasts;
+﻿namespace Ploch.CommandLine.Spectre.Commands;
 
 public enum ExitCode
 {

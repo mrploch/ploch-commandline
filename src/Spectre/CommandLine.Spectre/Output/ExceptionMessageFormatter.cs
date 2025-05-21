@@ -1,4 +1,4 @@
-namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Output;
+namespace Ploch.CommandLine.Spectre.Output;
 //
 // public class BaseExceptionMessageWriter<TException>(IOutput output) : TypeMessageWriter<TException> where TException : Exception
 // {

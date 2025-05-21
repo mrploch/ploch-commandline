@@ -1,4 +1,4 @@
-﻿namespace Ploch.Tools.SystemsProfiles.UI.ConsoleUI.Common.Commands;
+﻿namespace Ploch.CommandLine.Spectre.Commands;
 
 public interface IExceptionHandler<out TCommand>
 {
