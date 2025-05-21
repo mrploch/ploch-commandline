@@ -1,5 +1,5 @@
 version: "1.0"
-linter: jetbrains/qodana-dotnet:latest
+linter: jetbrains/qodana-cdnet:latest
 dotnet:
   solution: Ploch.Common.sln
 exclude:
