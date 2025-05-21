@@ -1,0 +1,77 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: Build
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+env: 
+  SONAR_PROJECT_KEY: mrploch_ploch-commandline
+  SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: echo "The branch name is ${{ github.repository }}"
+      - uses: actions/checkout@v3
+      - name: Copy documentation files
+        run: cp ./README.md ./DocumentationSite/index.md
+      - name: Build, test and scan
+        uses: mrploch/ploch-github-actions/build-test-sonar@main            
+        with:
+          solution-path: './Ploch.Common.sln'
+          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
+          sonar-organization: ${{ env.SONAR_ORGANIZATION }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+      # - name: Publish Test Results
+      #   uses: EnricoMi/publish-unit-test-result-action@v2
+      #   if: always()
+      #   with:
+      #     files: |
+      #       **/TestResults/*.xml
+      #       **/TestResults/*.trx
+      - name: Run codacy-coverage-reporter
+        uses: codacy/codacy-coverage-reporter-action@v1
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          # or
+          # api-token: ${{ secrets.CODACY_API_TOKEN }}
+          coverage-reports: '**/CoverageResults/coverage.opencover.xml'
+          # or a comma-separated list for multiple reports
+          # coverage-reports: <PATH_TO_REPORT>, <PATH_TO_REPORT>      
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        if: success() || failure()
+        with:
+          name: test-results
+          path: |
+            **/TestResults/*.xml
+            **/TestResults/*.trx
+      - name: Upload Coverage Results
+        uses: actions/upload-artifact@v3
+        if: success() || failure()
+        with:
+          name: code-coverage
+          path: |
+            **/CoverageResults/*.xml        
+
+      - name: Deploy GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.ref == 'refs/heads/master' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./DocumentationSite/_site
+      # Publish all NuGet packages to NuGet.org
+      # Use --skip-duplicate to prevent errors if a package with the same version already exists.
+      # If you retry a failed workflow, already published packages will be skipped without error.
+      - name: Add GitHub Packages source
+        run: dotnet nuget add source --username kploch --password ${{secrets.GH_PACKAGES_TOKEN}} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/mrploch/index.json"
+      - name: Options for publishing of NuGet packages
+        run: echo "dotnet nuget push **/*.nupkg --source github -k ${{secrets.GH_PACKAGES_TOKEN}}"
+      - name: Publish NuGet package
+        run: dotnet nuget push **/*.nupkg --source github -k ${{secrets.GH_PACKAGES_TOKEN}}
