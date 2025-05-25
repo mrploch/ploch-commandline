@@ -12,6 +12,9 @@ resharper_place_expr_method_on_single_line = true
 # C# files
 [*.cs]
 
+# Code Quality
+dotnet_code_quality.points_to_analysis_kind = Complete
+dotnet_code_quality.copy_analysis = true
 # RCS1169: Make field read-only.
 dotnet_diagnostic.rcs1169.severity = suggestion
 
@@ -300,7 +303,10 @@ dotnet_diagnostic.cs1591.severity = warning # Missing XML comment for publicly v
 
 # Nullable Reference Types
 
-dotnet_diagnostic.cs8600.severity = warning # Converting null literal or possible null value to non-nullable type.
+dotnet_diagnostic.cs8600.severity = error # Converting null literal or possible null value to non-nullable type.
+dotnet_diagnostic.cs8601.severity = error # Possible null reference assignment to non-nullable field.
+dotnet_diagnostic.cs8603.severity = error # Possible null reference return for parameter.
+dotnet_diagnostic.cs8604.severity = error # Possible null reference argument for parameter.
 dotnet_diagnostic.cs8608.severity = error # Possible null reference argument.
 dotnet_diagnostic.cs8609.severity = error # Possible null reference return.
 dotnet_diagnostic.cs8610.severity = error # Nullability of reference types in type parameter doesn't match overridden member.
