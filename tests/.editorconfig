@@ -1,0 +1,61 @@
+﻿[*.cs]
+## XML Documentation headers
+dotnet_diagnostic.classdocumentationheader.severity = none # XML documentation header for class - use in apps and tests
+dotnet_diagnostic.interfacedocumentationheader.severity = none
+dotnet_diagnostic.methoddocumentationheader.severity = none
+dotnet_diagnostic.propertydocumentationheader.severity = none
+dotnet_analyzer_diagnostic.category-documentationheader.severity = none
+dotnet_analyzer_diagnostic.category-Documentation.severity = none
+
+# Other settings
+dotnet_diagnostic.ca1707.severity = none # Identifiers should not contain underscores
+dotnet_diagnostic.ca1851.severity = none # Possible multiple enumerations of IEnumerable collection
+dotnet_diagnostic.cs1957.severity = suggestion # Member 'name' overrides 'method'. There are multiple override candidates at run-time. It is implementation dependent which method will be called.
+dotnet_diagnostic.cs8603.severity = suggestion # Possible null reference return
+dotnet_diagnostic.cs8604.severity = suggestion # Possible null reference argument for parameter.
+
+dotnet_diagnostic.s3881.severity = none # Disposable pattern
+
+dotnet_diagnostic.cc0001.severity = none # Use var - false/positive for collection initializer
+
+## Nullability
+dotnet_diagnostic.cs8600.severity = none
+
+dotnet_diagnostic.IDE0051.severity = warning # Remove unused private members
+dotnet_diagnostic.IDE0052.severity = warning # Remove unused private members
+dotnet_diagnostic.IDE0058.severity = none # Expression value is never used
+
+dotnet_diagnostic.s4487.severity = none # Unread "private" fields should be removed
+dotnet_diagnostic.sa0001.severity = none # XML comment analysis is disabled due to project configuration
+dotnet_diagnostic.sa1402.severity = none # File may only contain a single type
+
+dotnet_naming_rule.method_rule.import_to_resharper = True
+dotnet_naming_rule.method_rule.resharper_description = Methods
+dotnet_naming_rule.method_rule.resharper_guid = 8284009d-e743-4d89-9402-a5bf9a89b657
+dotnet_naming_rule.method_rule.resharper_style = AaBb_aaBb, AaBb
+dotnet_naming_rule.method_rule.severity = warning
+dotnet_naming_rule.method_rule.style = upper_camel_case_underscore_tolerant_style
+dotnet_naming_rule.method_rule.symbols = method_symbols
+dotnet_naming_rule.unity_serialized_field_rule.import_to_resharper = True
+dotnet_naming_rule.unity_serialized_field_rule.resharper_description = Unity serialized field
+dotnet_naming_rule.unity_serialized_field_rule.resharper_guid = 5f0fdb63-c892-4d2c-9324-15c80b22a7ef
+dotnet_naming_rule.unity_serialized_field_rule.severity = warning
+dotnet_naming_rule.unity_serialized_field_rule.style = lower_camel_case_style
+dotnet_naming_rule.unity_serialized_field_rule.symbols = unity_serialized_field_symbols
+dotnet_naming_style.lower_camel_case_style.capitalization = camel_case
+dotnet_naming_style.upper_camel_case_underscore_tolerant_style.capitalization = first_word_upper
+dotnet_naming_style.upper_camel_case_underscore_tolerant_style.word_separator = _
+dotnet_naming_symbols.method_symbols.applicable_accessibilities = *
+dotnet_naming_symbols.method_symbols.applicable_kinds = method
+dotnet_naming_symbols.method_symbols.resharper_applicable_kinds = method
+dotnet_naming_symbols.method_symbols.resharper_required_modifiers = any
+dotnet_naming_symbols.unity_serialized_field_symbols.applicable_accessibilities = *
+dotnet_naming_symbols.unity_serialized_field_symbols.applicable_kinds =
+dotnet_naming_symbols.unity_serialized_field_symbols.resharper_applicable_kinds = unity_serialised_field
+dotnet_naming_symbols.unity_serialized_field_symbols.resharper_required_modifiers = instance
+
+resharper_lambda_expression_can_be_made_static_highlighting = none
+
+resharper_possible_multiple_enumeration_highlighting = none
+
+resharper_collection_never_updated_global_highlighting = none

@@ -147,15 +147,12 @@ dotnet_code_quality.points_to_analysis_kind = Complete
 
 # Properties: 'dotnet_diagnostic'
 
-# TODO - either leave the default to override or do not add this section
-
-# dotnet_diagnostic.classdocumentationheader.severity = warning # XML documentation header for class - use in apps and tests
-# dotnet_diagnostic.interfacedocumentationheader.severity = warning
-# dotnet_diagnostic.methoddocumentationheader.severity = warning
-# dotnet_diagnostic.propertydocumentationheader.severity = warning
-# dotnet_analyzer_diagnostic.category-documentationheader.severity = warning
-# dotnet_analyzer_diagnostic.category-Documentation.severity = warning
-# TODO - ENDTODO
+dotnet_diagnostic.classdocumentationheader.severity = warning # XML documentation header for class - use in apps and tests
+dotnet_diagnostic.interfacedocumentationheader.severity = warning
+dotnet_diagnostic.methoddocumentationheader.severity = warning
+dotnet_diagnostic.propertydocumentationheader.severity = warning
+dotnet_analyzer_diagnostic.category-documentationheader.severity = warning
+dotnet_analyzer_diagnostic.category-Documentation.severity = warning
 
 ## Properties: 'dotnet_diagnostic.ca'
 dotnet_diagnostic.ca1001.severity = warning # Types that own disposable fields should be disposable
@@ -196,10 +193,7 @@ dotnet_diagnostic.cs8597.severity = error # Thrown value may be null.
 dotnet_diagnostic.cs8600.severity = error # Converting null literal or possible null value to non-nullable type.
 dotnet_diagnostic.cs8601.severity = error # Possible null reference assignment to non-nullable field.
 
-# TODO - app-repository
-# dotnet_diagnostic.cs8602.severity = error # Dereference of a possibly null reference
-# TODO - lib-repository.
-# dotnet_diagnostic.cs8602.severity = none # Dereference of a possibly null reference.
+dotnet_diagnostic.cs8602.severity = error # Dereference of a possibly null reference
 dotnet_diagnostic.cs8603.severity = error # Possible null reference return.
 dotnet_diagnostic.cs8604.severity = error # Possible null reference argument for parameter.
 dotnet_diagnostic.cs8605.severity = error # Unboxing a possibly null value.
@@ -503,21 +497,14 @@ dotnet_style_prefer_inferred_tuple_names = true:suggestion
 dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
 dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
 dotnet_style_prefer_simplified_interpolation = true:suggestion
-# TODO - app-repository
-# dotnet_style_qualification_for_event = false:suggestion
-# dotnet_style_qualification_for_field = false:suggestion
-# dotnet_style_qualification_for_method = false:suggestion
-# dotnet_style_qualification_for_property = false:suggestion
-# dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
 
-# TODO - lib-repository.
-# dotnet_style_qualification_for_event = false:silent
-# dotnet_style_qualification_for_field = false:silent
-# dotnet_style_qualification_for_method = false:silent
-# dotnet_style_qualification_for_property = false:silent
+dotnet_style_qualification_for_event = false:suggestion
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
 
 dotnet_style_readonly_field = true:suggestion # Readonly fields should be preferred over mutable fields
-
 
 # ReSharper settings
 resharper_align_linq_query = true
@@ -627,12 +614,8 @@ resharper_mvc_view_component_not_resolved_highlighting = warning
 resharper_mvc_view_component_view_not_resolved_highlighting = warning
 resharper_mvc_view_not_resolved_highlighting = warning
 
-# TODO - app-repository
-# resharper_operator_is_can_be_used_highlighting = suggestion
-# resharper_outdent_binary_pattern_ops = true
-
-# TODO - lib-repository:
-# -NONE-
+resharper_operator_is_can_be_used_highlighting = suggestion
+resharper_outdent_binary_pattern_ops = true
 
 resharper_place_accessorholder_attribute_on_same_line = false
 resharper_place_expr_method_on_single_line = true
