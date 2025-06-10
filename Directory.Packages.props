@@ -96,15 +96,19 @@
     </ItemGroup>
     <ItemGroup>
         <!--    <GlobalPackageVersion Include="codecracker.CSharp" Version="1.1.0" />-->
+        <GlobalPackageReference Include="codecracker.CSharp" Version="1.1.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </GlobalPackageReference>
         <GlobalPackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </GlobalPackageReference>
-        <GlobalPackageReference Update="Roslynator.Analyzers" Version="4.5.0">
+        <GlobalPackageReference Include="Roslynator.Analyzers" Version="4.13.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </GlobalPackageReference>
-        <GlobalPackageReference Include="SonarAnalyzer.CSharp" Version="10.10.0.116381">
+        <GlobalPackageReference Include="SonarAnalyzer.CSharp" Version="10.11.0.117924">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </GlobalPackageReference>
@@ -112,7 +116,10 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </GlobalPackageReference>
-        <GlobalPackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
+        <GlobalPackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </GlobalPackageReference>
         <!--        <GlobalPackageReference Include="MinVer" Version="4.3.0" />-->
     </ItemGroup>
 </Project>
