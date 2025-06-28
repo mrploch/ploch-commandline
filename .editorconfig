@@ -14,6 +14,9 @@ resharper_formatter_off_tag = @formatter:off
 resharper_formatter_on_tag = @formatter:on
 resharper_formatter_tags_enabled = true
 
+[{*.har,*.jsb2,*.jsb3,*.json,*.jsonc,*.postman_collection,*.postman_collection.json,*.postman_environment,*.postman_environment.json,.babelrc,.eslintrc,.prettierrc,.stylelintrc,.ws-context,jest.config}]
+indent_size = 2
+
 [{*.yaml,*.yml}]
 indent_size = 2
 
@@ -147,6 +150,7 @@ dotnet_code_quality.points_to_analysis_kind = Complete
 
 # Properties: 'dotnet_diagnostic'
 
+## XML Documentation headers
 dotnet_diagnostic.classdocumentationheader.severity = warning # XML documentation header for class - use in apps and tests
 dotnet_diagnostic.interfacedocumentationheader.severity = warning
 dotnet_diagnostic.methoddocumentationheader.severity = warning
@@ -172,7 +176,7 @@ dotnet_diagnostic.ca1827.severity = warning
 dotnet_diagnostic.ca1828.severity = warning
 dotnet_diagnostic.ca1829.severity = warning
 dotnet_diagnostic.ca1848.severity = suggestion
-dotnet_diagnostic.ca1851.severity = suggestion # Possible multiple enumerations of IEnumerable collection
+dotnet_diagnostic.ca1851.severity = none # Possible multiple enumerations of IEnumerable collection
 dotnet_diagnostic.ca1869.severity = warning
 dotnet_diagnostic.ca2009.severity = warning
 dotnet_diagnostic.ca2012.severity = warning
@@ -192,8 +196,7 @@ dotnet_diagnostic.cs1591.severity = warning # Missing XML comment for publicly v
 dotnet_diagnostic.cs8597.severity = error # Thrown value may be null.
 dotnet_diagnostic.cs8600.severity = error # Converting null literal or possible null value to non-nullable type.
 dotnet_diagnostic.cs8601.severity = error # Possible null reference assignment to non-nullable field.
-
-dotnet_diagnostic.cs8602.severity = error # Dereference of a possibly null reference
+dotnet_diagnostic.cs8602.severity = error # Dereference of a possibly null reference.
 dotnet_diagnostic.cs8603.severity = error # Possible null reference return.
 dotnet_diagnostic.cs8604.severity = error # Possible null reference argument for parameter.
 dotnet_diagnostic.cs8605.severity = error # Unboxing a possibly null value.
@@ -217,6 +220,7 @@ dotnet_diagnostic.cs8624.severity = error # Argument cannot be used for paramete
 dotnet_diagnostic.cs8625.severity = error # Cannot convert null literal to non-nullable reference type.
 dotnet_diagnostic.cs8629.severity = error # Nullable value type may be null.
 dotnet_diagnostic.cs8631.severity = error # The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match constraint type.
+dotnet_diagnostic.cs8633.severity = error # Nullability in constraints for type parameter of method doesn't match the constraints for type parameter of interface method. Consider using an explicit interface implementation instead.
 dotnet_diagnostic.cs8634.severity = error # The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'class' constraint.
 dotnet_diagnostic.cs8643.severity = error # Nullability of reference types in explicit interface specifier doesn't match interface implemented by the type.
 dotnet_diagnostic.cs8644.severity = error # Type does not implement interface member. Nullability of reference types in interface implemented by the base type doesn't match.
@@ -224,6 +228,7 @@ dotnet_diagnostic.cs8645.severity = error # Member is already listed in the inte
 dotnet_diagnostic.cs8655.severity = error # The switch expression does not handle some null inputs (it is not exhaustive).
 dotnet_diagnostic.cs8667.severity = error # Partial method declarations have inconsistent nullability in constraints for type parameter.
 dotnet_diagnostic.cs8714.severity = error # The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+dotnet_diagnostic.cs8762.severity = error # Parameter must have a non-null value when exiting.
 dotnet_diagnostic.cs8763.severity = error # A method marked [DoesNotReturn] should not return.
 dotnet_diagnostic.cs8764.severity = error # Nullability of return type doesn't match overridden member (possibly because of nullability attributes).
 dotnet_diagnostic.cs8765.severity = error # Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
@@ -261,6 +266,7 @@ dotnet_diagnostic.s1451.severity = none
 dotnet_diagnostic.s4487.severity = none
 
 ## Properties: 'dotnet_diagnostic.sa'
+dotnet_diagnostic.sa0001.severity = none # XML comment analysis is disabled due to project configuration
 dotnet_diagnostic.sa1000.severity = none # Keywords should be spaced correctly
 dotnet_diagnostic.sa1009.severity = none # Closing parenthesis should be spaced correctly
 dotnet_diagnostic.sa1010.severity = none # Square bracket should not be proceeded by a space - gives false positive for collection initializers []
@@ -502,9 +508,8 @@ dotnet_style_qualification_for_event = false:suggestion
 dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_qualification_for_method = false:suggestion
 dotnet_style_qualification_for_property = false:suggestion
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
-
 dotnet_style_readonly_field = true:suggestion # Readonly fields should be preferred over mutable fields
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:silent
 
 # ReSharper settings
 resharper_align_linq_query = true
@@ -592,11 +597,7 @@ resharper_keep_existing_linebreaks = false
 resharper_keep_existing_primary_constructor_declaration_parens_arrangement = true
 resharper_keep_existing_property_patterns_arrangement = false
 
-# TODO - app-repository
-# resharper_lambda_expression_can_be_made_static_highlighting = hint
-
-# TODO - lib-repository.
-# resharper_lambda_expression_can_be_made_static_highlighting = none
+resharper_lambda_expression_can_be_made_static_highlighting = hint
 
 resharper_local_function_body = expression_body
 resharper_max_formal_parameters_on_line = 8
