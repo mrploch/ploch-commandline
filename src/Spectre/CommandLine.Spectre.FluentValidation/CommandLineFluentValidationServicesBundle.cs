@@ -15,15 +15,6 @@ namespace PlochCommandLine.Spectre.FluentValidation;
 public class CommandLineFluentValidationServicesBundle(params IEnumerable<Assembly> validatorAssemblies) : IServicesBundle
 {
     /// <summary>
-    ///     Configures the service collection with FluentValidation validators and command settings validator.
-    /// </summary>
-    /// <param name="services">The service collection to configure.</param>
-    public void Configure(IServiceCollection services)
-    {
-        services.AddValidatorsFromAssemblies(validatorAssemblies).AddSingleton(typeof(ICommandSettingsValidator<>), typeof(FluentCommandSettingsValidator<>));
-    }
-
-    /// <summary>
     ///     Creates a new instance of CommandLineFluentValidationServicesBundle using an assembly list builder.
     /// </summary>
     /// <param name="validatorAssembliesBuilderAction">
@@ -37,5 +28,14 @@ public class CommandLineFluentValidationServicesBundle(params IEnumerable<Assemb
         validatorAssembliesBuilderAction(builder);
 
         return new CommandLineFluentValidationServicesBundle(builder.Build());
+    }
+
+    /// <summary>
+    ///     Configures the service collection with FluentValidation validators and command settings validator.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    public void Configure(IServiceCollection services)
+    {
+        services.AddValidatorsFromAssemblies(validatorAssemblies).AddSingleton(typeof(ICommandSettingsValidator<>), typeof(FluentCommandSettingsValidator<>));
     }
 }
