@@ -17,11 +17,9 @@ public interface IUseCase<in TRequest, TResponse>
     /// <param name="cancellationToken">
     ///     A token to monitor for cancellation requests. Defaults to <see cref="CancellationToken.None" />.
     /// </param>
-    /// <typeparam name="TRequest">The type of the request object.</typeparam>
-    /// <typeparam name="TResponse">The type of the response object.</typeparam>
     /// <returns>
     ///     A task that represents the asynchronous operation. The task result contains the response of type
     ///     <typeparamref name="TResponse" />.
     /// </returns>
-    public Task<TResponse> ExecuteAsync(TRequest request, CancellationToken cancellationToken = default);
+    Task<TResponse> ExecuteAsync(TRequest request, CancellationToken cancellationToken = default);
 }

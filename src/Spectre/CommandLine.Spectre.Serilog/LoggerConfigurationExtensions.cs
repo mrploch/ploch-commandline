@@ -25,7 +25,7 @@ public static class LoggerConfigurationExtensions
     /// </summary>
     /// <remarks>
     ///     This template includes timestamp with timezone, log level, message, and exception information.
-    ///     Format: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+    ///     Format: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}".
     /// </remarks>
     private const string DefaultOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
 
@@ -123,6 +123,8 @@ public static class LoggerConfigurationExtensions
             configuration?.GetSection("Serilog:MinimumLevel:Default").Value.SafeParseToEnum<LogEventLevel>() ?? LogEventLevel.Information;
 
         var config =
+
+            // ReSharper disable once ComplexConditionExpression
             loggerConfiguration.Enrich.FromLogContext()
                                .Enrich.WithThreadId()
                                .Enrich.WithThreadName()
@@ -145,12 +147,8 @@ public static class LoggerConfigurationExtensions
                                              fileSizeLimitBytes: 2 * 1024 * 1024,
                                              retainedFileCountLimit: 10,
                                              formatProvider: CultureInfo.CurrentCulture)
-                               .WriteTo.Console()
-
-                               //.WriteTo.SpectreConsole("[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {NewLine}{Exception}", logMinimumLevelString);
+                               .WriteTo.Console(formatProvider: CultureInfo.CurrentCulture)
                                .WriteTo.SpectreConsole(minLevel: LogEventLevel.Verbose);
-
-        // .MinimumLevel.Is(logMinimumLevelString);
 
         if (configuration != null)
         {

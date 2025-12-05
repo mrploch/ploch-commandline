@@ -1,14 +1,26 @@
-﻿using Ploch.Common;
+﻿using Ploch.Common.ArgumentChecking;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre.Commands;
 
-public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings> validator, IExceptionHandler<AppCommand<TSettings>> exceptionHandler)
-    : Command<TSettings>
-    where TSettings : CommandSettings
+/// <summary>
+///     Base class for application commands that provides common functionality for command execution and validation.
+/// </summary>
+/// <typeparam name="TSettings">The type of settings used by the command.</typeparam>
+/// <param name="validator">The validator used to validate command settings.</param>
+/// <param name="exceptionHandler">The handler used to process exceptions that occur during command execution.</param>
+public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings> validator, IExceptionHandler exceptionHandler)
+    : Command<TSettings> where TSettings : CommandSettings
 {
-    public override int Execute(CommandContext context, TSettings settings)
+    /// <summary>
+    ///     Executes the command with the specified context and settings.
+    /// </summary>
+    /// <param name="context">The command context containing execution information.</param>
+    /// <param name="settings">The settings to use for command execution.</param>
+    /// <returns>An integer representing the exit code of the command execution.</returns>
+    /// <exception cref="Exception">Any exception thrown during command execution will be handled by the exception handler.</exception>
+    public override int Execute(CommandContext context, TSettings settings, CancellationToken cancellationToken = default)
     {
         context.NotNull();
         settings.NotNull();
@@ -23,7 +35,19 @@ public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings>
         }
     }
 
+    /// <summary>
+    ///     Validates the command settings using the provided validator.
+    /// </summary>
+    /// <param name="context">The command context containing execution information.</param>
+    /// <param name="settings">The settings to validate.</param>
+    /// <returns>A validation result indicating whether the settings are valid.</returns>
     public override ValidationResult Validate(CommandContext context, TSettings settings) => validator.Validate(context, settings);
 
-    protected abstract ExitCode DoExecute(CommandContext context, TSettings settings);
+    /// <summary>
+    ///     Implements the command's core execution logic.
+    /// </summary>
+    /// <param name="context">The command context containing execution information.</param>
+    /// <param name="settings">The settings to use for command execution.</param>
+    /// <returns>An exit code indicating the result of the command execution.</returns>
+    protected abstract ExitCode DoExecute(CommandContext? context, TSettings settings);
 }

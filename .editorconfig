@@ -5,7 +5,6 @@ indent_style = space
 insert_final_newline = true
 max_line_length = 160
 max_line_lengtheditorconfig = 160
-resharper_csharp_max_line_length = 160
 trim_trailing_whitespace = true
 end_of_line = crlf
 
@@ -14,22 +13,43 @@ resharper_formatter_off_tag = @formatter:off
 resharper_formatter_on_tag = @formatter:on
 resharper_formatter_tags_enabled = true
 
-[{*.har,*.jsb2,*.jsb3,*.json,*.jsonc,*.postman_collection,*.postman_collection.json,*.postman_environment,*.postman_environment.json,.babelrc,.eslintrc,.prettierrc,.stylelintrc,.ws-context,jest.config}]
+[{*.har,*.jsb2,*.jsb3,*.jsonc,*.postman_collection,*.postman_collection.json,*.postman_environment,*.postman_environment.json,.babelrc,.eslintrc,.prettierrc,.stylelintrc,.ws-context,jest.config}]
 indent_size = 2
 
 [{*.yaml,*.yml}]
 indent_size = 2
 
-[{*.sarif,*.sarif*.json,*.sarif.json}]
+[{action.yml,super-linter.yml,workflow.yml}]
 indent_size = 2
 
-[{*.csproj,*.xml,*.props,*.DotSettings,*.slnx}]
+[{*.sarif,*.json,*.sarif.json}]
+indent_size = 2
+
+[*.{csproj,xml,props,targets,wxi,wxl,wxs,DotSettings,slnx,ruleset}]
 indent_size = 2
 tab_width = 2
+
+[*.{appxmanifest,asax,ascx,aspx,axaml,axml,blockshader,build,c,c++,c++m,cc,ccm,cginc,compute,config,cp,cpp,cppm,cs,cshtml,cu,cuh,cxx,cxxm,dbml,discomap,dtd,feature,fs,fsi,fsscript,fsx,fx,fxh,h,h++,hh,hlsl,hlsli,hlslinc,hp,hpp,htm,html,hxx,icc,inc,inl,ino,ipp,ixx,jsproj,lsproj,master,ml,mli,mpp,mq4,mq5,mqh,mxx,njsproj,nuspec,paml,proj,razor,resw,resx,shader,shaderFoundry,skin,StyleCop,tasks,tcc,tpp,urtshader,usf,ush,uxml,vb,vbproj,xaml,xamlx,xoml,xsd}]
+indent_size = 4
+tab_width = 4
+
+[*.less]
+indent_size = 2
+
+[*.scss]
+indent_style = space
+indent_size = 2
+
+[*.map]
+indent_style = space
+indent_size = 2
 
 [*.cs]
 tab_width = 4
 indent_size = 4
+
+resharper_csharp_max_line_length = 160
+# Or maybe: resharper_csharp_max_line_length = 180
 
 # Properties: 'csharp'
 csharp_indent_block_contents = true # csharp_indent_block_contents
@@ -247,6 +267,9 @@ dotnet_diagnostic.cs8825.severity = error # Return value must be non-null becaus
 dotnet_diagnostic.cs8847.severity = error # The switch expression does not handle some null inputs (it is not exhaustive). However, a pattern with a 'when' clause might successfully match this value.
 dotnet_diagnostic.cs9264.severity = warning # Non-nullable property must contain a non-null value when exiting constructor. Consider adding the 'required' modifier, or declaring the property as nullable, or adding '[field: MaybeNull, AllowNull]' attributes.*
 
+dotnet_diagnostic.cs8763.severity = error # A method marked [DoesNotReturn] should not return.
+dotnet_diagnostic.cs8770.severity = error # Method lacks [DoesNotReturn] annotation to match implemented or overridden member.
+
 ## Properties: 'dotnet_diagnostic.faa'
 dotnet_diagnostic.faa0002.severity = warning
 
@@ -258,8 +281,9 @@ dotnet_diagnostic.IDE0018.severity = warning # Inline variable declaration
 ## Properties: 'dotnet_diagnostic.nu'
 dotnet_diagnostic.nu1507.severity = none # Use nameof operator
 
-## Properties: 'dotnet_diagnostic.rcs'
-dotnet_diagnostic.rcs1169.severity = suggestion
+## Properties: 'dotnet_diagnostic.rcs' - Roslynator
+dotnet_diagnostic.rcs1169.severity = suggestion # Make field read-only
+dotnet_diagnostic.rcs1194.severity = suggestion # Implement standard Exception constructors
 
 ## Properties: 'dotnet_diagnostic.s'
 dotnet_diagnostic.s1451.severity = none
@@ -283,6 +307,7 @@ dotnet_diagnostic.sa1309.severity = none # Field names should not begin with und
 dotnet_diagnostic.sa1313.severity = none # Parameter names should begin with lower-case letter
 dotnet_diagnostic.sa1402.severity = none # File may only contain a single type
 dotnet_diagnostic.sa1413.severity = none # Use trailing comma
+dotnet_diagnostic.sa1500.severity = none # Braces for multi-line statements must not share line
 dotnet_diagnostic.sa1502.severity = none # element containing opening and closing braces is written completely on a single line.
 dotnet_diagnostic.sa1600.severity = none # Elements should be documented
 dotnet_diagnostic.sa1623.severity = none # Property summary documentation should match accessors
@@ -323,7 +348,7 @@ dotnet_naming_rule.private_constants_rule.import_to_resharper = True
 dotnet_naming_rule.private_constants_rule.resharper_description = Constant fields (private)
 dotnet_naming_rule.private_constants_rule.resharper_guid = 236f7aa5-7b06-43ca-bf2a-9b31bfcff09a
 dotnet_naming_rule.private_constants_rule.severity = warning
-dotnet_naming_rule.private_constants_rule.style = lower_camel_case_style
+dotnet_naming_rule.private_constants_rule.style = upper_camel_case_style
 dotnet_naming_rule.private_constants_rule.symbols = private_constants_symbols
 dotnet_naming_rule.private_instance_fields_override_rule.import_to_resharper = False
 dotnet_naming_rule.private_instance_fields_override_rule.severity = warning
@@ -503,13 +528,12 @@ dotnet_style_prefer_inferred_tuple_names = true:suggestion
 dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
 dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
 dotnet_style_prefer_simplified_interpolation = true:suggestion
-
 dotnet_style_qualification_for_event = false:suggestion
 dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_qualification_for_method = false:suggestion
 dotnet_style_qualification_for_property = false:suggestion
 dotnet_style_readonly_field = true:suggestion # Readonly fields should be preferred over mutable fields
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:silent
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
 
 # ReSharper settings
 resharper_align_linq_query = true
@@ -584,7 +608,7 @@ resharper_indent_primary_constructor_decl_pars = outside_and_inside
 resharper_inheritdoc_consider_usage_highlighting = none
 resharper_initializer_braces = pico
 resharper_instance_members_qualify_declared_in =
-
+resharper_invalid_xml_doc_comment_highlighting = warning
 resharper_keep_existing_declaration_block_arrangement = false
 resharper_keep_existing_declaration_parens_arrangement = false
 resharper_keep_existing_embedded_arrangement = false
@@ -598,7 +622,6 @@ resharper_keep_existing_primary_constructor_declaration_parens_arrangement = tru
 resharper_keep_existing_property_patterns_arrangement = false
 
 resharper_lambda_expression_can_be_made_static_highlighting = hint
-
 resharper_local_function_body = expression_body
 resharper_max_formal_parameters_on_line = 8
 resharper_max_primary_constructor_parameters_on_line = 8
@@ -643,3 +666,9 @@ resharper_wrap_after_primary_constructor_declaration_lpar = false
 resharper_wrap_before_primary_constructor_declaration_lpar = false
 resharper_wrap_chained_method_calls = chop_if_long
 resharper_wrap_list_pattern = chop_if_long
+
+resharper_parameter_type_can_be_enumerable_local_highlighting = suggestion
+resharper_parameter_type_can_be_enumerable_global_highlighting = suggestion
+resharper_csharp_outdent_commas = true
+
+resharper_class_with_virtual_members_never_inherited_global_highlighting = hint

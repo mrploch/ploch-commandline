@@ -1,16 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>$(TargetFrameworkVersion)</TargetFramework>
+    <Nullable>enable</Nullable>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Ardalis.Result" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Models\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ardalis.Result" />
+  </ItemGroup>
 
 </Project>

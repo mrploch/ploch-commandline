@@ -1,110 +1,101 @@
-using System.Diagnostics;
-using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Ploch.Common;
+using Ploch.Common.DependencyInjection;
 using Serilog;
-using Serilog.Events;
 
 namespace Ploch.CommandLine.Spectre.Serilog;
 
 /// <summary>
-///     Provides extension methods for configuring Serilog logging in a command-line application.
+///     Provides extension methods for configuring Serilog logging in command-line applications
+///     with integration into the Microsoft.Extensions.DependencyInjection framework.
 /// </summary>
+/// <remarks>
+///     This static class offers convenient extension methods that simplify the process of adding
+///     and configuring Serilog as the logging provider in command-line applications. The methods
+///     handle both the services bundle registration and the direct Serilog configuration,
+///     providing a streamlined setup process.
+///     <para>
+///         The configurator integrates with the services bundle pattern used throughout the
+///         application, ensuring consistent dependency injection practices while providing
+///         Serilog-specific configuration capabilities.
+///     </para>
+/// </remarks>
 public static class SerilogLoggingConfigurator
 {
-    private const string DefaultOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
-    private const int RetainedFileCountLimit = 10;
-
     /// <summary>
-    ///     Adds Serilog to the service collection with a predefined configuration.
+    ///     Adds Serilog to the service collection with a comprehensive predefined configuration
+    ///     optimized for command-line applications.
     /// </summary>
-    /// <param name="services">The service collection to add Serilog to.</param>
+    /// <param name="services">
+    ///     The service collection to configure. Serilog will be registered as the primary
+    ///     logging provider, replacing any existing logging configuration.
+    /// </param>
     /// <param name="configuration">
-    ///     Optional configuration to be used for Serilog settings. If provided, will override default
-    ///     settings.
+    ///     Optional configuration instance to read Serilog settings from. If provided, settings
+    ///     from the "Serilog" section will be used to customize the logging behavior. The
+    ///     configuration will be applied after the predefined setup, allowing for overrides.
     /// </param>
-    /// <param name="logName">Optional name for the log file. If not provided, the current process name will be used.</param>
+    /// <param name="logName">
+    ///     Optional name for the log files. If not provided, the current process name will be used.
+    ///     This affects both the main log file and the error-specific log file names.
+    /// </param>
     /// <param name="logPath">
-    ///     Optional path where log files will be stored. If not provided, the application's base directory
-    ///     will be used.
+    ///     Optional directory path where log files will be stored. If not provided, the application's
+    ///     base directory will be used. Both main and error log files will be created in this directory.
     /// </param>
-    /// <returns>The service collection with Serilog added for chaining additional service registrations.</returns>
-    public static IServiceCollection AddSerilog(this IServiceCollection services, IConfiguration? configuration = null, string? logName = null, string? logPath = null)
+    /// <returns>
+    ///     The same <see cref="IServiceCollection" /> instance to enable method chaining for
+    ///     additional service registrations.
+    /// </returns>
+    /// <remarks>
+    ///     This method performs two main operations:
+    ///     <list type="number">
+    ///         <item>
+    ///             <description>Registers a <see cref="SerilogConfigurationBundle" /> with the service collection</description>
+    ///         </item>
+    ///         <item>
+    ///             <description>Configures Serilog directly using the Microsoft.Extensions.Logging integration</description>
+    ///         </item>
+    ///     </list>
+    ///     <para>
+    ///         The configuration includes multiple sinks (file, console, Spectre.Console), enrichers
+    ///         (thread information, context), and formatting options optimized for command-line applications.
+    ///         File logging includes automatic rotation and separate error logging for better log management.
+    ///     </para>
+    ///     <para>
+    ///         Note: This method suppresses CS8604 warnings related to potential null reference arguments
+    ///         because the <see cref="SerilogConfigurationBundle" /> constructor can handle null configuration values.
+    ///     </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    ///     Thrown when <paramref name="services" /> is <c>null</c>.
+    /// </exception>
+    /// <example>
+    ///     <code>
+    /// // Basic setup with default configuration
+    /// services.AddSerilog();
+    ///
+    /// // With configuration and custom log settings
+    /// services.AddSerilog(
+    ///     configuration: configuration,
+    ///     logName: "MyCommandLineApp",
+    ///     logPath: @"C:\Logs"
+    /// );
+    ///
+    /// // Method chaining with other services:
+    /// services.AddSerilog(configuration)
+    ///         .AddScoped&lt;IMyService, MyService&gt;()
+    ///         .AddSingleton&lt;IAnotherService, AnotherService&gt;();
+    /// </code>
+    /// </example>
+    public static IServiceCollection AddSerilog(this IServiceCollection services,
+                                                IConfiguration? configuration = null,
+                                                string? logName = null,
+                                                string? logPath = null)
     {
-        return services.AddSerilog((_, loggerConfiguration) => loggerConfiguration.ConfigureSerilog(configuration, logName, logPath));
-    }
-
-    /// <summary>
-    ///     Configures a Serilog logger with standard settings for command-line applications.
-    /// </summary>
-    /// <param name="loggerConfiguration">The logger configuration to modify.</param>
-    /// <param name="configuration">
-    ///     Optional configuration to be used for Serilog settings. If provided, will override default
-    ///     settings.
-    /// </param>
-    /// <param name="template">A message template describing the format used to write to the sink.</param>
-    /// <param name="logName">Optional name for the log file. If not provided, the current process name will be used.</param>
-    /// <param name="logPath">
-    ///     Optional path where log files will be stored. If not provided, the application's base directory
-    ///     will be used.
-    /// </param>
-    /// <returns>The configured logger configuration for further customization or use.</returns>
-    public static LoggerConfiguration ConfigureSerilog(this LoggerConfiguration loggerConfiguration,
-                                                       IConfiguration? configuration = null,
-                                                       string template = DefaultOutputTemplate,
-                                                       string? logName = null,
-                                                       string? logPath = null)
-    {
-        var config = loggerConfiguration.Enrich.FromLogContext()
-                                        .Enrich.WithThreadId()
-                                        .Enrich.WithThreadName()
-                                        .Enrich.FromLogContext()
-                                        .WriteTo
-                                        .File(BuildFullLogPath(logName, logPath),
-                                              rollOnFileSizeLimit: true,
-                                              fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
-                                              outputTemplate: template,
-                                              retainedFileCountLimit: RetainedFileCountLimit,
-                                              formatProvider: CultureInfo.CurrentCulture)
-                                        .WriteTo
-                                        .Logger(l => l.Filter.ByIncludingOnly(logEvent => logEvent.Level is LogEventLevel.Error
-                                                                                              or LogEventLevel.Warning
-                                                                                              or LogEventLevel.Fatal))
-                                        .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
-                                                      outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj} {NewLine}{Exception}",
-                                                      rollOnFileSizeLimit: true,
-                                                      fileSizeLimitBytes: 2 * 1024 * 1024,
-                                                      retainedFileCountLimit: 10,
-                                                      formatProvider: CultureInfo.CurrentCulture)
-                                        .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {NewLine}{Exception}",
-                                                         formatProvider: CultureInfo.CurrentCulture)
-                                        .MinimumLevel.Verbose();
-
-        if (configuration != null)
-        {
-            config.ReadFrom.Configuration(configuration);
-        }
-
-        return config;
-    }
-
-    /// <summary>
-    ///     Builds a full path for a log file based on the provided parameters.
-    /// </summary>
-    /// <param name="logName">The name of the log file. If null, the current process name will be used.</param>
-    /// <param name="logPath">
-    ///     The directory path where the log file will be stored. If null, the application's base directory
-    ///     will be used.
-    /// </param>
-    /// <param name="suffix">Optional suffix to append to the log file name, useful for categorizing different log types.</param>
-    /// <returns>A full path to the log file, combining the directory path and file name with appropriate extension.</returns>
-    private static string BuildFullLogPath(string? logName, string? logPath, string? suffix = null)
-    {
-        logName ??= Process.GetCurrentProcess().ProcessName;
-        logPath ??= AppDomain.CurrentDomain.BaseDirectory;
-        suffix = suffix != null ? $"-{suffix}" : null;
-
-        return Path.Combine(logPath, $"{logName}{suffix}.log");
+#pragma warning disable CS8604 // Possible null reference argument.
+        services.AddServicesBundle(new SerilogConfigurationBundle(logName: logName, logPath: logPath));
+#pragma warning restore CS8604 // Possible null reference argument.
+        return services.AddSerilog((_, loggerConfiguration) => loggerConfiguration.ConfigureSerilog(configuration, logName: logName, logPath: logPath));
     }
 }

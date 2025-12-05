@@ -1,14 +1,7 @@
 namespace Ploch.CommandLine.Spectre.Output;
-//
-// public class BaseExceptionMessageWriter<TException>(IOutput output) : TypeMessageWriter<TException> where TException : Exception
-// {
-//     public override void Write(TException? message)
-//     {
-//         message.NotNull();
-//         
-//         output.Write("[red] Error:")
-//     }
-// }
 
+/// <summary>
+///     Formats exception messages for display in the console.
+/// </summary>
 public class ExceptionMessageFormatter : BaseExceptionMessageFormatter<Exception>
 { }

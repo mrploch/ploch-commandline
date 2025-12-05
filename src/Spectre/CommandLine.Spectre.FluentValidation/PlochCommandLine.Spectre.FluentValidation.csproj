@@ -1,17 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>$(TargetFrameworkVersion)</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\ploch-common\src\Common.DependencyInjection\Ploch.Common.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\..\..\ploch-common\src\Common\Ploch.Common.csproj" />
+    <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Ploch.Common;
+using Ploch.Common.ArgumentChecking;
 using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre.DependencyInjection;
@@ -42,12 +42,12 @@ public sealed class DependencyInjectionTypeRegistrar(IHostBuilder builder) : ITy
     ///     Registers a factory function that will be invoked to create an instance of the service when needed.
     /// </summary>
     /// <param name="service">The service type to register.</param>
-    /// <param name="func">The factory function that creates the service instance.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="func" /> is null.</exception>
-    public void RegisterLazy(Type service, Func<object>? func)
+    /// <param name="factory">The factory function that creates the service instance.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="factory" /> is null.</exception>
+    public void RegisterLazy(Type service, Func<object>? factory)
     {
-        func.NotNull();
+        factory.NotNull();
 
-        builder.ConfigureServices((_, services) => services.AddSingleton(service, _ => func()));
+        builder.ConfigureServices((_, services) => services.AddSingleton(service, _ => factory()));
     }
 }

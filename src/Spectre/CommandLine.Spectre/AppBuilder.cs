@@ -1,8 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.DependencyInjection;
 using Ploch.Common.DependencyInjection;
+using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre;
@@ -16,17 +19,37 @@ namespace Ploch.CommandLine.Spectre;
 ///     library for command-line interface functionality and Microsoft.Extensions.Hosting for dependency injection and
 ///     configuration.
 /// </remarks>
-public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTokenSource)
+public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancellationTokenSource)
 {
+    private readonly HashSet<IServicesBundle> _servicesBundles = new() { new AppServicesBundle() };
     private Action<HostBuilderContext, IConfigurationBuilder>? _appConfigurationConfigurator;
     private Action<IHostBuilder>? _hostBuilderConfigurator;
     private Action<HostBuilderContext, IServiceCollection>? _serviceCollectionConfigurator;
 
     /// <summary>
+    ///     Creates a new instance of the <see cref="AppBuilder" /> class with the specified arguments.
+    /// </summary>
+    /// <param name="args">The command-line arguments to initialize the application.</param>
+    /// <returns>A new instance of <see cref="AppBuilder" />.</returns>
+    public static AppBuilder Create(params IEnumerable<string> args)
+    {
+        var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+                                  {
+                                      AnsiConsole.WriteLine("Shutting down...");
+                                      cts.Cancel();
+                                      e.Cancel = true;
+                                  };
+
+        return new AppBuilder(new ConsoleAppInfo(args), cts);
+    }
+
+    /// <summary>
     ///     Builds and configures the command-line application.
     /// </summary>
-    /// <returns>An instance of <see cref="ICommandApp" /> representing the configured application.</returns>
-    public ICommandApp Build()
+    /// <param name="configurator">Command line application configurator used to configure the commands and options.</param>
+    /// <returns>An instance of <see cref="ICommandAppExecutor" /> allowing execution of the app.</returns>
+    public ICommandAppExecutor ConfigureCommandApp(Action<IConfigurator> configurator)
     {
         appInfo.Validate();
         appInfo.PrintAppInfo();
@@ -34,24 +57,29 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
 
         builder.ConfigureServices((context, services) =>
                                   {
-                                      services.AddServicesBundle<AppServicesBundle>();
-                                      //services.AddSingleton(AnsiConsole.Console);
-
                                       _serviceCollectionConfigurator?.Invoke(context, services);
-                                  });
-        builder.ConfigureAppConfiguration((context, builder) =>
-                                          {
-                                              builder.AddJsonFile("appsettings.json");
 
-                                              _appConfigurationConfigurator?.Invoke(context, builder);
+                                      InitializeBundles(services, context);
+
+                                      services.AddSingleton(cancellationTokenSource);
+                                  });
+        builder.ConfigureAppConfiguration((context, configurationBuilder) =>
+                                          {
+                                              configurationBuilder.AddJsonFile("appsettings.json");
+
+                                              _appConfigurationConfigurator?.Invoke(context, configurationBuilder);
                                           });
+
         // Add services to the container
         _hostBuilderConfigurator?.Invoke(builder);
 
         var registrar = new DependencyInjectionTypeRegistrar(builder);
+
         var app = new CommandApp(registrar);
 
-        return app;
+        app.Configure(configurator);
+
+        return new CommandAppExecutor(app);
     }
 
     /// <summary>
@@ -67,6 +95,9 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
     ///     <see cref="IConfigurationBuilder" />. It can be used to add configuration sources, modify existing configurations,
     ///     or apply specific settings without requiring access to the hosting context.
     /// </remarks>
+    [SuppressMessage("ReSharper",
+                     "UnusedMember.Global",
+                     Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureAppConfiguration(Action<IConfigurationBuilder> appConfigurationConfigurator)
     {
         return ConfigureAppConfiguration((_, builder) => appConfigurationConfigurator(builder));
@@ -85,13 +116,12 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
     ///     the use of both the hosting context and the configuration builder. It can be used to add
     ///     configuration sources, modify existing configurations, or apply environment-specific settings.
     /// </remarks>
+    [SuppressMessage("ReSharper",
+                     "MemberCanBePrivate.Global",
+                     Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> appConfigurationConfigurator)
     {
-        _appConfigurationConfigurator = (context, builder) =>
-                                        {
-                                            _appConfigurationConfigurator?.Invoke(context, builder);
-                                            appConfigurationConfigurator(context, builder);
-                                        };
+        _appConfigurationConfigurator = (context, builder) => { appConfigurationConfigurator?.Invoke(context, builder); };
 
         return this;
     }
@@ -110,6 +140,9 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
     ///     of services, configuration, and other host-level settings. It integrates with the
     ///     <see cref="Microsoft.Extensions.Hosting" /> framework.
     /// </remarks>
+    [SuppressMessage("ReSharper",
+                     "UnusedMember.Global",
+                     Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureHost(Action<IHostBuilder> configureDelegate)
     {
         _hostBuilderConfigurator = configureDelegate;
@@ -129,6 +162,9 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
     ///     that operates on the <see cref="IServiceCollection" />. It is useful for registering
     ///     dependencies and configuring services required by the application.
     /// </remarks>
+    [SuppressMessage("ReSharper",
+                     "UnusedMember.Global",
+                     Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureServices(Action<IServiceCollection> servicesConfigurator)
     {
         return ConfigureServices((_, services) => servicesConfigurator(services));
@@ -138,7 +174,7 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
     ///     Configures the services for the application using the specified configurator.
     /// </summary>
     /// <param name="servicesConfigurator">
-    ///     An action that allows customization of the services collection. The action provides access to the
+    ///     An action that allows customization of the service collection. The action provides access to the
     ///     <see cref="HostBuilderContext" /> and <see cref="IServiceCollection" /> for configuring services.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> to allow method chaining.</returns>
@@ -148,31 +184,16 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
     /// </remarks>
     public AppBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> servicesConfigurator)
     {
-        _serviceCollectionConfigurator = (context, services) =>
-                                         {
-                                             //_serviceCollectionConfigurator?.Invoke(context, services);
-                                             servicesConfigurator(context, services);
-                                         };
+        _serviceCollectionConfigurator = servicesConfigurator;
 
         return this;
     }
 
-    /// <summary>
-    ///     Creates a new instance of the <see cref="AppBuilder" /> class with the specified arguments.
-    /// </summary>
-    /// <param name="args">The command-line arguments to initialize the application.</param>
-    /// <returns>A new instance of <see cref="AppBuilder" />.</returns>
-    public static AppBuilder Create(params IEnumerable<string> args)
+    public AppBuilder AddServicesBundle<TServicesBundle>() where TServicesBundle : IServicesBundle, new()
     {
-        var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (s, e) =>
-                                  {
-                                      Console.WriteLine("Shutting down...");
-                                      cts.Cancel();
-                                      e.Cancel = true;
-                                  };
+        _servicesBundles.Add(new TServicesBundle());
 
-        return new AppBuilder(new AppInfo(args), cts);
+        return this;
     }
 
     /// <summary>
@@ -209,5 +230,16 @@ public class AppBuilder(AppInfo appInfo, CancellationTokenSource cancellationTok
         appInfo.Version = version;
 
         return this;
+    }
+
+    private void InitializeBundles(IServiceCollection services, HostBuilderContext context)
+    {
+        if (_servicesBundles.Count > 0)
+        {
+            foreach (var servicesBundle in _servicesBundles)
+            {
+                services.AddServicesBundle(servicesBundle, context.Configuration);
+            }
+        }
     }
 }

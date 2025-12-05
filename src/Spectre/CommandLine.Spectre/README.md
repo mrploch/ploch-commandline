@@ -29,3 +29,17 @@ It includes:
 
 TODO, GitHub Issue: [Ploch.CommandLine.Spectre Getting Started documentation #4
 ](https://github.com/mrploch/ploch-commandline/issues/4)
+
+## Dependency Injection
+
+`Ploch.CommandLine.Spectre` uses the `Microsoft.Extensions.DependencyInjection` library for dependency injection.
+It also relies on `Ploch.Common.DependencyInjection` package which defines a **Services Bundle** concept - a class that groups related service registrations.
+
+### Services Bundles
+
+This project provides following services bundles:
+
+- `AppServicesBundle` - registers services required for the app to run
+- `OutputServicesBundle` - registers services required for output formatting
+
+
