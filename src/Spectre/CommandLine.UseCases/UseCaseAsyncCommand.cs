@@ -12,7 +12,7 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
     TUseCase useCase,
     CommandArgumentsRootProcessor settingsProcessor,
     ICommandSettingsValidator<TCommandSettings> validator,
-    IExceptionHandler exceptionHandler) : AsyncAppCommand<TCommandSettings>(settingsProcessor, validator, exceptionHandler)
+    IExceptionHandler exceptionHandler) : AsyncAppCommand<TCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
     where TCommandSettings : CommandSettings where TUseCase : IResultUseCase<TUseCaseRequest, TUseCaseResponse>
 {
     protected TUseCase UseCase => useCase;
@@ -21,8 +21,8 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
 
     protected override async Task<ExitCode> DoExecuteAsync(CommandContext context, TCommandSettings settings)
     {
-        output.MarkupLineInterpolated($"[underline]Starting use case {typeof(TUseCase).Name}[/]");
-        output.MarkupLineInterpolated($"[dim]Settings:[/]");
+        output.MarkupLineInterpolated($"Starting use case [underline]{UseCase.UseCaseName}[/]");
+        output.WriteLine("[dim]Settings:[/]");
         var propertyValues = settings.GetPropertyValues();
         foreach (var (propertyName, propertyValue) in propertyValues)
         {
@@ -50,7 +50,7 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
 
     protected virtual ExitCode ProcessSuccessResponse(Result<TUseCaseResponse> result)
     {
-        output.MarkupLineInterpolated($"[green]Use case completed successfully.[/]");
+        output.WriteLine("[green]Use case completed successfully.[/]");
 
         return ExitCode.Success;
     }

@@ -27,8 +27,6 @@ public class DefaultExceptionHandler(IAnsiConsole console, IOutput output) : IEx
         else
         {
             output.WriteException(ex);
-
-            //   console.WriteException(ex);
         }
 
         return (int)ExitCode.Error;
