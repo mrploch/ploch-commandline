@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Spectre.Console;
+﻿using Spectre.Console;
 using SysColor = System.Drawing.Color;
 
 namespace Ploch.CommandLine.Spectre;

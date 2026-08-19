@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Ploch.Common.DependencyInjection;
-using Serilog;
 
 namespace Ploch.CommandLine.Spectre.Serilog;
 

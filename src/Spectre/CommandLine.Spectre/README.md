@@ -2,17 +2,15 @@
 
 ## Overview
 
-**Ploch CommandLine Applications** is an opinionated library for building console applications in .NET Core.
-It builds on top of the [Spectre.Console](https://spectreconsole.net/) library, providing a few additional features and
-prescribed ways of doing things.
+**Ploch CommandLine Applications** is an opinionated library for building console applications in .NET Core. It builds on top of
+the [Spectre.Console](https://spectreconsole.net/) library, providing a few additional features and prescribed ways of doing things.
 
 ## Features
 
-[Spectre.Console](https://spectreconsole.net/) provides a rich set of features for building console applications.
-It includes composing command line interfaces, rich UI elements, and more.
+[Spectre.Console](https://spectreconsole.net/) provides a rich set of features for building console applications. It includes composing command line interfaces,
+rich UI elements, and more.
 
-**Ploch.CommandLine.Spectre** builds on top of that and provides a few additional features and prescribed ways of doing
-things.
+**Ploch.CommandLine.Spectre** builds on top of that and provides a few additional features and prescribed ways of doing things.
 
 It includes:
 
@@ -32,8 +30,8 @@ TODO, GitHub Issue: [Ploch.CommandLine.Spectre Getting Started documentation #4
 
 ## Dependency Injection
 
-`Ploch.CommandLine.Spectre` uses the `Microsoft.Extensions.DependencyInjection` library for dependency injection.
-It also relies on `Ploch.Common.DependencyInjection` package which defines a **Services Bundle** concept - a class that groups related service registrations.
+`Ploch.CommandLine.Spectre` uses the `Microsoft.Extensions.DependencyInjection` library for dependency injection. It also relies on
+`Ploch.Common.DependencyInjection` package which defines a **Services Bundle** concept - a class that groups related service registrations.
 
 ### Services Bundles
 

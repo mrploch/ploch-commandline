@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Ploch.Common.DependencyInjection;
-using Serilog;
 
 namespace Ploch.CommandLine.Spectre.Serilog;
 
@@ -74,14 +72,14 @@ public static class SerilogLoggingConfigurator
     ///     <code>
     /// // Basic setup with default configuration
     /// services.AddSerilog();
-    ///
+    /// 
     /// // With configuration and custom log settings
     /// services.AddSerilog(
     ///     configuration: configuration,
     ///     logName: "MyCommandLineApp",
     ///     logPath: @"C:\Logs"
     /// );
-    ///
+    /// 
     /// // Method chaining with other services:
     /// services.AddSerilog(configuration)
     ///         .AddScoped&lt;IMyService, MyService&gt;()

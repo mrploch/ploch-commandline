@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,7 +40,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                                       e.Cancel = true;
                                   };
 
-        return new AppBuilder(new ConsoleAppInfo(args), cts);
+        return new(new(args), cts);
     }
 
     /// <summary>

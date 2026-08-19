@@ -2,7 +2,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Ploch.Common;
-using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SpectreConsole;
 
@@ -101,13 +100,13 @@ public static class LoggerConfigurationExtensions
     /// var logger = new LoggerConfiguration()
     ///     .ConfigureSerilog()
     ///     .CreateLogger();
-    ///
+    /// 
     /// // With custom settings
     /// var logger = new LoggerConfiguration()
     ///     .ConfigureSerilog(
     ///         configuration: config,
     ///         template: "{Timestamp:HH:mm:ss} [{Level}] {Message}{NewLine}",
-    ///         logName: "MyApp",
+    ///         logName: "Ploch.MyApp",
     ///         logPath: @"C:\Logs"
     ///     )
     ///     .CreateLogger();
@@ -138,9 +137,9 @@ public static class LoggerConfigurationExtensions
                                      retainedFileCountLimit: RetainedFileCountLimit,
                                      formatProvider: CultureInfo.CurrentCulture)
                                .WriteTo
-                               .Logger(l =>
-                                           l.Filter.ByIncludingOnly(logEvent =>
-                                                                        logEvent.Level is LogEventLevel.Error or LogEventLevel.Warning or LogEventLevel.Fatal))
+                               .Logger(l => l.Filter.ByIncludingOnly(logEvent => logEvent.Level is LogEventLevel.Error
+                                                                                                or LogEventLevel.Warning
+                                                                                                or LogEventLevel.Fatal))
                                .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
                                              outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj} {NewLine}{Exception}",
                                              rollOnFileSizeLimit: true,

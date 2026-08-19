@@ -81,8 +81,7 @@ public interface IOutput
     /// <typeparam name="TException">The type of the exception.</typeparam>
     /// <param name="exception">The exception to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    IOutput WriteException<TException>(TException? exception)
-        where TException : Exception;
+    IOutput WriteException<TException>(TException? exception) where TException : Exception;
 
     /// <summary>
     ///     Writes a line break to the output.

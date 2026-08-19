@@ -10,8 +10,8 @@ namespace Ploch.CommandLine.Spectre.Commands;
 /// <typeparam name="TSettings">The type of settings used by the command.</typeparam>
 /// <param name="validator">The validator used to validate command settings.</param>
 /// <param name="exceptionHandler">The handler used to process exceptions that occur during command execution.</param>
-public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings> validator, IExceptionHandler exceptionHandler)
-    : Command<TSettings> where TSettings : CommandSettings
+public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings> validator, IExceptionHandler exceptionHandler) : Command<TSettings>
+    where TSettings : CommandSettings
 {
     /// <summary>
     ///     Executes the command with the specified context and settings.

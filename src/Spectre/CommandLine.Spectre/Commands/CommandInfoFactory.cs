@@ -25,7 +25,7 @@ public static class CommandInfoFactory
 
         if (commandAttributes == null)
         {
-            return new CommandInfo(commandType.Name);
+            return new(commandType.Name);
         }
 
         throw new NotImplementedException();

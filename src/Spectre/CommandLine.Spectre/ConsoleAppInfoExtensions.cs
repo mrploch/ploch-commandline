@@ -13,7 +13,7 @@ public static class ConsoleAppInfoExtensions
     /// <exception cref="InvalidOperationException">Thrown when the application name is null or empty.</exception>
     public static void PrintAppInfo(this ConsoleAppInfo appInfo)
     {
-        Validate(appInfo);
+        appInfo.Validate();
 
         AnsiConsole.Write(new FigletText(appInfo.Name!).Color(appInfo.AppNameColor));
         AnsiConsole.Write(new FigletText(appInfo.Name!).Color(appInfo.AppNameColorSys.FromSysColor()));
