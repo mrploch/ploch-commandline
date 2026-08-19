@@ -62,3 +62,9 @@ dotnet_naming_symbols.unity_serialized_field_symbols.resharper_required_modifier
 resharper_lambda_expression_can_be_made_static_highlighting = none
 
 resharper_possible_multiple_enumeration_highlighting = none
+
+# Test method names follow the repository convention `<TestedMember>_should_<expected_behaviour>`
+# (see .claude/rules/writing-dotnet-tests.md), which is deliberately incompatible with the "Async"
+# suffix VSTHRD200 requires. The convention wins inside test projects: the name states the scenario,
+# and xUnit discovers the method regardless of its suffix.
+dotnet_diagnostic.VSTHRD200.severity = none

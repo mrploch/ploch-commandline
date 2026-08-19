@@ -13,7 +13,7 @@ public static class ConsoleAppInfoExtensions
     ///     name with a version, and description.
     /// </summary>
     /// <param name="appInfo">The application information to print.</param>
-    /// <exception cref="InvalidOperationException">Thrown when the application name is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the application name is null, empty, or whitespace.</exception>
     public static void PrintAppInfo(this ConsoleAppInfo appInfo)
     {
         appInfo.Validate();
@@ -37,15 +37,16 @@ public static class ConsoleAppInfoExtensions
     }
 
     /// <summary>
-    ///     Validates that the application information is in a valid state.
+    ///     Validates that the application information is in a valid state: a name must be present and must not
+    ///     consist solely of whitespace, since the banner renders it as FigletText.
     /// </summary>
     /// <param name="appInfo">The application information to validate.</param>
-    /// <exception cref="InvalidOperationException">Thrown when the application name is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the application name is null, empty, or whitespace.</exception>
     public static void Validate(this ConsoleAppInfo appInfo)
     {
-        if (appInfo.Name!.IsNullOrEmpty())
+        if (string.IsNullOrWhiteSpace(appInfo.Name))
         {
-            throw new InvalidOperationException("Application Name cannot be null or empty.");
+            throw new InvalidOperationException("Application Name cannot be null, empty, or whitespace.");
         }
     }
 }
