@@ -18,13 +18,28 @@ jobs:
 
     steps:
       - run: echo "The branch name is ${{ github.repository }}"
+      # The solution references sibling repositories by relative path - the workspace layout where
+      # every mrploch repo is cloned next to the others. Reproduce that layout here, otherwise restore
+      # fails with MSB3202 for every ../ploch-common project.
       - uses: actions/checkout@v4
+        with:
+          path: ploch-commandline
+      - uses: actions/checkout@v4
+        with:
+          repository: mrploch/ploch-common
+          ref: master
+          path: ploch-common
+      - uses: actions/checkout@v4
+        with:
+          repository: mrploch/mrploch-development
+          ref: main
+          path: mrploch-development
       - name: Copy documentation files
-        run: cp ./README.md ./DocumentationSite/index.md
+        run: cp ./ploch-commandline/README.md ./ploch-commandline/DocumentationSite/index.md
       - name: Build, test and scan
         uses: mrploch/ploch-github-actions/build-test-sonar@main            
         with:
-          solution-path: './Ploch.CommandLine.Spectre.slnx'
+          solution-path: './ploch-commandline/Ploch.CommandLine.Spectre.slnx'
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
           sonar-organization: ${{ env.SONAR_ORGANIZATION }}
           sonar-token: ${{ secrets.SONAR_TOKEN }}
@@ -65,7 +80,7 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./DocumentationSite/_site
+          publish_dir: ./ploch-commandline/DocumentationSite/_site
       # Publish all NuGet packages to NuGet.org
       # Use --skip-duplicate to prevent errors if a package with the same version already exists.
       # If you retry a failed workflow, already published packages will be skipped without error.
