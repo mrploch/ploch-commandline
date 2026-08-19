@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.Configuration;
@@ -64,7 +64,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                                   });
         builder.ConfigureAppConfiguration((context, configurationBuilder) =>
                                           {
-                                              configurationBuilder.AddJsonFile("appsettings.json");
+                                              configurationBuilder.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
                                               _appConfigurationConfigurator?.Invoke(context, configurationBuilder);
                                           });

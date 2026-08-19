@@ -31,6 +31,6 @@ public class EnvironmentSettingsLoader : IEnvironmentSettingsLoader
             result.Add(variable.Key.ToString()!, variable.Value?.ToString());
         }
 
-        return new(Debugger.IsAttached, EnvironmentVariables.GetBool(EnvironmentVariableNames.PauseBeforeExit) ?? true, result.AsReadOnly());
+        return new(Debugger.IsAttached, EnvironmentVariables.GetBool(EnvironmentVariableNames.PauseBeforeExit) ?? false, result.AsReadOnly());
     }
 }

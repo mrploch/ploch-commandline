@@ -1,4 +1,4 @@
-# This workflow will build a .NET project
+﻿# This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 
 name: Build
@@ -24,7 +24,7 @@ jobs:
       - name: Build, test and scan
         uses: mrploch/ploch-github-actions/build-test-sonar@main            
         with:
-          solution-path: './Ploch.Common.sln'
+          solution-path: './Ploch.CommandLine.Spectre.slnx'
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
           sonar-organization: ${{ env.SONAR_ORGANIZATION }}
           sonar-token: ${{ secrets.SONAR_TOKEN }}
