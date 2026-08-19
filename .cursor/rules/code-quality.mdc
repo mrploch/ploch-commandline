@@ -1,0 +1,19 @@
+---
+description: Core code quality standards and principles
+alwaysApply: true
+---
+
+# Code Quality Standards
+
+- Write minimal, readable, maintainable code.
+- Split responsibilities across modules following existing conventions.
+- Remove unused code.
+- Minimise state; derive values when possible.
+- Handle all possibilities; don't assume optionality.
+- Error handling: fail fast on unrecoverable errors; no silent failures. Always log. For user-initiated actions, show user feedback.
+- Comments: explain "why" for non-obvious logic.
+- Logging: Use appropriate levels - error for unrecoverable failures, warn for recoverable issues with fallbacks, info for important state changes, debug for logic flow (not spammy). Include context in messages. Format: `[ModuleName] Message`.
+- Maintain backward compatibility for stored state; implement migrations when required.
+- Clean up local data on logout.
+- Avoid nested ternaries.
+- Never commit PII or potential PII to source code (names, emails, phone numbers, addresses, etc.). Use anonymised or fake data for tests and examples.

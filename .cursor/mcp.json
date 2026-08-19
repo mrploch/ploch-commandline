@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "contextstream": {
+      "headers": {
+        "X-ContextStream-API-Key": "cbiq_tALPHr-a-gn2sOlSRo25ESHbCuy0Wk2QH8zFwO7Vjv8",
+        "X-ContextStream-Auto-Hide-Integrations": "true",
+        "X-ContextStream-Consolidated": "true",
+        "X-ContextStream-Context-Pack-Enabled": "true",
+        "X-ContextStream-Hook-Transcripts-Enabled": "true",
+        "X-ContextStream-Output-Format": "compact",
+        "X-ContextStream-Progressive-Mode": "false",
+        "X-ContextStream-Project-Id": "e01110aa-8f09-4c5c-89df-ba78bef4ff20",
+        "X-ContextStream-Router-Mode": "false",
+        "X-ContextStream-Search-Limit": "15",
+        "X-ContextStream-Search-Max-Chars": "2400",
+        "X-ContextStream-Toolset": "complete",
+        "X-ContextStream-Transcripts-Enabled": "true",
+        "X-ContextStream-Workspace-Id": "57db5f34-e7f0-42c0-86c4-bb981f96c880"
+      },
+      "type": "http",
+      "url": "https://mcp.contextstream.io/mcp?default_context_mode=fast"
+    }
+  }
+}

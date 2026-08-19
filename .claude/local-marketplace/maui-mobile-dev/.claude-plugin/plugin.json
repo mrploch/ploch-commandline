@@ -1,0 +1,8 @@
+{
+  "name": "maui-mobile-dev",
+  "version": "1.0.0",
+  "description": "End-to-end .NET MAUI mobile app development: project setup, MVVM, Shell navigation, DI, data/storage, integrations, testing (unit + Appium UI), performance, Android tooling and publishing",
+  "author": {
+    "name": "mrploch"
+  }
+}

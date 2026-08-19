@@ -1,0 +1,11 @@
+---
+description: Standards for producing summary reports and analysis documents
+---
+
+# Summary Reports
+
+When producing a summary, report, or analysis (e.g. pipeline status, build results, investigation findings, architecture overviews):
+
+1. **Save to file** — Write the summary as a Markdown file in `C:\DevNet\my\mrploch\temp\` with a descriptive, timestamped filename (e.g. `2026-03-10-ploch-common-pipeline-status.md`).
+2. **Open automatically** — After writing the file, open it with the system default viewer by running: `start "" "<file-path>"` (on Windows this launches the default `.md` handler, which is Typedown).
+3. **Still display inline** — Continue showing a concise version of the summary in the conversation as normal.

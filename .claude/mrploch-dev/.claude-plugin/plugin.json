@@ -1,0 +1,8 @@
+{
+  "name": "mrploch-dev",
+  "version": "1.0.0",
+  "description": "MrPloch workspace development agents and tools",
+  "author": {
+    "name": "mrploch"
+  }
+}

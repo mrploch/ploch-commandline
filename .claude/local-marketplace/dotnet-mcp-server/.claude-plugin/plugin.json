@@ -1,0 +1,8 @@
+{
+  "name": "dotnet-mcp-server",
+  "version": "1.0.0",
+  "description": "Building MCP servers in .NET with the official C# SDK: server setup (stdio + Streamable HTTP), tool/prompt/resource design, advanced capabilities (progress, cancellation, sampling, elicitation), inbound OAuth 2.1/Entra ID auth, outbound downstream auth (OBO, client credentials, managed identity), security hardening, testing, packaging and distribution",
+  "author": {
+    "name": "mrploch"
+  }
+}

@@ -1,0 +1,45 @@
+# Local-Setup Changes Ship With Setup Scripts (Mandatory)
+
+**Scope:** any change to the local AI/development environment — hooks, agent
+configuration, Claude Code settings, MCP registrations, tokens/credentials
+wiring, scheduled tasks, shell integration, tool bootstrap. If the change is
+labelled `local-setup` or touches files under a user profile (`~/.claude`,
+`~/.codex`, `~/.gemini`, …), this rule applies.
+
+## The Rule
+
+1. **Never hand-configure only the live machine.** Every local-setup change is
+   delivered as a script (plus config/source files) committed to
+   `ploch-ai-configuration`, so the change is repeatable on any other machine.
+2. **PowerShell whenever possible** — `pwsh` (PowerShell 7+) is cross-platform;
+   scripts must work on Windows, Linux and macOS:
+   - `#!/usr/bin/env pwsh` shebang; no `%USERPROFILE%`/registry assumptions —
+     use `$HOME`, `$env:CLAUDE_CONFIG_DIR`, `Join-Path`,
+     `[System.IO.Path]::DirectorySeparatorChar`;
+   - guard Windows-only calls (`$IsWindows`), use `chmod` for POSIX file modes.
+3. **Usable by other users and workspaces.** No hardcoded personal paths, IDs
+   or accounts in the executable logic — machine/user/workspace specifics go
+   into a config file (with a committed `*.example` variant) or parameters.
+4. **Idempotent, structured, safe.** Re-running converges (no duplicates);
+   merges into shared files (e.g. `settings.json`) are structured — only owned
+   nodes touched, everything else preserved; support `-WhatIf`; never write
+   secrets into the repo (token values arrive via parameter/env/ignored file).
+5. **Always tested.** Pester tests in `scripts/tests/` (fresh install, merge
+   preservation, idempotency) + PSScriptAnalyzer clean against
+   `PSScriptAnalyzerSettings.psd1` + one real run on the live machine before
+   the PR is opened.
+6. **Composable.** Setup scripts reference/call other provisioning scripts as
+   they appear (e.g. Notion database provisioning, issue #35) rather than
+   duplicating their logic.
+
+## Reference implementation
+
+`scripts/Install-SessionEndHook.ps1` (+ `agents/claude/profile/hooks/`,
+`scripts/tests/InstallSessionEndHook.Tests.ps1`) from issue #34 — installer,
+per-user config with example file, structured settings merge, Pester coverage.
+
+## Why
+
+The user requires every environment change to be reproducible on a fresh
+machine (any OS, any user) from this repository alone. A hand-edited live
+config that works "here" is an unfinished change.

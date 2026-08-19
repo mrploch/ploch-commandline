@@ -1,0 +1,20 @@
+# .NET Testing Standards
+
+Contains rules that should be used, when testing a .NET code.
+
+## Frameworks and Libraries
+
+- The tests for the `.NET` code should be written using the `xUnit` framework
+- The `xUnit` version to use is `v3` ([xUnit v3 docs](https://xunit.net/docs/getting-started/v3/getting-started))
+- Use [FluentAssertions library](https://fluentassertions.com/)
+- Use the [AutoFixture library](https://github.com/AutoFixture/AutoFixture)
+
+## Writing Tests
+- Try to test observable behaviour, not implementation details.
+- Try structure tests using the **Arrange, Act, Assert** pattern, where appropriate, unless it negatively affects readability and flow
+- For unit tests, mock external dependencies.
+- Test both positive and negative cases.
+- For unit tests, test method names should follow the convention: `<TestedMethodName>_should_<explain_what_it_should_do>`, for example: `IsNullOrEmpty_should_return_false_if_string_is_not_null_or_empty`
+- For integration tests, test method names should be similar to the unit test convention, but include a scenario name instead of `<TestedMethodName>` follow the convention: `<TestedScenarioName>_should_<explain_what_it_should_do>`, for example: `BasicAuthenticationFlow_should_authenticate_the_user_with_basic_credentials`
+- A class name for the unit tests should be `<TestedTypeName>Tests` - for example `StringExtensionsTests` if the tested method is in the `StringExtensions.cs` class.
+- A class name for integration tests should be `<TestedFeature>Tests`, for example `AuthenticationTests.cs`
