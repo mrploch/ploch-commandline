@@ -30,7 +30,6 @@ public class OutputServicesBundle : ServicesBundle
     /// <summary>
     ///     Registers message writers for different types of messages in the dependency injection container.
     /// </summary>
-    /// <param name="services">The service collection to configure with message writers.</param>
     private void AddMessageWriters() => Services.AddMessageWriter<FormattableString, FormattableStringMessageWriter>()
                                                 .AddMessageWriter<Exception, ExceptionMessageWriter>()
                                                 .AddMessageWriter<string, StringMessageWriter>()
@@ -39,7 +38,6 @@ public class OutputServicesBundle : ServicesBundle
     /// <summary>
     ///     Registers message formatters for different types of messages in the dependency injection container.
     /// </summary>
-    /// <param name="services">The service collection to configure with message formatters.</param>
     private void AddMessageFormatters() => Services.AddMessageFormatter<Exception, ExceptionMessageFormatter>()
                                                    .AddMessageFormatter<Win32Exception, Win32ExceptionMessageFormatter>()
                                                    .AddMessageFormatter<string, StringMessageFormatter>()

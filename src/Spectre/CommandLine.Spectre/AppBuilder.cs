@@ -56,9 +56,9 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
 
         builder.ConfigureServices((context, services) =>
                                   {
-                                      _serviceCollectionConfigurator?.Invoke(context, services);
-
                                       InitializeBundles(services, context);
+
+                                      _serviceCollectionConfigurator?.Invoke(context, services);
 
                                       services.AddSingleton(cancellationTokenSource);
                                   });
@@ -188,6 +188,11 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
         return this;
     }
 
+    /// <summary>
+    ///     Registers a services bundle to be configured when the application is built.
+    /// </summary>
+    /// <typeparam name="TServicesBundle">The bundle type to register. Must expose a parameterless constructor.</typeparam>
+    /// <returns>The same <see cref="AppBuilder" /> instance, to allow chaining.</returns>
     public AppBuilder AddServicesBundle<TServicesBundle>() where TServicesBundle : IServicesBundle, new()
     {
         _servicesBundles.Add(new TServicesBundle());

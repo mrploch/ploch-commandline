@@ -57,18 +57,18 @@ public class TypeMessageHandlerTests
 
         var messageType = handler.MessageType;
 
-        messageType.Should().Be(typeof(TestMessage));
+        messageType.Should().Be<TestMessage>();
     }
 
     private class TestMessage
     { }
 
-    private class AnotherMessage
+    private sealed class AnotherMessage
     { }
 
-    private class DerivedTestMessage : TestMessage
+    private sealed class DerivedTestMessage : TestMessage
     { }
 
-    private class TestMessageHandler : TypeMessageHandler<TestMessage>
+    private sealed class TestMessageHandler : TypeMessageHandler<TestMessage>
     { }
 }

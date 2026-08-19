@@ -24,7 +24,7 @@ public class TestCommand : Command<TestCommandSettings>
         return (int)ExitCode.Success;
     }
 
-    public ValidationResult Validate(CommandContext context, CommandSettings settings)
+    public override ValidationResult Validate(CommandContext context, TestCommandSettings settings)
     {
         Validated = true;
 

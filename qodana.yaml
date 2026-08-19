@@ -1,8 +1,8 @@
 version: "1.0"
 linter: jetbrains/qodana-cdnet:latest
 dotnet:
-  solution: Ploch.Common.sln
+  solution: Ploch.CommandLine.Spectre.slnx
 exclude:
   - name: All
     paths:
-      - src/**/*Tests/**
+      - tests/**

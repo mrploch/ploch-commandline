@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 
 namespace Ploch.CommandLine.Spectre.Output;
 
@@ -72,16 +72,25 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write. If null, no action is taken.</param>
-    public void WriteMessage<TMessage>(TMessage? message)
+    /// <returns>
+    ///     <see langword="true" /> if a registered writer handled the message; otherwise <see langword="false" />.
+    /// </returns>
+    public bool WriteMessage<TMessage>(TMessage? message)
     {
         if (message is null)
         {
-            return;
+            return false;
         }
 
         var writer = GetWriter(message);
+        if (writer is null)
+        {
+            return false;
+        }
 
-        writer?.Write(GetMessageText(message));
+        writer.Write(GetMessageText(message));
+
+        return true;
     }
 
     /// <summary>
@@ -92,15 +101,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// <returns>An <see cref="IMessageFormatter" /> that can handle the message, or null if none is found.</returns>
     private IMessageFormatter? GetFormatter<TMessage>(TMessage? message)
     {
-        foreach (var messageFormatter in formatters)
-        {
-            if (messageFormatter.CanHandle(message))
-            {
-                return messageFormatter;
-            }
-        }
-
-        return null;
+        return formatters.FirstOrDefault(messageFormatter => messageFormatter.CanHandle(message));
     }
 
     /// <summary>
@@ -111,14 +112,6 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// <returns>An <see cref="IMessageWriter" /> that can handle the message, or null if none is found.</returns>
     private IMessageWriter? GetWriter<TMessage>(TMessage? message)
     {
-        foreach (var messageWriter in writers)
-        {
-            if (messageWriter.CanHandle(message))
-            {
-                return messageWriter;
-            }
-        }
-
-        return null;
+        return writers.FirstOrDefault(messageWriter => messageWriter.CanHandle(message));
     }
 }

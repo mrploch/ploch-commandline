@@ -100,7 +100,7 @@ public static class LoggerConfigurationExtensions
     /// var logger = new LoggerConfiguration()
     ///     .ConfigureSerilog()
     ///     .CreateLogger();
-    /// 
+    ///
     /// // With custom settings
     /// var logger = new LoggerConfiguration()
     ///     .ConfigureSerilog(

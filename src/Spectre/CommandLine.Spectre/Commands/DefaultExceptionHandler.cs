@@ -8,6 +8,7 @@ namespace Ploch.CommandLine.Spectre.Commands;
 ///     Default implementation of the <see cref="IExceptionHandler" /> interface that writes exceptions to the console.
 /// </summary>
 /// <param name="console">The ANSI console used to display exception information.</param>
+/// <param name="output">The output writer used to render exception details.</param>
 public class DefaultExceptionHandler(IAnsiConsole console, IOutput output) : IExceptionHandler
 {
     /// <summary>
@@ -21,7 +22,9 @@ public class DefaultExceptionHandler(IAnsiConsole console, IOutput output) : IEx
     {
         if (ex is Win32Exception || ex.InnerException is Win32Exception)
         {
-            output.WriteLine(ex.ToString());
+            // Written through IAnsiConsole.WriteLine rather than the markup-aware output: a Win32 exception's
+            // ToString() contains '[' sequences that Spectre would otherwise parse as markup and fail on,
+            // inside the exception handler itself.
             console.WriteLine(ex.ToString());
         }
         else

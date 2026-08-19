@@ -3,8 +3,15 @@ using Ploch.Common;
 
 namespace Ploch.CommandLine.Spectre.Commands;
 
+/// <summary>
+///     Substitutes date and time tokens into string command settings properties marked with
+///     <see cref="SupportsTokensAttribute" />.
+/// </summary>
 public class TokensArgumentsProcessor : CommandSettingsPropertyTypeProcessor<string>
 {
+    /// <summary>
+    ///     Gets the attributes a property must carry to be processed — <see cref="SupportsTokensAttribute" />.
+    /// </summary>
     public override Type[] RequiredAttributes => [ typeof(SupportsTokensAttribute) ];
 
     private static TokenInfo[] Tokens =>
@@ -15,6 +22,10 @@ public class TokensArgumentsProcessor : CommandSettingsPropertyTypeProcessor<str
           static () => DateTime.UtcNow.ToString(DateTimeFormats.YearMonthDayHourMinuteSecondNumbersWithDashesAndColons, CultureInfo.InvariantCulture),
           static () => DateTime.UtcNow.ToString(DateTimeFormats.YearMonthDayHourMinuteSecondNumbersWithDashes, CultureInfo.InvariantCulture)) ];
 
+    /// <summary>
+    ///     Replaces every recognised <c>{token}</c> placeholder in the matched properties with its current value,
+    ///     using the path-safe value when the property's <see cref="SupportsTokensAttribute.PathSafe" /> is set.
+    /// </summary>
     protected override void DoProcessArguments()
     {
         foreach (var (_, property) in Properties)

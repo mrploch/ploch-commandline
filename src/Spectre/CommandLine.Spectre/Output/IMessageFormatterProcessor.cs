@@ -1,4 +1,4 @@
-namespace Ploch.CommandLine.Spectre.Output;
+﻿namespace Ploch.CommandLine.Spectre.Output;
 
 /// <summary>
 ///     Defines methods for processing and formatting messages.
@@ -29,5 +29,9 @@ public interface IMessageFormatterProcessor
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write.</param>
-    void WriteMessage<TMessage>(TMessage message);
+    /// <returns>
+    ///     <see langword="true" /> if a registered writer handled the message; otherwise <see langword="false" />,
+    ///     indicating the caller should fall back to its own rendering.
+    /// </returns>
+    bool WriteMessage<TMessage>(TMessage message);
 }

@@ -1,6 +1,8 @@
-﻿using FluentAssertions;
+using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Objectivity.AutoFixture.XUnit2.AutoMoq.Attributes;
+using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.DependencyInjection;
 using Ploch.Common.DependencyInjection;
 using PlochCommandLine.Spectre.FluentValidation;
@@ -14,9 +16,10 @@ public class CommandLineFluentValidationServicesBundleTests
     [AutoMockData]
     public void Configure_adds_FluentCommandSettingsValidator_which_resolves_proper_FluentValidations_validator(CommandContext context)
     {
+        var configuration = new ConfigurationBuilder().Build();
         var services = new ServiceCollection();
         services.AddSingleton<TestCommand>();
-        services.AddServicesBundle<AppServicesBundle>()
+        services.AddServicesBundle<AppServicesBundle>(configuration)
                 .AddCommandLineSettingsFluentValidation(builder => builder.AddAssembly(typeof(TestCommandSettingsValidator).Assembly));
 
         var serviceProvider = services.BuildServiceProvider();

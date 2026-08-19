@@ -275,7 +275,7 @@ dotnet_diagnostic.faa0002.severity = warning
 
 ## Properties: 'dotnet_diagnostic.IDE'
 dotnet_diagnostic.IDE0001.severity = suggestion # Simplify name
-dotnet_diagnostic.IDE0002.severity = true:error # Simplify name
+dotnet_diagnostic.IDE0002.severity = error # Simplify name
 dotnet_diagnostic.IDE0018.severity = warning # Inline variable declaration
 
 ## Properties: 'dotnet_diagnostic.nu'

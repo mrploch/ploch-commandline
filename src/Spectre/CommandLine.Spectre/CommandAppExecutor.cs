@@ -1,4 +1,5 @@
-﻿using Spectre.Console.Cli;
+﻿using Spectre.Console;
+using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre;
 
@@ -29,7 +30,7 @@ public class CommandAppExecutor(ICommandApp commandApp) : ICommandAppExecutor
 
         if (EnvironmentSettings.Current.PauseBeforeExit)
         {
-            Console.WriteLine("Press Enter to exit...");
+            AnsiConsole.WriteLine("Press Enter to exit...");
             Console.ReadLine();
         }
 

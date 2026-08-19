@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Ardalis.Result;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
@@ -7,6 +7,18 @@ using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.UseCases;
 
+/// <summary>
+///     Base class for asynchronous commands that delegate their work to a use case and render its result.
+/// </summary>
+/// <typeparam name="TCommandSettings">The settings type accepted by the command.</typeparam>
+/// <typeparam name="TUseCase">The use case type executed by the command.</typeparam>
+/// <typeparam name="TUseCaseRequest">The request type passed to the use case.</typeparam>
+/// <typeparam name="TUseCaseResponse">The response type produced by the use case.</typeparam>
+/// <param name="output">The output writer used to render progress and results.</param>
+/// <param name="useCase">The use case executed by this command.</param>
+/// <param name="settingsProcessor">The processor applied to the command settings before execution.</param>
+/// <param name="validator">The validator used to validate the command settings.</param>
+/// <param name="exceptionHandler">The handler used to process exceptions raised during execution.</param>
 public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>(
     IOutput output,
     TUseCase useCase,
@@ -15,23 +27,41 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
     IExceptionHandler exceptionHandler) : AsyncAppCommand<TCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
     where TCommandSettings : CommandSettings where TUseCase : IResultUseCase<TUseCaseRequest, TUseCaseResponse>
 {
+    /// <summary>
+    ///     Gets the use case executed by this command.
+    /// </summary>
     protected TUseCase UseCase => useCase;
 
+    /// <summary>
+    ///     Builds the use case request from the validated command settings.
+    /// </summary>
+    /// <param name="commandSettings">The settings supplied on the command line.</param>
+    /// <returns>The request to pass to the use case.</returns>
     protected abstract TUseCaseRequest CreateRequest(TCommandSettings commandSettings);
 
-    protected override async Task<ExitCode> DoExecuteAsync(CommandContext context, TCommandSettings settings)
+    /// <summary>
+    ///     Executes the use case, echoing the supplied settings first and then rendering the outcome.
+    /// </summary>
+    /// <param name="context">The command context containing execution information.</param>
+    /// <param name="settings">The settings to use for command execution.</param>
+    /// <param name="cancellationToken">A token forwarded to the use case so it can honour cancellation.</param>
+    /// <returns>
+    ///     The result of <see cref="ProcessSuccessResponse" /> when the use case succeeds; otherwise the result of
+    ///     <see cref="ProcessFailureResponse" />.
+    /// </returns>
+    protected override async Task<ExitCode> DoExecuteAsync(CommandContext context, TCommandSettings settings, CancellationToken cancellationToken)
     {
-        output.MarkupLineInterpolated($"Starting use case [underline]{UseCase.UseCaseName}[/]");
-        output.WriteLine("[dim]Settings:[/]");
+        Output.MarkupLineInterpolated($"Starting use case [underline]{UseCase.UseCaseName}[/]");
+        Output.WriteLine("[dim]Settings:[/]");
         var propertyValues = settings.GetPropertyValues();
         foreach (var (propertyName, propertyValue) in propertyValues)
         {
-            output.MarkupLineInterpolated($"[dim]{propertyName}[/]: {propertyValue}");
+            Output.MarkupLineInterpolated($"[dim]{propertyName}[/]: {propertyValue}");
         }
 
         var request = CreateRequest(settings);
 
-        var response = await UseCase.ExecuteAsync(request);
+        var response = await UseCase.ExecuteAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.IsSuccess)
         {
@@ -41,16 +71,26 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
         return ProcessFailureResponse(response);
     }
 
+    /// <summary>
+    ///     Renders a failed use case result. Override to customise failure reporting.
+    /// </summary>
+    /// <param name="result">The failed result returned by the use case.</param>
+    /// <returns><see cref="ExitCode.Error" />.</returns>
     protected virtual ExitCode ProcessFailureResponse(Result<TUseCaseResponse> result)
     {
-        output.MarkupLineInterpolated($"[red]Use case failed: {string.Join(", ", result.Errors)}[/]");
+        Output.MarkupLineInterpolated($"[red]Use case failed: {string.Join(", ", result.Errors)}[/]");
 
         return ExitCode.Error;
     }
 
+    /// <summary>
+    ///     Renders a successful use case result. Override to customise success reporting.
+    /// </summary>
+    /// <param name="result">The successful result returned by the use case.</param>
+    /// <returns><see cref="ExitCode.Success" />.</returns>
     protected virtual ExitCode ProcessSuccessResponse(Result<TUseCaseResponse> result)
     {
-        output.WriteLine("[green]Use case completed successfully.[/]");
+        Output.WriteLine("[green]Use case completed successfully.[/]");
 
         return ExitCode.Success;
     }

@@ -15,6 +15,6 @@ public class ExceptionMessageWriter(IAnsiConsole output) : TypeMessageWriter<Exc
     /// <param name="formatterProcessor">Optional formatter processor that can be used to format the message. Not used in this implementation.</param>
     public override void Write(Exception? message, IMessageFormatterProcessor? formatterProcessor = null)
     {
-        output.WriteException(message ?? new Exception("No exception to display."));
+        output.WriteException(message ?? new InvalidOperationException("No exception to display."));
     }
 }

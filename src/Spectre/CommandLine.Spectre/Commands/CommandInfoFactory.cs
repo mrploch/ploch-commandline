@@ -18,7 +18,6 @@ public static class CommandInfoFactory
     ///     A <see cref="CommandInfo" /> instance containing the command's metadata.
     ///     If no <see cref="CommandAttribute" /> is found, returns a command info with the type name as the command name.
     /// </returns>
-    /// <exception cref="NotImplementedException">This method is not fully implemented yet.</exception>
     public static CommandInfo CreateFromType(Type commandType)
     {
         var commandAttributes = commandType.GetCustomAttribute<CommandAttribute>(false);
@@ -28,6 +27,10 @@ public static class CommandInfoFactory
             return new(commandType.Name);
         }
 
-        throw new NotImplementedException();
+        return new(commandAttributes.Name,
+                   commandAttributes.Alias,
+                   commandAttributes.Description,
+                   commandAttributes.IsHidden,
+                   commandAttributes.Examples.ToArray());
     }
 }

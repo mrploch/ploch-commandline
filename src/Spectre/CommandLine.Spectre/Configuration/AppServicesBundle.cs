@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ploch.CommandLine.Spectre.Commands;
@@ -17,7 +17,10 @@ namespace Ploch.CommandLine.Spectre.Configuration;
 /// </remarks>
 public class AppServicesBundle : ConfigurableServicesBundle
 {
-    protected override IEnumerable<IServicesBundle>? Dependencies => [ new SerilogConfigurationBundle() ];
+    /// <summary>
+    ///     Gets the bundles registered before this one — Serilog configuration and the output services.
+    /// </summary>
+    protected override IEnumerable<IServicesBundle>? Dependencies => [ new SerilogConfigurationBundle(), new OutputServicesBundle() ];
 
     /// <summary>
     ///     Configures the service collection with required services for a Spectre.Console-based command-line application.

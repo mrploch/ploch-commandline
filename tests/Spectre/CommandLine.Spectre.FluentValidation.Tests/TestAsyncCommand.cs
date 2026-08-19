@@ -1,10 +1,15 @@
 ﻿using Ploch.CommandLine.Spectre.Commands;
+using Ploch.CommandLine.Spectre.Output;
 using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre.FluentValidation.Tests;
 
-public class TestAsyncCommand(ICommandSettingsValidator<TestCommandSettings> validator, IExceptionHandler<TestAsyncCommand> exceptionHandler)
-    : AsyncAppCommand<TestCommandSettings>(validator, exceptionHandler)
+public class TestAsyncCommand(CommandArgumentsRootProcessor settingsProcessor,
+                              ICommandSettingsValidator<TestCommandSettings> validator,
+                              IExceptionHandler exceptionHandler,
+                              IOutput output)
+    : AsyncAppCommand<TestCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
-    protected override Task<ExitCode> DoExecuteAsync(CommandContext context, TestCommandSettings settings) => Task.FromResult(ExitCode.Success);
+    protected override Task<ExitCode> DoExecuteAsync(CommandContext context, TestCommandSettings settings, CancellationToken cancellationToken) =>
+        Task.FromResult(ExitCode.Success);
 }

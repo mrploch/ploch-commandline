@@ -18,16 +18,20 @@ public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings>
     /// </summary>
     /// <param name="context">The command context containing execution information.</param>
     /// <param name="settings">The settings to use for command execution.</param>
+    /// <param name="cancellationToken">A token that is forwarded to <see cref="DoExecute" /> so implementations can honour cancellation.</param>
     /// <returns>An integer representing the exit code of the command execution.</returns>
-    /// <exception cref="Exception">Any exception thrown during command execution will be handled by the exception handler.</exception>
-    public override int Execute(CommandContext context, TSettings settings, CancellationToken cancellationToken = default)
+    /// <remarks>
+    ///     Exceptions raised by <see cref="DoExecute" /> do not propagate: they are passed to the configured
+    ///     <see cref="IExceptionHandler" />, whose result becomes the exit code.
+    /// </remarks>
+    public override int Execute(CommandContext context, TSettings settings, CancellationToken cancellationToken)
     {
         context.NotNull();
         settings.NotNull();
 
         try
         {
-            return (int)DoExecute(context, settings);
+            return (int)DoExecute(context, settings, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -48,6 +52,7 @@ public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings>
     /// </summary>
     /// <param name="context">The command context containing execution information.</param>
     /// <param name="settings">The settings to use for command execution.</param>
+    /// <param name="cancellationToken">A token that signals the command should stop work.</param>
     /// <returns>An exit code indicating the result of the command execution.</returns>
-    protected abstract ExitCode DoExecute(CommandContext? context, TSettings settings);
+    protected abstract ExitCode DoExecute(CommandContext context, TSettings settings, CancellationToken cancellationToken);
 }

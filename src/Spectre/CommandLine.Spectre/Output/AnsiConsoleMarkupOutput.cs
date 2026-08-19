@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -72,7 +72,10 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
             return this;
         }
 
-        formatterProcessor.WriteMessage(message);
+        if (formatterProcessor.WriteMessage(message))
+        {
+            return this;
+        }
 
         console.Write(message?.ToString() ?? string.Empty);
 
