@@ -24,16 +24,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: ploch-commandline
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           repository: mrploch/ploch-common
           ref: master
           path: ploch-common
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           repository: mrploch/mrploch-development
           ref: main
           path: mrploch-development
+          fetch-depth: 0
       - name: Copy documentation files
         run: cp ./ploch-commandline/README.md ./ploch-commandline/DocumentationSite/index.md
       - name: Build, test and scan

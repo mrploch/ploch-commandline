@@ -28,11 +28,13 @@ jobs:
           repository: mrploch/ploch-common
           ref: master
           path: ploch-common
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           repository: mrploch/mrploch-development
           ref: main
           path: mrploch-development
+          fetch-depth: 0
       # Qodana mounts only the analysis root into its container, so the analysis root has to be the
       # workspace - otherwise ../ploch-common and ../mrploch-development sit outside /data and every
       # project reference is unresolvable. The repository's own qodana.yaml stays authoritative for
