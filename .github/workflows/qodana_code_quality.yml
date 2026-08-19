@@ -33,11 +33,33 @@ jobs:
           repository: mrploch/mrploch-development
           ref: main
           path: mrploch-development
+      # Qodana mounts only the analysis root into its container, so the analysis root has to be the
+      # workspace - otherwise ../ploch-common and ../mrploch-development sit outside /data and every
+      # project reference is unresolvable. The repository's own qodana.yaml stays authoritative for
+      # profile and inspection settings; only the paths are rebased onto the workspace layout.
+      - name: Compose the workspace-level Qodana configuration
+        run: |
+          cat > qodana.yaml <<'QODANA'
+          version: "1.0"
+          linter: jetbrains/qodana-cdnet:latest
+          profile:
+            name: qodana.recommended
+          include:
+            - name: CheckDependencyLicenses
+          dotnet:
+            solution: ploch-commandline/Ploch.CommandLine.Spectre.slnx
+          exclude:
+            - name: All
+              paths:
+                - ploch-commandline/tests
+                - ploch-common
+                - mrploch-development
+          QODANA
+
       - name: 'Qodana Scan'
         uses: JetBrains/qodana-action@v2024.1
         with:
           pr-mode: false
-          args: --project-dir,${{ github.workspace }}/ploch-commandline
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_657107159 }}
           QODANA_ENDPOINT: 'https://qodana.cloud'
