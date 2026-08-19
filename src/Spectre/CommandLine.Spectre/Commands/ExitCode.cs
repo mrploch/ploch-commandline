@@ -1,7 +1,7 @@
 ﻿namespace Ploch.CommandLine.Spectre.Commands;
 
 /// <summary>
-///     Represents a successful execution of a command, indicating no errors occurred.
+///     Exit codes returned by commands to the operating system.
 /// </summary>
 public enum ExitCode
 {
@@ -18,5 +18,11 @@ public enum ExitCode
     /// <summary>
     ///     Represents an invalid input provided to a command.
     /// </summary>
-    InvalidInput = 2
+    InvalidInput = 2,
+
+    /// <summary>
+    ///     Represents a command that was cancelled before completing. Matches the conventional shell
+    ///     exit code for termination by SIGINT (128 + 2).
+    /// </summary>
+    Cancelled = 130
 }

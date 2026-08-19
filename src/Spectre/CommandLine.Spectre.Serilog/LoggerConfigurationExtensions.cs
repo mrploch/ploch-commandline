@@ -37,6 +37,9 @@ public static class LoggerConfigurationExtensions
     /// </remarks>
     private const int RetainedFileCountLimit = 10;
 
+    private const string ErrorOutputTemplate =
+        "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj} {NewLine}{Exception}";
+
     /// <summary>
     ///     Configures a Serilog logger with comprehensive settings for command-line applications.
     /// </summary>
@@ -127,7 +130,6 @@ public static class LoggerConfigurationExtensions
             loggerConfiguration.Enrich.FromLogContext()
                                .Enrich.WithThreadId()
                                .Enrich.WithThreadName()
-                               .Enrich.FromLogContext()
                                .MinimumLevel.Is(logMinimumLevelString)
                                .WriteTo
                                .File(BuildFullLogPath(logName, logPath),
@@ -136,17 +138,14 @@ public static class LoggerConfigurationExtensions
                                      outputTemplate: template ?? DefaultOutputTemplate,
                                      retainedFileCountLimit: RetainedFileCountLimit,
                                      formatProvider: CultureInfo.CurrentCulture)
-                               .WriteTo
-                               .Logger(l => l.Filter.ByIncludingOnly(logEvent => logEvent.Level is LogEventLevel.Error
-                                                                                                or LogEventLevel.Warning
-                                                                                                or LogEventLevel.Fatal))
-                               .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
-                                             outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj} {NewLine}{Exception}",
-                                             rollOnFileSizeLimit: true,
-                                             fileSizeLimitBytes: 2 * 1024 * 1024,
-                                             retainedFileCountLimit: 10,
-                                             formatProvider: CultureInfo.CurrentCulture)
-                               .WriteTo.Console(formatProvider: CultureInfo.CurrentCulture)
+
+                                // The error file sink must live INSIDE the filtered sub-logger. Chained after it,
+                                // as it previously was, the filter applies to nothing and the "errors" file
+                                // receives every event.
+                               .WriteTo.Logger(errorLog => ConfigureErrorFileSink(errorLog, logName, logPath))
+
+                                // Only the Spectre sink: adding WriteTo.Console as well duplicated every
+                                // console log line.
                                .WriteTo.SpectreConsole(minLevel: LogEventLevel.Verbose);
 
         if (configuration != null)
@@ -174,5 +173,24 @@ public static class LoggerConfigurationExtensions
         suffix = suffix != null ? $"-{suffix}" : null;
 
         return Path.Combine(logPath, $"{logName}{suffix}.log");
+    }
+
+    /// <summary>
+    ///     Configures the dedicated error log: a sub-logger that admits only Warning, Error and Fatal events
+    ///     and writes them to a separate rolling file.
+    /// </summary>
+    /// <param name="loggerConfiguration">The sub-logger configuration to populate.</param>
+    /// <param name="logName">The base name of the log file.</param>
+    /// <param name="logPath">The directory the log file is written to.</param>
+    private static void ConfigureErrorFileSink(LoggerConfiguration loggerConfiguration, string? logName, string? logPath)
+    {
+        loggerConfiguration.Filter
+                           .ByIncludingOnly(logEvent => logEvent.Level is LogEventLevel.Error or LogEventLevel.Warning or LogEventLevel.Fatal)
+                           .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
+                                         outputTemplate: ErrorOutputTemplate,
+                                         rollOnFileSizeLimit: true,
+                                         fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
+                                         retainedFileCountLimit: RetainedFileCountLimit,
+                                         formatProvider: CultureInfo.CurrentCulture);
     }
 }

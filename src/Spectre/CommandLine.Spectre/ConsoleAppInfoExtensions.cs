@@ -1,6 +1,5 @@
 ﻿using Ploch.Common;
 using Spectre.Console;
-using SysColor = System.Drawing.Color;
 
 namespace Ploch.CommandLine.Spectre;
 
@@ -46,14 +45,7 @@ public static class ConsoleAppInfoExtensions
     {
         if (appInfo.Name!.IsNullOrEmpty())
         {
-            throw new InvalidOperationException("Application Name cannot be null.");
+            throw new InvalidOperationException("Application Name cannot be null or empty.");
         }
     }
-
-    /// <summary>
-    ///     Converts a <see cref="SysColor" /> to the Spectre.Console <see cref="Color" /> equivalent.
-    /// </summary>
-    /// <param name="color">The system colour to convert.</param>
-    /// <returns>A <see cref="Color" /> with the same red, green, and blue components.</returns>
-    public static Color FromSysColor(this SysColor color) => new(color.R, color.G, color.B);
 }

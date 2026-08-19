@@ -49,6 +49,11 @@ public abstract class AsyncAppCommand<TSettings>(CommandArgumentsRootProcessor s
 
             return (int)await DoExecuteAsync(context, settings, cancellationToken).ConfigureAwait(false);
         }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is a requested outcome, not a fault: it must not be routed to the exception handler.
+            return (int)ExitCode.Cancelled;
+        }
         catch (Exception ex)
         {
             return exceptionHandler.HandleException(ex);

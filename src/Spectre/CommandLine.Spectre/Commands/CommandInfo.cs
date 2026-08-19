@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace Ploch.CommandLine.Spectre.Commands;
+﻿namespace Ploch.CommandLine.Spectre.Commands;
 
 /// <summary>
 ///     Represents information about a command.
@@ -10,5 +8,4 @@ namespace Ploch.CommandLine.Spectre.Commands;
 /// <param name="Description">An optional description of the command.</param>
 /// <param name="IsHidden">Indicates whether the command is hidden from help listings.</param>
 /// <param name="Examples">Optional examples of command usage.</param>
-public record CommandInfo(string Name, string? Alias = null, string? Description = null, bool IsHidden = false, params IEnumerable<string> Examples)
-    : IEqualityOperators<CommandInfo, CommandInfo, bool>;
+public record CommandInfo(string Name, string? Alias = null, string? Description = null, bool IsHidden = false, params IEnumerable<string> Examples);

@@ -181,20 +181,4 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
 
         return this;
     }
-
-    /// <summary>
-    ///     Writes a markup-enabled message followed by a line terminator to the console.
-    /// </summary>
-    /// <typeparam name="TMessage">The type of the message to write.</typeparam>
-    /// <param name="message">The markup-enabled message to write.</param>
-    /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteMarkupLineInterpolated<TMessage>(TMessage message)
-    {
-        if (message is FormattableString str)
-        {
-            console.MarkupLineInterpolated(str);
-        }
-
-        return this;
-    }
 }

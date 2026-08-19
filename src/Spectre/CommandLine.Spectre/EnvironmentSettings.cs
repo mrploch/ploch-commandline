@@ -8,24 +8,38 @@
 /// <param name="devRuntimeVariables">The development-time runtime variables available to the application.</param>
 public class EnvironmentSettings(bool isDebugging, bool pauseBeforeExit, IReadOnlyDictionary<string, string?> devRuntimeVariables)
 {
+    private static readonly object SyncRoot = new();
     private static EnvironmentSettings? _current;
     private static IEnvironmentSettingsLoader _settingsLoader = new EnvironmentSettingsLoader();
 
     /// <summary>
     ///     Gets or sets the current environment settings, loading them on first access via the configured loader.
     /// </summary>
+    /// <remarks>
+    ///     Initialisation is synchronised, so concurrent first access loads the settings exactly once.
+    /// </remarks>
     public static EnvironmentSettings Current
     {
         get
         {
-            if (_current == null)
+            if (_current is not null)
             {
-                _current = _settingsLoader.Load();
+                return _current;
             }
 
-            return _current;
+            lock (SyncRoot)
+            {
+                return _current ??= _settingsLoader.Load();
+            }
         }
-        set => _current = value;
+
+        set
+        {
+            lock (SyncRoot)
+            {
+                _current = value;
+            }
+        }
     }
 
     /// <summary>
@@ -47,5 +61,34 @@ public class EnvironmentSettings(bool isDebugging, bool pauseBeforeExit, IReadOn
     ///     Replaces the loader used to populate <see cref="Current" />. Call before <see cref="Current" /> is first read.
     /// </summary>
     /// <param name="settingsLoader">The loader to use when reading environment settings.</param>
-    public static void Initialize(IEnvironmentSettingsLoader settingsLoader) => _settingsLoader = settingsLoader;
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when <see cref="Current" /> has already been materialised, because the supplied loader would
+    ///     otherwise silently never be used.
+    /// </exception>
+    public static void Initialize(IEnvironmentSettingsLoader settingsLoader)
+    {
+        lock (SyncRoot)
+        {
+            if (_current is not null)
+            {
+                throw new InvalidOperationException(
+                    "EnvironmentSettings.Current has already been loaded; Initialize must be called before the first read.");
+            }
+
+            _settingsLoader = settingsLoader;
+        }
+    }
+
+    /// <summary>
+    ///     Clears the cached settings and restores the default loader. Intended for test isolation, since
+    ///     <see cref="Current" /> is process-wide state.
+    /// </summary>
+    public static void Reset()
+    {
+        lock (SyncRoot)
+        {
+            _current = null;
+            _settingsLoader = new EnvironmentSettingsLoader();
+        }
+    }
 }

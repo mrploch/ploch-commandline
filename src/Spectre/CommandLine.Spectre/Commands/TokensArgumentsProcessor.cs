@@ -6,6 +6,7 @@ namespace Ploch.CommandLine.Spectre.Commands;
 /// <summary>
 ///     Substitutes date and time tokens into string command settings properties marked with
 ///     <see cref="SupportsTokensAttribute" />.
+///     Recognised tokens are <c>{date}</c> and <c>{datetime}</c>, and both resolve in <b>UTC</b>, not local time.
 /// </summary>
 public class TokensArgumentsProcessor : CommandSettingsPropertyTypeProcessor<string>
 {

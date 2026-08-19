@@ -34,6 +34,10 @@ public abstract class CommandSettingsPropertyTypeProcessor<TProperty> : ICommand
     /// <param name="arguments">The command settings whose properties are inspected.</param>
     public void ProcessArguments(CommandSettings arguments)
     {
+        // Reset first: the processor is registered as a transient but may be reused, and Properties.Add
+        // would throw on a repeated property name from a previous invocation.
+        Properties.Clear();
+
         var properties = arguments.GetProperties<TProperty>();
         foreach (var property in properties)
         {

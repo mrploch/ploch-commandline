@@ -33,6 +33,11 @@ public abstract class AppCommand<TSettings>(ICommandSettingsValidator<TSettings>
         {
             return (int)DoExecute(context, settings, cancellationToken);
         }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is a requested outcome, not a fault: it must not be routed to the exception handler.
+            return (int)ExitCode.Cancelled;
+        }
         catch (Exception ex)
         {
             return exceptionHandler.HandleException(ex);

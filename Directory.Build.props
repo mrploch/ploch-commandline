@@ -69,4 +69,23 @@
     <Nullable>enable</Nullable>
     <LangVersion>default</LangVersion>
   </PropertyGroup>
+
+  <!--
+    Inject Coverlet's MSBuild instrumentation into every test project so
+    `dotnet test -p:CollectCoverage=true` produces cobertura + opencover reports.
+    Without this the CI coverage flag is a silent no-op and the Codacy coverage
+    step in build-dotnet.yml finds no report to upload. See issue #13.
+  -->
+  <PropertyGroup Condition="$(IsTestProject)">
+    <!--
+      Measure only this repository's assemblies. Without this the report is
+      dominated by referenced sibling repos (Ploch.Common et al.) and the
+      resulting percentage describes someone else's code.
+    -->
+    <Include>[Ploch.CommandLine.*]*</Include>
+    <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+  </PropertyGroup>
+  <ItemGroup Condition="$(IsTestProject)">
+    <PackageReference Include="coverlet.msbuild" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

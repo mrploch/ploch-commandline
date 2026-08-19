@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ploch.CommandLine.Spectre.Commands;
@@ -39,19 +39,20 @@ public class AppServicesBundle : ConfigurableServicesBundle
     /// </remarks>
     protected override void Configure(IConfiguration configuration)
     {
-        Services.AddSingleton(AnsiConsole.Console)
-                .AddSingleton(AnsiConsole.Console.Input)
+        // The console singleton comes from OutputServicesBundle, which is a declared dependency of this
+        // bundle. Registering it here as well produced a duplicate singleton descriptor.
+        Services.AddSingleton(AnsiConsole.Console.Input)
                 .AddSingleton(AnsiConsole.Console.Cursor)
                 .AddSingleton(AnsiConsole.Console.ExclusivityMode)
                 .AddSingleton(AnsiConsole.Console.Profile)
                 .AddSingleton<CommandArgumentsRootProcessor>()
-                .AddKeyedTransient<ICommandSettingsProcessor, TokensArgumentsProcessor>(nameof(TokensArgumentsProcessor))
                 .AddTransient<ICommandSettingsProcessor, TokensArgumentsProcessor>()
 
-                // .AddServicesBundle(new SerilogConfigurationBundle(), configuration)
                 .AddSingleton(typeof(ICommandSettingsValidator<>), typeof(CommandSettingsValidator<>))
                 .AddSingleton<IExceptionHandler, DefaultExceptionHandler>();
 
-        Services.AddLogging(builder => builder.AddConsole());
+        // No AddConsole() here: SerilogConfigurationBundle already installs a console sink, and adding the
+        // Microsoft console logger as well duplicated every log line on the terminal.
+        Services.AddLogging();
     }
 }

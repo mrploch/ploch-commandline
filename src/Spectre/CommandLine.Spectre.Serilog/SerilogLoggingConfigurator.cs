@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Ploch.Common.DependencyInjection;
 
 namespace Ploch.CommandLine.Spectre.Serilog;
@@ -41,6 +41,7 @@ public static class SerilogLoggingConfigurator
     ///     Optional directory path where log files will be stored. If not provided, the application's
     ///     base directory will be used. Both main and error log files will be created in this directory.
     /// </param>
+    /// <param name="template">An optional Serilog output template applied to the rolling log file.</param>
     /// <returns>
     ///     The same <see cref="IServiceCollection" /> instance to enable method chaining for
     ///     additional service registrations.
@@ -89,11 +90,11 @@ public static class SerilogLoggingConfigurator
     public static IServiceCollection AddSerilog(this IServiceCollection services,
                                                 IConfiguration? configuration = null,
                                                 string? logName = null,
-                                                string? logPath = null)
+                                                string? logPath = null,
+                                                string? template = null)
     {
-#pragma warning disable CS8604 // Possible null reference argument.
-        services.AddServicesBundle(new SerilogConfigurationBundle(logName: logName, logPath: logPath));
-#pragma warning restore CS8604 // Possible null reference argument.
-        return services.AddSerilog((_, loggerConfiguration) => loggerConfiguration.ConfigureSerilog(configuration, logName: logName, logPath: logPath));
+        // Registered exactly once, via the bundle. Previously this also called services.AddSerilog(...)
+        // directly, which configured the logger a second time and silently dropped the output template.
+        return services.AddServicesBundle(new SerilogConfigurationBundle(template, logName, logPath), configuration);
     }
 }
