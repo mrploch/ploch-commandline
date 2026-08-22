@@ -150,6 +150,19 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
 
+      # The sample application is a standalone solution outside SOLUTION_PATH: by design it consumes
+      # the libraries as NuGet packages, so the main build never compiles it. Build it against the
+      # library sources on every run - otherwise a change to a command base class breaks the sample
+      # silently and nobody finds out until someone opens it. -p:UsePlochProjectReferences=true
+      # swaps its PackageReferences for ProjectReferences (see samples/SampleApp/README.md).
+      #
+      # Placed after "SonarScanner End" on purpose: the scanner captures every MSBuild project built
+      # between begin and end, and the sample is deliberately excluded from analysis (it also
+      # already sits in sonar.coverage.exclusions). Not continue-on-error - a broken sample is a
+      # broken build.
+      - name: Build sample application
+        run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true
+
       - name: Run codacy-coverage-reporter
         if: always()
         continue-on-error: true
