@@ -36,7 +36,9 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests\Spectre\CommandLine.Spectre.FluentValidation.Tests\Ploch.CommandLine.Spectre.FluentValidation.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Spectre\CommandLine.Spectre.Serilog.Tests\Ploch.CommandLine.Spectre.Serilog.Tests.csproj" Type="Classic C#" />
     <Project Path="tests\Spectre\CommandLine.Spectre.Tests\Ploch.CommandLine.Spectre.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Spectre\CommandLine.UseCases.Tests\Ploch.CommandLine.UseCases.Tests.csproj" Type="Classic C#" />
   </Folder>
   <Project Path="src\Spectre\CommandLine.Spectre.FluentValidation\Ploch.CommandLine.Spectre.FluentValidation.csproj" Type="Classic C#" />
   <Project Path="src\Spectre\CommandLine.Spectre.Serilog\Ploch.CommandLine.Spectre.Serilog.csproj" Type="Classic C#" />
