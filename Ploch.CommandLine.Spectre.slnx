@@ -12,10 +12,7 @@
     <Project Path="..\ploch-common\tests\TestAssemblies\Common.Tests.TestAssembly2\Ploch.Common.Tests.TestAssembly2.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/repository/">
-    <File Path="README-McMaster.md" />
-    <File Path="temp-post-about-my-libs.md" />
     <File Path="README.md" />
-    <File Path="notes.md" />
   </Folder>
   <Folder Name="/repository/config/">
     <File Path=".codacy.yml" />
@@ -23,15 +20,10 @@
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
-    <File Path="azure-pipelines.yml" />
     <File Path="Directory.Build.props" />
     <File Path="directory.build.targets" />
     <File Path="Directory.Packages.props" />
-    <File Path="docker-compose.yml" />
-    <File Path="dotcover.settings.xml" />
     <File Path="NuGet.Config" />
-    <File Path="Ploch.CommandLine.Spectre.sln.DotSettings.user" />
-    <File Path="qodana.sarif.json" />
     <File Path="qodana.yaml" />
   </Folder>
   <Folder Name="/tests/">
