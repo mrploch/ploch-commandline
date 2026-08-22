@@ -134,7 +134,7 @@ jobs:
           /d:sonar.projectBaseDir="${{ github.workspace }}"
           /d:sonar.scm.provider=git
           /d:sonar.cs.opencover.reportsPaths=**/CoverageResults/coverage*.opencover.xml
-          /d:sonar.coverage.exclusions="**/*.ps1,**/*.Tests/**,**/*.Tests.csproj,samples/**,src/DemoApp/**,DocumentationSite/**"
+          /d:sonar.coverage.exclusions="**/*.ps1,**/*.Tests/**,**/*.Tests.csproj,samples/**,DocumentationSite/**"
 
       # Build and Test
       - name: Build

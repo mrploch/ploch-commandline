@@ -276,6 +276,16 @@ dotnet_diagnostic.faa0002.severity = warning
 ## Properties: 'dotnet_diagnostic.IDE'
 dotnet_diagnostic.IDE0001.severity = suggestion # Simplify name
 dotnet_diagnostic.IDE0002.severity = error # Simplify name
+# IDE0058 ("Expression value is never used") is intentionally disabled, matching ploch-common
+# and ploch-data. It fires on fluent/chained APIs whose return value exists only for chaining:
+# FluentAssertions chains across the test suite, Spectre configuration builders, and the
+# ArgumentChecking guard extensions that return their argument but exist for the side-effect.
+# IDE0058 has no per-method or per-type exclusion mechanism - excluded_symbol_names applies
+# only to CAxxxx rules, and callee-scoped suppression is an open, unimplemented Roslyn request
+# (dotnet/roslyn#57297, dotnet/roslyn#47832) - so the alternatives are a repo-wide disable or
+# hundreds of per-call-site `_ =` discards. See .claude/rules/code-quality.md, which prescribes
+# this exact setting and forbids the discards.
+dotnet_diagnostic.IDE0058.severity = none
 dotnet_diagnostic.IDE0018.severity = warning # Inline variable declaration
 
 ## Properties: 'dotnet_diagnostic.nu'
