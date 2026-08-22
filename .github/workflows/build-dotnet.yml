@@ -196,14 +196,17 @@ jobs:
 
       # Publish prerelease NuGet packages to GitHub Packages.
       # Only ever from a push to main - never from an arbitrary branch.
-      - name: Add GitHub Packages source
-        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: dotnet nuget add source --username kploch --password "$GH_PACKAGES_TOKEN" --store-password-in-clear-text --name github-push "https://nuget.pkg.github.com/mrploch/index.json"
+      #
+      # Pushed to the feed URL directly rather than to a registered source name.
+      # `dotnet nuget add source` rejects a duplicate URL as well as a duplicate name,
+      # and NuGet.Config already registers this exact URL as "github", so adding it
+      # again fails with "The source specified has already been added to the list of
+      # available package sources". `nuget push` accepts a URL, so no source is needed.
       - name: Publish NuGet packages to GitHub Packages
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          dotnet nuget push ./**/*.nupkg --source github-push --skip-duplicate -k "$GH_PACKAGES_TOKEN"
-          dotnet nuget push ./**/*.snupkg --source github-push --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
+          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
 
       # Publish PR packages to GitHub Packages for testing/validation.
       # PR packages include the PR number and branch name in the prerelease tag
@@ -220,6 +223,5 @@ jobs:
             echo "::warning::GH_PACKAGES_TOKEN not available, skipping PR package publish"
             exit 0
           fi
-          dotnet nuget add source --username kploch --password "$GH_PACKAGES_TOKEN" --store-password-in-clear-text --name github-pr "https://nuget.pkg.github.com/mrploch/index.json"
-          dotnet nuget push ./**/*.nupkg --source github-pr --skip-duplicate -k "$GH_PACKAGES_TOKEN"
-          dotnet nuget push ./**/*.snupkg --source github-pr --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
+          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
