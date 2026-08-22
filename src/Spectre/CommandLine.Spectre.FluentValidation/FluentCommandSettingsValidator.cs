@@ -3,7 +3,7 @@ using Ploch.CommandLine.Spectre.Commands;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace PlochCommandLine.Spectre.FluentValidation;
+namespace Ploch.CommandLine.Spectre.FluentValidation;
 
 /// <summary>
 ///     A command settings validator that uses FluentValidation to validate command settings.

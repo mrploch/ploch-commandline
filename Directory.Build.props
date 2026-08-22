@@ -14,19 +14,14 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <VersionPrefix>0.0.1</VersionPrefix>
-    <VersionSuffix>-prerelease</VersionSuffix>
-    <BuildNumber>$([System.DateTime]::UtcNow.ToString("yyMMddHH"))</BuildNumber>
-
-    <!-- Development versions -->
-    <VersionSuffix Condition="'$(RELEASEVERSION)' != 'true'">-prerelease</VersionSuffix>
-    <FullVersionSuffix Condition="'$(RELEASEVERSION)' != 'true'">$(VersionSuffix)-$(BuildNumber)</FullVersionSuffix>
-    <Version Condition="'$(RELEASEVERSION)' != 'true'">$(VersionPrefix)$(FullVersionSuffix)</Version>
-    <!-- Release versions -->
-    <Version Condition="'$(RELEASEVERSION)' == 'true'">$(VersionPrefix)</Version>
-
-    <FileVersion>$(InformationalVersion)</FileVersion>
-    <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
+    <!-- Versioning is handled by Nerdbank.GitVersioning (version.json). -->
+    <!-- SourceLink: lets consumers step into this repository's sources when debugging. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- Deterministic builds for CI. -->
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <IsTestProject>$(MSBuildProjectName.EndsWith('Tests'))</IsTestProject>
   </PropertyGroup>
 
@@ -35,7 +30,12 @@
     <IsReleaseBuild Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">true</IsReleaseBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DebugType>embedded</DebugType>
+    <!--
+      Portable rather than embedded: an embedded PDB cannot be lifted into a
+      standalone .snupkg symbol package, so embedding would silently produce
+      empty symbol packages for the published NuGet packages.
+    -->
+    <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
@@ -69,6 +69,12 @@
     <Nullable>enable</Nullable>
     <LangVersion>default</LangVersion>
   </PropertyGroup>
+
+  <!-- Nerdbank.GitVersioning and SourceLink for all projects. -->
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+  </ItemGroup>
 
   <!--
     Inject Coverlet's MSBuild instrumentation into every test project so

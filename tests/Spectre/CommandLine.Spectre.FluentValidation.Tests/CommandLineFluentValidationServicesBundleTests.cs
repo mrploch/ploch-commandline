@@ -5,7 +5,6 @@ using Objectivity.AutoFixture.XUnit2.AutoMoq.Attributes;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.DependencyInjection;
 using Ploch.Common.DependencyInjection;
-using PlochCommandLine.Spectre.FluentValidation;
 using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre.FluentValidation.Tests;

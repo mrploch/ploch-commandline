@@ -5,7 +5,7 @@ using Ploch.CommandLine.Spectre.Commands;
 using Ploch.Common.DependencyInjection;
 using Ploch.Common.Reflection;
 
-namespace PlochCommandLine.Spectre.FluentValidation;
+namespace Ploch.CommandLine.Spectre.FluentValidation;
 
 /// <summary>
 ///     A services bundle that configures FluentValidation for command line settings validation.

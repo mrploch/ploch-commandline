@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "nbgv": {
+      "version": "3.7.115",
+      "commands": [
+        "nbgv"
+      ]
+    },
+    "docfx": {
+      "version": "2.78.5",
+      "commands": [
+        "docfx"
+      ]
+    }
+  }
+}
