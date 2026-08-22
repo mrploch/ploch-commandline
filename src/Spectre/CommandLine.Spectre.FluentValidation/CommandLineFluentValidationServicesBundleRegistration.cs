@@ -3,7 +3,7 @@ using Ploch.CommandLine.Spectre.Commands;
 using Ploch.Common.DependencyInjection;
 using Ploch.Common.Reflection;
 
-namespace PlochCommandLine.Spectre.FluentValidation;
+namespace Ploch.CommandLine.Spectre.FluentValidation;
 
 /// <summary>
 ///     Provides registration extensions that enable FluentValidation-based command settings validation.
