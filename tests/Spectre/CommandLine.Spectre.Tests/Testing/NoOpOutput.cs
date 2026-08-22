@@ -5,7 +5,9 @@ namespace Ploch.CommandLine.Spectre.Tests.Testing;
 
 /// <summary>
 ///     An <see cref="IOutput" /> that discards everything, so a test does not write to the console. Every member is
-///     virtual, so a test can override just the one call it needs to observe.
+///     virtual so a test can override just the call it needs to observe, except <see cref="WriteException{TException}" />:
+///     its generic constraint makes it awkward to override, so it forwards to the non-generic
+///     <see cref="OnException" /> hook instead.
 /// </summary>
 internal class NoOpOutput : IOutput
 {

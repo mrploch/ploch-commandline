@@ -13,6 +13,11 @@ namespace Ploch.CommandLine.Spectre.Tests;
 ///     configuration each one records has to survive into the host that Spectre.Console.Cli resolves commands from —
 ///     which only happens once a command actually runs.
 /// </summary>
+/// <remarks>
+///     The three "keep only the last delegate" tests are characterisation tests: they pin the builder's current
+///     last-call-wins behaviour rather than endorsing it, so that changing it to compose the delegates (see issue
+///     #22) is a deliberate decision with a visible failure rather than a silent change.
+/// </remarks>
 [Collection(GlobalConsoleState.Name)]
 public sealed class AppBuilderTests : IDisposable
 {
@@ -195,11 +200,69 @@ public sealed class AppBuilderTests : IDisposable
         recorder.ConfigurationValue.Should().Be("from-command-line", "Host.CreateDefaultBuilder receives the arguments Create was given");
     }
 
+    [Fact]
+    public void ConfigureServices_should_keep_only_the_last_delegate_it_was_given()
+    {
+        var recorder = RunProbeCommand(builder =>
+                                       {
+                                           builder.ConfigureServices(services => services.AddSingleton(new Marker { Name = "first" }));
+                                           builder.ConfigureServices(services => services.AddSingleton(new Marker { Name = "second" }));
+                                       });
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.MarkerNames.Should()
+                .ContainSingle("the builder stores one delegate, so the earlier registration never runs")
+                .Which.Should()
+                .Be("second");
+    }
+
+    [Fact]
+    public void ConfigureHost_should_keep_only_the_last_delegate_it_was_given()
+    {
+        var recorder = RunProbeCommand(builder =>
+                                       {
+                                           builder.ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                    services.AddSingleton(new Marker
+                                                                                                        { Name = "first" })));
+                                           builder.ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                    services.AddSingleton(new Marker
+                                                                                                        { Name = "second" })));
+                                       });
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.MarkerNames.Should()
+                .ContainSingle("the builder stores one delegate, so the earlier registration never runs")
+                .Which.Should()
+                .Be("second");
+    }
+
+    [Fact]
+    public void ConfigureAppConfiguration_should_keep_only_the_last_delegate_it_was_given()
+    {
+        var recorder = RunProbeCommand(builder =>
+                                       {
+                                           builder.ConfigureAppConfiguration(configuration =>
+                                                                                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                                                                                     {
+                                                                                         ["probe:key"] = "from-the-first-call"
+                                                                                     }));
+                                           builder.ConfigureAppConfiguration(configuration =>
+                                                                                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                                                                                     {
+                                                                                         ["probe:other"] = "from-the-second-call"
+                                                                                     }));
+                                       });
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.SecondConfigurationValue.Should().Be("from-the-second-call");
+        recorder.ConfigurationValue.Should().BeNull("the builder stores one delegate, so the earlier configuration source is never added");
+    }
+
     /// <summary>
     ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
     ///     The probe reports back through a static slot rather than a registered service, because
     ///     <see cref="AppBuilder.ConfigureServices(Action{IServiceCollection})" /> keeps only the last delegate it was
-    ///     given and the helper must not overwrite whatever the test itself configured.
+    ///     given (issue #22) and the helper must not overwrite whatever the test itself configured.
     /// </summary>
     private static ProbeRecorder RunProbeCommand(Action<AppBuilder> configure, CancellationTokenSource? cancellationTokenSource = null)
     {
@@ -227,7 +290,12 @@ public sealed class AppBuilderTests : IDisposable
 
         public Marker? Marker { get; set; }
 
+        /// <summary>Every marker the container holds, so a test can tell one registration from two.</summary>
+        public List<string> MarkerNames { get; } = [];
+
         public string? ConfigurationValue { get; set; }
+
+        public string? SecondConfigurationValue { get; set; }
 
         public CancellationTokenSource? CancellationTokenSource { get; set; }
     }
@@ -246,7 +314,9 @@ public sealed class AppBuilderTests : IDisposable
         {
             var recorder = Recorder ?? throw new InvalidOperationException("The probe recorder was not set before the run.");
             recorder.ConfigurationValue = configuration["probe:key"];
+            recorder.SecondConfigurationValue = configuration["probe:other"];
             recorder.CancellationTokenSource = cancellationTokenSource;
+            recorder.MarkerNames.AddRange(services.GetServices<Marker>().Select(marker => marker.Name));
             recorder.Marker = services.GetService<Marker>();
 
             return 0;
