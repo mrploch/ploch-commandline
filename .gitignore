@@ -402,3 +402,12 @@ codestream.xml
 
 # Machine-specific MCP server config (Rider allocates its MCP port per IDE instance)
 /.mcp.json
+
+# Generated Qodana analysis output (see .github/workflows/qodana_code_quality.yml)
+qodana.sarif.json
+
+# JetBrains Rider per-solution debug argument scratch files
+*.ddargs.json
+
+# JetBrains IDE metadata in any folder (the root-only .idea/** rule misses nested ones)
+**/.idea/
