@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ploch.CommandLine.Spectre.Output;
 
 namespace Ploch.CommandLine.Spectre.Tests.Output;
@@ -75,6 +76,90 @@ public class MessageFormatterProcessorTests
         var processor = new MessageFormatterProcessor([], []);
 
         processor.GetMessageText(42).Should().Be("42");
+    }
+
+    [Fact]
+    public void GetMessageText_should_apply_a_registered_formatter_before_the_markup_tag()
+    {
+        var processor = new MessageFormatterProcessor([new UpperCasingFormatter()], []);
+
+        processor.GetMessageText("value", "underline").Should().Be("[underline]VALUE[/]", "the formatter runs first and the tag wraps its output");
+    }
+
+    [Fact]
+    public void GetMessageText_should_return_an_empty_formattable_string_for_a_null_interpolated_message()
+    {
+        var processor = new MessageFormatterProcessor([], []);
+
+        processor.GetMessageText((FormattableString?)null).ToString(CultureInfo.InvariantCulture).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetMessageText_should_format_the_arguments_of_an_interpolated_message_through_the_formatters()
+    {
+        var processor = new MessageFormatterProcessor([new UpperCasingFormatter()], []);
+
+        FormattableString message = $"greeting: {"hello"}";
+
+        var result = processor.GetMessageText(message);
+
+        result.ToString(CultureInfo.InvariantCulture).Should().Be("greeting: HELLO", "each argument is passed through the matching formatter");
+    }
+
+    [Fact]
+    public void GetMessageText_should_substitute_an_empty_string_for_a_null_interpolated_argument()
+    {
+        var processor = new MessageFormatterProcessor([new UpperCasingFormatter()], []);
+
+        FormattableString message = $"value: [{(string?)null}]";
+
+        var result = processor.GetMessageText(message);
+
+        result.ToString(CultureInfo.InvariantCulture).Should().Be("value: []");
+    }
+
+    [Fact]
+    public void GetMessageText_should_fall_back_to_ToString_for_an_interpolated_argument_with_no_formatter()
+    {
+        var processor = new MessageFormatterProcessor([], []);
+
+        FormattableString message = $"count: {17}";
+
+        var result = processor.GetMessageText(message);
+
+        result.ToString(CultureInfo.InvariantCulture).Should().Be("count: 17");
+    }
+
+    [Fact]
+    public void GetMessageText_should_wrap_an_interpolated_message_in_the_markup_tag()
+    {
+        var processor = new MessageFormatterProcessor([], []);
+
+        FormattableString message = $"count: {17}";
+
+        var result = processor.GetMessageText(message, "red");
+
+        result.ToString(CultureInfo.InvariantCulture).Should().Be("[red]count: 17[/]");
+    }
+
+    [Fact]
+    public void GetMessageText_should_keep_the_interpolated_arguments_separate_from_the_format_string()
+    {
+        var processor = new MessageFormatterProcessor([], []);
+
+        FormattableString message = $"{1}-{2}";
+
+        var result = processor.GetMessageText(message);
+
+        result.Format.Should().Be("{0}-{1}", "the result stays a composite format string rather than being flattened early");
+        result.GetArguments().Should().Equal("1", "2");
+    }
+
+    /// <summary>A formatter that visibly transforms its input, so a test can prove the formatter was actually applied.</summary>
+    private sealed class UpperCasingFormatter : TypeMessageFormatter<string>
+    {
+        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) =>
+            message?.ToUpperInvariant() ?? string.Empty;
     }
 
     private sealed class RecordingStringWriter : TypeMessageWriter<string>

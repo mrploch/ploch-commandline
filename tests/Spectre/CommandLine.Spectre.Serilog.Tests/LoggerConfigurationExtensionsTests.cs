@@ -1,0 +1,128 @@
+using System.Diagnostics;
+using System.Text;
+using Microsoft.Extensions.Configuration;
+using Serilog;
+using Serilog.Events;
+
+namespace Ploch.CommandLine.Spectre.Serilog.Tests;
+
+/// <summary>
+///     Cover for the predefined Serilog configuration. The important behaviour is the split between the two files:
+///     the dedicated "errors" log must receive warnings and above only. The error sink previously sat outside its
+///     filtered sub-logger, which left the filter applying to nothing and the errors file receiving every event.
+/// </summary>
+public sealed class LoggerConfigurationExtensionsTests : IDisposable
+{
+    private readonly string _logDirectory = Path.Combine(Path.GetTempPath(), "ploch-commandline-serilog-tests", Guid.NewGuid().ToString("N"));
+
+    public LoggerConfigurationExtensionsTests() => Directory.CreateDirectory(_logDirectory);
+
+    public void Dispose()
+    {
+        try
+        {
+            Directory.Delete(_logDirectory, recursive: true);
+        }
+        catch (IOException exception)
+        {
+            // A sink that has not released its handle yet must not fail the test; the directory is under TEMP.
+            Console.WriteLine($"Could not remove the temporary log directory: {exception.Message}");
+        }
+    }
+
+    [Fact]
+    public void ConfigureSerilog_should_write_every_level_to_the_main_log_file()
+    {
+        WriteSampleEvents("main-levels");
+
+        var mainLog = ReadLogFile("main-levels.log");
+
+        mainLog.Should().Contain("an informational message").And.Contain("a warning message").And.Contain("an error message");
+    }
+
+    [Fact]
+    public void ConfigureSerilog_should_send_only_warnings_and_above_to_the_errors_log_file()
+    {
+        WriteSampleEvents("filtered");
+
+        var errorLog = ReadLogFile("filtered-errors.log");
+
+        errorLog.Should()
+                .Contain("a warning message")
+                .And.Contain("an error message")
+                .And.Contain("a fatal message")
+                .And.NotContain("an informational message", "the errors file exists precisely to exclude routine events");
+    }
+
+    [Fact]
+    public void ConfigureSerilog_should_honour_the_minimum_level_taken_from_configuration()
+    {
+        var configuration = BuildConfiguration(("Serilog:MinimumLevel:Default", "Warning"));
+
+        WriteSampleEvents("minimum-level", configuration);
+
+        var mainLog = ReadLogFile("minimum-level.log");
+
+        mainLog.Should().NotContain("an informational message", "the configured minimum level suppresses it").And.Contain("a warning message");
+    }
+
+    [Fact]
+    public void ConfigureSerilog_should_default_to_information_when_configuration_gives_no_minimum_level()
+    {
+        WriteSampleEvents("default-level", BuildConfiguration());
+
+        var mainLog = ReadLogFile("default-level.log");
+
+        mainLog.Should().Contain("an informational message").And.NotContain("a debug message", "Information is the default floor");
+    }
+
+    [Fact]
+    public void ConfigureSerilog_should_apply_the_supplied_output_template_to_the_main_log_file()
+    {
+        WriteSampleEvents("templated", template: "CUSTOM|{Level:u3}|{Message:lj}{NewLine}");
+
+        var mainLog = ReadLogFile("templated.log");
+
+        mainLog.Should().Contain("CUSTOM|INF|an informational message", "the template replaces the default timestamped layout");
+    }
+
+    [Fact]
+    public void ConfigureSerilog_should_name_the_log_files_after_the_current_process_when_no_name_is_supplied()
+    {
+        using (var logger = new LoggerConfiguration().ConfigureSerilog(logPath: _logDirectory).CreateLogger())
+        {
+            logger.Information("an informational message");
+            logger.Error("an error message");
+        }
+
+        var processName = Process.GetCurrentProcess().ProcessName;
+        File.Exists(Path.Combine(_logDirectory, $"{processName}.log")).Should().BeTrue();
+        File.Exists(Path.Combine(_logDirectory, $"{processName}-errors.log")).Should().BeTrue();
+    }
+
+    private static IConfiguration BuildConfiguration(params (string Key, string Value)[] settings) =>
+        new ConfigurationBuilder().AddInMemoryCollection(settings.ToDictionary(setting => setting.Key, setting => (string?)setting.Value)).Build();
+
+    private void WriteSampleEvents(string logName, IConfiguration? configuration = null, string? template = null)
+    {
+        using var logger = new LoggerConfiguration().ConfigureSerilog(configuration, template, logName, _logDirectory).CreateLogger();
+
+        logger.Write(LogEventLevel.Debug, "a debug message");
+        logger.Write(LogEventLevel.Information, "an informational message");
+        logger.Write(LogEventLevel.Warning, "a warning message");
+        logger.Write(LogEventLevel.Error, "an error message");
+        logger.Write(LogEventLevel.Fatal, "a fatal message");
+    }
+
+    /// <summary>Reads a log file while the sink may still hold it open.</summary>
+    private string ReadLogFile(string fileName)
+    {
+        var path = Path.Combine(_logDirectory, fileName);
+        File.Exists(path).Should().BeTrue($"the configuration is expected to create {fileName}");
+
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        return reader.ReadToEnd();
+    }
+}

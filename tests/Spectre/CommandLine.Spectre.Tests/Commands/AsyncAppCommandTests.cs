@@ -90,10 +90,23 @@ public class AsyncAppCommandTests
         result.Should().Be((int)ExitCode.Error);
     }
 
+    [Theory]
+    [AutoMockData]
+    public void Validate_should_return_the_result_produced_by_the_configured_validator(CommandContext context)
+    {
+        var command = CreateCommand((_, _) => Task.FromResult(ExitCode.Success), validator: new RejectingValidator());
+
+        var result = command.Validate(context, new StubSettings());
+
+        result.Successful.Should().BeFalse();
+        result.Message.Should().Be("settings rejected");
+    }
+
     private static StubAsyncCommand CreateCommand(Func<StubSettings, CancellationToken, Task<ExitCode>> body,
                                                   IExceptionHandler? exceptionHandler = null,
-                                                  CommandArgumentsRootProcessor? processor = null) =>
-        new(processor ?? new([]), new PassThroughValidator(), exceptionHandler ?? new RecordingExceptionHandler(), new NullOutput(), body);
+                                                  CommandArgumentsRootProcessor? processor = null,
+                                                  ICommandSettingsValidator<StubSettings>? validator = null) =>
+        new(processor ?? new([]), validator ?? new PassThroughValidator(), exceptionHandler ?? new RecordingExceptionHandler(), new NullOutput(), body);
 
     private sealed class StubSettings : CommandSettings
     {
@@ -102,6 +115,11 @@ public class AsyncAppCommandTests
     private sealed class PassThroughValidator : ICommandSettingsValidator<StubSettings>
     {
         public ValidationResult Validate(CommandContext context, StubSettings settings) => ValidationResult.Success();
+    }
+
+    private sealed class RejectingValidator : ICommandSettingsValidator<StubSettings>
+    {
+        public ValidationResult Validate(CommandContext context, StubSettings settings) => ValidationResult.Error("settings rejected");
     }
 
     private sealed class RecordingExceptionHandler : IExceptionHandler
