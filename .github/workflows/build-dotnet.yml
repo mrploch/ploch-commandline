@@ -153,7 +153,7 @@ jobs:
       - name: Run codacy-coverage-reporter
         if: always()
         continue-on-error: true
-        uses: codacy/codacy-coverage-reporter-action@v1
+        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: '**/CoverageResults/coverage*.opencover.xml'
@@ -166,7 +166,7 @@ jobs:
             **/TestResults/*.xml
             **/TestResults/*.trx
       - name: Test Report
-        uses: phoenix-actions/test-reporting@v8
+        uses: phoenix-actions/test-reporting@1e9b578818d03d6df50ce8e60d024a000bf3ab63 # v8
         id: test-report
         if: always()
         continue-on-error: true
