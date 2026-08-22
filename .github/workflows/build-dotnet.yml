@@ -44,7 +44,7 @@ jobs:
       # to the others. Reproduce that layout beside the workspace, otherwise restore fails with
       # MSB3202 for every ../ploch-common project. Cloning the siblings (rather than checking
       # this repository out into a named sub-directory) keeps this repository at the workspace
-      # root, which is what the Codacy reporter, SonarScanner and gh-pages deploy all expect.
+      # root, which is what the Codacy reporter and SonarScanner both expect.
       #
       # ploch-common is cloned in full because it uses Nerdbank.GitVersioning too, and NBGV
       # cannot compute a version height from a shallow clone.
