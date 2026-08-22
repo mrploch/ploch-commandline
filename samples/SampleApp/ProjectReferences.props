@@ -1,0 +1,28 @@
+<Project>
+  <!-- This file is imported ONLY when building the SampleApp as part of the main
+       Ploch.CommandLine solution, to validate that sample code compiles against the current
+       library source. It replaces Ploch NuGet PackageReferences with ProjectReferences.
+
+       Triggered by: dotnet build -p:UsePlochProjectReferences=true -->
+
+  <!-- Remove all Ploch PackageReferences (they will be replaced by ProjectReferences) -->
+  <ItemGroup>
+    <PackageReference Remove="Ploch.CommandLine.Spectre" />
+    <PackageReference Remove="Ploch.CommandLine.Spectre.FluentValidation" />
+    <PackageReference Remove="Ploch.CommandLine.Spectre.Serilog" />
+    <PackageReference Remove="Ploch.CommandLine.UseCases" />
+    <PackageReference Remove="Ploch.Common" />
+    <PackageReference Remove="Ploch.Common.DependencyInjection" />
+  </ItemGroup>
+
+  <!-- Add ProjectReferences to the library source projects.
+       Paths are anchored to this file's location (samples/SampleApp/) via MSBuildThisFileDirectory. -->
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\src\Spectre\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\src\Spectre\CommandLine.Spectre.FluentValidation\Ploch.CommandLine.Spectre.FluentValidation.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\src\Spectre\CommandLine.Spectre.Serilog\Ploch.CommandLine.Spectre.Serilog.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\src\Spectre\CommandLine.UseCases\Ploch.CommandLine.UseCases.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\ploch-common\src\Common\Ploch.Common.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\ploch-common\src\Common.DependencyInjection\Ploch.Common.DependencyInjection.csproj" />
+  </ItemGroup>
+</Project>

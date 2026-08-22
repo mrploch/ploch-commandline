@@ -1,0 +1,21 @@
+<Project>
+  <!-- This SampleApp is a standalone project that demonstrates how external consumers
+       use the Ploch.CommandLine.Spectre libraries. It must NOT import parent Directory.Build.props
+       or reference any files outside samples/SampleApp/. -->
+  <PropertyGroup>
+    <TargetFrameworkVersion>net10.0</TargetFrameworkVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>$(MSBuildProjectName.EndsWith('Tests'))</IsTestProject>
+    <!-- SA1106: False positive on primary constructor syntax -->
+    <!-- SA1516: False positive on top-level statements -->
+    <!-- SA1600/CS1591: Missing XML documentation in samples/tests -->
+    <NoWarn>$(NoWarn);SA1106;SA1516;SA1600;SA1601;SA1633;CS1591;CC0097;CA1860;S3267;S125</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(IsTestProject)">
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+</Project>
