@@ -33,7 +33,9 @@ plain `dotnet build` fails at restore. Use `-p:UsePlochProjectReferences=true`, 
 CI runs, so the sample cannot drift away from the libraries.
 
 The switch lives in [`ProjectReferences.props`](ProjectReferences.props), imported conditionally by
-[`Directory.Build.props`](Directory.Build.props).
+[`Directory.Build.targets`](Directory.Build.targets) — **targets**, not props: `Directory.Build.props`
+is evaluated before the project body, so the `<PackageReference Remove="..." />` items would have
+nothing to remove and both reference kinds would survive.
 
 ## Running it
 
@@ -175,13 +177,33 @@ Unsupported format 'xml'. Supported formats: table, compact.
 [exit code 2]
 ```
 
-`user delete` shows `ILogger<T>` alongside `IOutput` — the console line is for the user, the log
-entry for whoever reads the log afterwards:
+`user delete` is destructive, so it confirms first: it prompts on an interactive console, and on a
+non-interactive one (a pipeline, a redirected stream) it refuses and tells you how to proceed.
 
 ```text
-$ sample user delete 99
+$ sample user delete 1
 
-Deleting user with ID: 99 (force: False)...
+Refusing to delete user 1 without confirmation. Re-run with --force.
+
+[exit code 2]
+```
+
+```text
+$ sample user delete 1 --force
+
+Deleting user with ID: 1 (force: True)...
+User 1 deleted successfully.
+
+[exit code 0]
+```
+
+It also shows `ILogger<T>` alongside `IOutput` — the console line is for the user, the log entry for
+whoever reads the log afterwards:
+
+```text
+$ sample user delete 99 --force
+
+Deleting user with ID: 99 (force: True)...
 User with ID 99 was not found.
 
 [exit code 1]
@@ -226,6 +248,27 @@ $ sample config get SampleAppSettings:Environment
 SampleAppSettings:Environment: Development
 ```
 
+`config set` demonstrates two positional arguments plus an option constrained to a set of values.
+It previews the change rather than persisting it — the sample has no writable configuration store,
+and saying otherwise would be a lie the next `config get` would expose:
+
+```text
+$ sample config set SampleAppSettings:MaxBatchSize 250
+
+Would set 'SampleAppSettings:MaxBatchSize' = '250' in the 'user' scope.
+Preview only - this sample has no writable configuration store, so nothing is persisted.
+
+[exit code 0]
+```
+
+```text
+$ sample config set SampleAppSettings:MaxBatchSize 250 -s machine
+
+Unsupported scope 'machine'. Supported scopes: user, system.
+
+[exit code 2]
+```
+
 `ConfigShowCommand` renders an **allow-list** of sections rather than `configuration.GetChildren()`.
 The host adds an environment-variable provider, so enumerating the configuration root would print
 every environment variable of the process — tokens and API keys included. The allow-list is the
@@ -251,6 +294,53 @@ Saved result to: ./out-2026-08-22/result.dat
 `OutputPath` carries `[SupportsTokens]`; the `CommandArgumentsRootProcessor` rewrites `{date}`
 before the command body sees the value. The simulated work honours the `CancellationToken`, so
 Ctrl+C ends the command with `ExitCode.Cancelled` (130).
+
+`file report` checks its input before reporting on it, and reports what it actually found:
+
+```text
+$ sample file report dataset.csv -t "Daily Report - {date}"
+
+╭─Daily Report - 2026-08-22─────────────────────────────────────────────────╮
+│ Report Title: Daily Report - 2026-08-22                                   │
+│ Source File: C:\Users\krzys\AppData\Local\Temp\wt9-sample-run\dataset.csv │
+│ Size: 17 bytes                                                            │
+│ Last Modified: 2026-08-22 13:01:07 UTC                                    │
+│ Status: Analysed                                                          │
+│ Generated: 2026-08-22 13:01:07 UTC                                        │
+╰───────────────────────────────────────────────────────────────────────────╯
+
+[exit code 0]
+```
+
+```text
+$ sample file report missing.csv
+
+File 'missing.csv' was not found.
+
+[exit code 2]
+```
+
+### Escaping user input in markup
+
+Every value that reaches a `Table` cell, a `Panel`, a `Tree` node or a `Markup` is parsed as Spectre
+markup. A user name, a file path or a configuration value containing `[` would either throw during
+rendering or inject formatting, so the sample escapes each of them with `Markup.Escape`:
+
+```text
+$ sample user add "Alice [Admin] Smith" -e alice@example.com -r Administrator
+
+╭─User Created Successfully────────╮
+│ User ID: 4                       │
+│ Name: Alice [Admin] Smith        │
+│ Email: alice@example.com         │
+│ Role: Administrator              │
+│ Active: Yes                      │
+│ Created: 2026-08-22 12:59:47 UTC │
+╰──────────────────────────────────╯
+```
+
+`IOutput.MarkupLineInterpolated` escapes its interpolation holes for you; a `Markup` built from an
+ordinary interpolated string does not.
 
 ### `project` — use cases and `Ardalis.Result`
 
@@ -280,6 +370,27 @@ Use case failed: A project with name 'SpectreDemo' already exists.
 
 `ProjectCreateCommand` derives from `UseCaseAsyncCommand<,,,>` and implements one method,
 `CreateRequest`. Echoing the settings and rendering the result are inherited.
+
+`project export` writes a real artefact — a success result from a use case that produced nothing
+would be a lie:
+
+```text
+$ sample project export SpectreDemo -o "./exports-{date}"
+
+Starting use case ExportProjectUseCase
+Settings:
+Name: SpectreDemo
+OutputPath: ./exports-2026-08-22
+Use case completed successfully.
+
+$ cat exports-2026-08-22/SpectreDemo.json
+{
+  "Name": "SpectreDemo",
+  "Description": "Demo project for Spectre Console CLI",
+  "Template": "Console",
+  "CreatedAt": "2026-08-12T13:01:26.0404929Z"
+}
+```
 
 ## Exit codes
 
@@ -316,6 +427,7 @@ samples/SampleApp/
     Services/                              # In-memory domain services and models
   tests/SampleApp.Tests/
     Commands/                              # Command unit tests (mocked dependencies)
+    UseCases/                              # Use case tests, including the written export artefact
     Validation/                            # FluentValidation rule tests
 ```
 
@@ -325,5 +437,5 @@ samples/SampleApp/
 dotnet test samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -p:UsePlochProjectReferences=true
 ```
 
-20 tests: command exit codes, token expansion, cancellation handling, use case invocation and
-validator rules. They use xUnit v3, FluentAssertions and Moq.
+28 tests: command exit codes, token expansion, cancellation handling, input validation, the export
+artefact, use case invocation and validator rules. They use xUnit v3, FluentAssertions and Moq.

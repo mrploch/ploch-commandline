@@ -23,7 +23,9 @@ public class UserDeleteCommandTests
         using var cancellationTokenSource = new CancellationTokenSource();
         _userServiceMock.Setup(s => s.DeleteUserAsync(7, cancellationTokenSource.Token)).ReturnsAsync(true);
 
-        var result = await CreateCommand().ExecuteAsync(CreateContext(), new UserDeleteCommandSettings { Id = 7 }, cancellationTokenSource.Token);
+        var result = await CreateCommand().ExecuteAsync(CreateContext(),
+                                                        new UserDeleteCommandSettings { Id = 7, Force = true },
+                                                        cancellationTokenSource.Token);
 
         result.Should().Be((int)ExitCode.Success);
         _userServiceMock.Verify(s => s.DeleteUserAsync(7, cancellationTokenSource.Token), Times.Once);
@@ -34,9 +36,22 @@ public class UserDeleteCommandTests
     {
         _userServiceMock.Setup(s => s.DeleteUserAsync(99, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var result = await CreateCommand().ExecuteAsync(CreateContext(), new UserDeleteCommandSettings { Id = 99 }, CancellationToken.None);
+        var result = await CreateCommand().ExecuteAsync(CreateContext(),
+                                                        new UserDeleteCommandSettings { Id = 99, Force = true },
+                                                        CancellationToken.None);
 
         result.Should().Be((int)ExitCode.Error);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_should_refuse_to_delete_without_force_when_the_console_cannot_confirm()
+    {
+        // The test host has no interactive console, which is the same situation as a CI pipeline:
+        // the command must refuse rather than delete unprompted.
+        var result = await CreateCommand().ExecuteAsync(CreateContext(), new UserDeleteCommandSettings { Id = 7 }, CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.InvalidInput);
+        _userServiceMock.Verify(s => s.DeleteUserAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static CommandContext CreateContext() => new([], Mock.Of<IRemainingArguments>(), "delete", null);

@@ -65,10 +65,18 @@ public class UserListCommand(CommandArgumentsRootProcessor settingsProcessor,
             foreach (var user in users)
             {
                 var status = user.IsActive ? "[green]Active[/]" : "[red]Inactive[/]";
-                table.AddRow(user.Id.ToString(), user.Name, user.Email, user.Role, status, user.CreatedAt.ToString("yyyy-MM-dd"));
+
+                // Table cells are markup: escape the stored values so a name or email containing
+                // '[' renders as text instead of throwing.
+                table.AddRow(user.Id.ToString(),
+                             Markup.Escape(user.Name),
+                             Markup.Escape(user.Email),
+                             Markup.Escape(user.Role),
+                             status,
+                             user.CreatedAt.ToString("yyyy-MM-dd"));
             }
 
-            AnsiConsole.Write(table);
+            Output.Write(table);
         }
 
         Output.WriteLine();

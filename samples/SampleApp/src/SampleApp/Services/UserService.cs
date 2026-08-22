@@ -24,6 +24,10 @@ public class UserService : IUserService
 
     public Task<UserProfile> CreateUserAsync(string name, string email, string role, CancellationToken cancellationToken = default)
     {
+        // A method that takes a token and never looks at it cannot be cancelled. Even a synchronous
+        // in-memory implementation checks it, so callers get the behaviour the signature promises.
+        cancellationToken.ThrowIfCancellationRequested();
+
         var id = Interlocked.Increment(ref _nextId);
         var user = new UserProfile(id, name, email, role, true, DateTime.UtcNow);
         _users[id] = user;
@@ -33,6 +37,8 @@ public class UserService : IUserService
 
     public Task<IEnumerable<UserProfile>> GetUsersAsync(bool activeOnly = false, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var query = _users.Values.AsEnumerable();
         if (activeOnly)
         {
@@ -44,6 +50,8 @@ public class UserService : IUserService
 
     public Task<bool> DeleteUserAsync(int id, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var removed = _users.TryRemove(id, out _);
 
         return Task.FromResult(removed);

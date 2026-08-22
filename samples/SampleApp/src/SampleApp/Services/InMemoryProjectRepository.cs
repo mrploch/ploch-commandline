@@ -18,6 +18,8 @@ public class InMemoryProjectRepository : IProjectRepository
 
     public Task<ProjectItem?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         _projects.TryGetValue(name, out var project);
 
         return Task.FromResult(project);
@@ -25,6 +27,8 @@ public class InMemoryProjectRepository : IProjectRepository
 
     public Task AddAsync(ProjectItem project, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         _projects[project.Name] = project;
 
         return Task.CompletedTask;
@@ -32,6 +36,8 @@ public class InMemoryProjectRepository : IProjectRepository
 
     public Task<IEnumerable<ProjectItem>> GetAllAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         return Task.FromResult<IEnumerable<ProjectItem>>(_projects.Values.ToList());
     }
 }

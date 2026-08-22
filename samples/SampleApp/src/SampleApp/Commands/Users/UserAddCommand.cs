@@ -15,6 +15,7 @@ public class UserAddCommand(CommandArgumentsRootProcessor settingsProcessor,
                             IOutput output,
                             IUserService userService) : AsyncAppCommand<UserAddCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
+    /// <inheritdoc />
     protected override async Task<ExitCode> DoExecuteAsync(CommandContext context, UserAddCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.Verbose)
@@ -26,10 +27,14 @@ public class UserAddCommand(CommandArgumentsRootProcessor settingsProcessor,
 
         var user = await userService.CreateUserAsync(settings.Name, settings.Email, settings.Role, cancellationToken);
 
+        // Everything the user typed is escaped before it reaches Markup: a name such as "A[dmin]"
+        // would otherwise be parsed as markup and throw after the account had already been created.
+        // MarkupLineInterpolated does this for its holes automatically; a Markup built from a string
+        // does not.
         var panel = new Panel(new Markup($"[bold]User ID:[/] {user.Id}\n" +
-                                         $"[bold]Name:[/] {user.Name}\n" +
-                                         $"[bold]Email:[/] {user.Email}\n" +
-                                         $"[bold]Role:[/] [green]{user.Role}[/]\n" +
+                                         $"[bold]Name:[/] {Markup.Escape(user.Name)}\n" +
+                                         $"[bold]Email:[/] {Markup.Escape(user.Email)}\n" +
+                                         $"[bold]Role:[/] [green]{Markup.Escape(user.Role)}[/]\n" +
                                          $"[bold]Active:[/] {(user.IsActive ? "[green]Yes[/]" : "[red]No[/]")}\n" +
                                          $"[bold]Created:[/] {user.CreatedAt:yyyy-MM-dd HH:mm:ss} UTC"))
         {
@@ -37,7 +42,7 @@ public class UserAddCommand(CommandArgumentsRootProcessor settingsProcessor,
             Border = BoxBorder.Rounded
         };
 
-        AnsiConsole.Write(panel);
+        Output.Write(panel);
 
         return ExitCode.Success;
     }

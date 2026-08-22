@@ -15,6 +15,7 @@ public class InfoCommand(ICommandSettingsValidator<InfoCommandSettings> validato
                          IOutput output,
                          IConfiguration configuration) : AppCommand<InfoCommandSettings>(validator, exceptionHandler)
 {
+    /// <inheritdoc />
     protected override ExitCode DoExecute(CommandContext? context, InfoCommandSettings settings, CancellationToken cancellationToken)
     {
         output.MarkupLineInterpolated($"[bold cyan]=== Application & System Information ===[/]");
@@ -24,28 +25,32 @@ public class InfoCommand(ICommandSettingsValidator<InfoCommandSettings> validato
         table.AddColumn("[yellow]Property[/]");
         table.AddColumn("[green]Value[/]");
 
+        // Table cells are parsed as markup, so every value that did not come from this source file
+        // is escaped. A path or machine name containing '[' would otherwise break the render.
         table.AddRow("Application Name", "Ploch.CommandLine.Spectre Sample App");
-        table.AddRow("Framework", RuntimeInformation.FrameworkDescription);
-        table.AddRow("OS Description", RuntimeInformation.OSDescription);
+        table.AddRow("Framework", Markup.Escape(RuntimeInformation.FrameworkDescription));
+        table.AddRow("OS Description", Markup.Escape(RuntimeInformation.OSDescription));
         table.AddRow("Process Architecture", RuntimeInformation.ProcessArchitecture.ToString());
-        table.AddRow("Current Directory", Environment.CurrentDirectory);
-        table.AddRow("Machine Name", Environment.MachineName);
-        table.AddRow("Environment Setting", configuration["SampleAppSettings:Environment"] ?? "Not configured");
+        table.AddRow("Current Directory", Markup.Escape(Environment.CurrentDirectory));
+        table.AddRow("Machine Name", Markup.Escape(Environment.MachineName));
+        table.AddRow("Environment Setting", Markup.Escape(configuration["SampleAppSettings:Environment"] ?? "Not configured"));
 
-        AnsiConsole.Write(table);
+        // Rendered through IOutput rather than the static AnsiConsole, so the command stays testable
+        // with a mocked IOutput and honours whatever console the host configured.
+        output.Write(table);
 
         if (settings.ShowDiagnostics)
         {
             output.WriteLine();
-            var panel = new Panel(new Markup("[dim]Memory Working Set:[/] [white]" +
-                                             (Environment.WorkingSet / 1024 / 1024) + " MB[/]\n" +
-                                             "[dim]Thread Count:[/] [white]" + Environment.ProcessorCount + " logical cores[/]\n" +
-                                             "[dim]Serilog MinLevel:[/] [white]" + (configuration["Serilog:MinimumLevel:Default"] ?? "Information") + "[/]"))
+            var serilogLevel = Markup.Escape(configuration["Serilog:MinimumLevel:Default"] ?? "Information");
+            var panel = new Panel(new Markup($"[dim]Memory Working Set:[/] [white]{Environment.WorkingSet / 1024 / 1024} MB[/]\n" +
+                                             $"[dim]Thread Count:[/] [white]{Environment.ProcessorCount} logical cores[/]\n" +
+                                             $"[dim]Serilog MinLevel:[/] [white]{serilogLevel}[/]"))
             {
                 Header = new PanelHeader("[bold yellow]Diagnostics[/]"),
                 Border = BoxBorder.Double
             };
-            AnsiConsole.Write(panel);
+            output.Write(panel);
         }
 
         output.WriteLine();

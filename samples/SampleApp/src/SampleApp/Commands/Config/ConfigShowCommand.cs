@@ -47,7 +47,7 @@ public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettin
                 continue;
             }
 
-            var sectionNode = root.AddNode($"[cyan]{section.Key}[/]");
+            var sectionNode = root.AddNode($"[cyan]{Markup.Escape(section.Key)}[/]");
             AddSectionChildren(sectionNode, section);
             rendered++;
         }
@@ -60,7 +60,7 @@ public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettin
             return ExitCode.InvalidInput;
         }
 
-        AnsiConsole.Write(root);
+        output.Write(root);
 
         return ExitCode.Success;
     }
@@ -70,14 +70,16 @@ public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettin
         var children = section.GetChildren().ToList();
         if (children.Count == 0 && section.Value != null)
         {
-            parentNode.AddNode($"[dim]Value:[/] [green]{section.Value}[/]");
+            // Keys and values come from JSON and the environment: escape them so a value
+            // containing '[' renders as text instead of being parsed as markup.
+            parentNode.AddNode($"[dim]Value:[/] [green]{Markup.Escape(section.Value)}[/]");
 
             return;
         }
 
         foreach (var child in children)
         {
-            var childNode = parentNode.AddNode($"[white]{child.Key}[/]");
+            var childNode = parentNode.AddNode($"[white]{Markup.Escape(child.Key)}[/]");
             AddSectionChildren(childNode, child);
         }
     }

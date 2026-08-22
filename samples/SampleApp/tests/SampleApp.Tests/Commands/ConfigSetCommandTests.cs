@@ -13,21 +13,30 @@ public class ConfigSetCommandTests
     private readonly Mock<IExceptionHandler> _exceptionHandlerMock = new();
     private readonly Mock<IOutput> _outputMock = new();
 
-    [Fact]
-    public void Execute_should_set_config_and_return_success()
+    [Theory]
+    [InlineData("user")]
+    [InlineData("system")]
+    [InlineData("SYSTEM")]
+    public void Execute_should_return_success_for_a_supported_scope(string scope)
     {
-        var settings = new ConfigSetCommandSettings
-        {
-            Key = "TestKey",
-            Value = "TestValue",
-            Scope = "user"
-        };
+        var settings = new ConfigSetCommandSettings { Key = "TestKey", Value = "TestValue", Scope = scope };
 
-        var command = new ConfigSetCommand(_validatorMock.Object, _exceptionHandlerMock.Object, _outputMock.Object);
-        var context = new CommandContext([], Mock.Of<IRemainingArguments>(), "set", null);
-
-        var result = command.Execute(context, settings, CancellationToken.None);
+        var result = CreateCommand().Execute(CreateContext(), settings, CancellationToken.None);
 
         result.Should().Be((int)ExitCode.Success);
     }
+
+    [Fact]
+    public void Execute_should_return_invalid_input_for_an_unsupported_scope()
+    {
+        var settings = new ConfigSetCommandSettings { Key = "TestKey", Value = "TestValue", Scope = "machine" };
+
+        var result = CreateCommand().Execute(CreateContext(), settings, CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.InvalidInput);
+    }
+
+    private static CommandContext CreateContext() => new([], Mock.Of<IRemainingArguments>(), "set", null);
+
+    private ConfigSetCommand CreateCommand() => new(_validatorMock.Object, _exceptionHandlerMock.Object, _outputMock.Object);
 }

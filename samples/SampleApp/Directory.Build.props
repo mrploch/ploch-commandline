@@ -18,10 +18,4 @@
   <PropertyGroup Condition="$(IsTestProject)">
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
-
-  <!-- When building as part of the main Ploch.CommandLine solution, switch from
-       PackageReference to ProjectReference for Ploch libraries.
-       Usage: dotnet build -p:UsePlochProjectReferences=true -->
-  <Import Project="ProjectReferences.props"
-          Condition="'$(UsePlochProjectReferences)' == 'true'" />
 </Project>

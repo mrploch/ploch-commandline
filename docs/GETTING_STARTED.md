@@ -273,6 +273,29 @@ Creating new user account for Alice Smith...
 The `Executing command …` / `Processing arguments…` preamble comes from `AsyncAppCommand`, not from
 the command body.
 
+### Render through IOutput, and escape what the user typed
+
+Two habits worth forming early, both visible throughout the sample.
+
+**Render renderables through `IOutput`, not the static `AnsiConsole`.** `IOutput.Write(IRenderable)`
+takes a `Table`, `Panel` or `Tree` just as `AnsiConsole.Write` does, but it goes through the console
+the host configured and can be mocked in a test:
+
+```csharp
+Output.Write(table);        // not AnsiConsole.Write(table)
+```
+
+**Escape values that came from outside your source file.** Table cells, panel content, tree nodes
+and `Markup` are all parsed as Spectre markup, so a user name, path or configuration value
+containing `[` throws during rendering or injects formatting:
+
+```csharp
+table.AddRow(user.Id.ToString(), Markup.Escape(user.Name), Markup.Escape(user.Email));
+```
+
+`MarkupLineInterpolated` escapes its interpolation holes automatically — that is the difference
+between it and building a `Markup` from an interpolated string, which does not.
+
 ## 7. Composing a multi-level CLI
 
 Sub-commands are grouped into **branches**. A branch is a verb with no behaviour of its own that
@@ -586,6 +609,20 @@ $ echo $LASTEXITCODE
 2
 ```
 
+A destructive command needs the same discipline in reverse: confirm before acting, and distinguish
+"you did not tell me it was safe to proceed" from "you told me to stop".
+
+```csharp
+if (!AnsiConsole.Profile.Capabilities.Interactive)
+{
+    Output.MarkupLineInterpolated($"[yellow]Refusing to delete user {userId} without confirmation. Re-run with --force.[/]");
+
+    return ExitCode.InvalidInput;   // nobody can answer a prompt in a pipeline
+}
+
+return AnsiConsole.Confirm($"Delete user {userId}?", defaultValue: false) ? null : ExitCode.Cancelled;
+```
+
 ## 12. Cancellation
 
 Every `DoExecute` / `DoExecuteAsync` receives a `CancellationToken`. Forward it — into service
@@ -719,3 +756,8 @@ dotnet test samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -p:UsePlo
 See [`samples/SampleApp/README.md`](../samples/SampleApp/README.md) for the full command tour and
 for the difference between the standalone (NuGet) and in-repository (project reference) build
 modes.
+
+If you copy that switching trick into a sample of your own, put the conditional import in
+`Directory.Build.targets` rather than `Directory.Build.props`: props is evaluated before the project
+body, so `<PackageReference Remove="..." />` would have nothing to remove and the project would end
+up with both a package reference and a project reference to every library.
