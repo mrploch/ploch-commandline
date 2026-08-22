@@ -116,25 +116,33 @@ jobs:
       # (no continue-on-error). SonarCloud is a required quality gate on this
       # repository - do not "align" these steps with ploch-common's non-blocking
       # variant. See PR for issue #7.
-      - name: Install SonarCloud Scanner
-        run: dotnet tool install --global dotnet-sonarscanner
-      - name: Install dotnet-coverage
-        run: dotnet tool install --global dotnet-coverage
+      #
+      # No tool install step: dotnet-sonarscanner is pinned in .config/dotnet-tools.json
+      # and restored by the "Restore .NET tools" step above. An unpinned
+      # `dotnet tool install --global` silently picks up new scanner majors, which changes
+      # analysis results between runs for reasons unrelated to this repository.
+      #
+      # Invoked as `dotnet tool run dotnet-sonarscanner` - the tool's command name is
+      # `dotnet-sonarscanner`, so the `dotnet sonarscanner` shorthand that works for a
+      # GLOBAL install is not the documented form for a local tool. (dotnet-coverage was
+      # installed here too and never invoked - coverage comes from Coverlet MSBuild.)
       - name: SonarScanner Begin
         id: sonar-begin
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
-          dotnet sonarscanner begin
+          dotnet tool run dotnet-sonarscanner begin
           /k:"${{ env.SONAR_PROJECT_KEY }}"
           /o:"${{ env.SONAR_ORGANIZATION }}"
           /v:"${{ steps.nbgv-version.outputs.nuget_version }}"
-          /d:sonar.login="$SONAR_TOKEN"
+          /d:sonar.token="$SONAR_TOKEN"
           /d:sonar.host.url="https://sonarcloud.io"
           /d:sonar.projectBaseDir="${{ github.workspace }}"
           /d:sonar.scm.provider=git
           /d:sonar.cs.opencover.reportsPaths=**/CoverageResults/coverage*.opencover.xml
           /d:sonar.coverage.exclusions="**/*.ps1,**/*.Tests/**,**/*.Tests.csproj,samples/**,DocumentationSite/**"
+          /d:sonar.dotnet.excludeTestProjects=true
+          /d:sonar.qualitygate.wait=true
 
       # Build and Test
       - name: Build
@@ -143,12 +151,15 @@ jobs:
         run: dotnet test ${{ env.SOLUTION_PATH }} --verbosity normal --no-build -c Release --logger "trx;LogFileName=TestOutputResults.trx" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"
 
       # SonarCloud end (runs even after test failures, only if begin succeeded).
-      # Blocking, as above.
+      # Blocking, as above - and now doubly so: `begin` sets sonar.qualitygate.wait=true,
+      # so this step polls SonarCloud until the gate is computed and exits non-zero if it
+      # fails. Without it the job goes green whatever the gate says and enforcement rests
+      # entirely on the branch-protection status check. See issue #26.
       - name: SonarScanner End
         if: always() && steps.sonar-begin.outcome == 'success'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
+        run: dotnet tool run dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
       # The sample application is a standalone solution outside SOLUTION_PATH: by design it consumes
       # the libraries as NuGet packages, so the main build never compiles it. Build it against the
