@@ -47,6 +47,10 @@ have been retired.
 - **Breaking:** `IMessageFormatterProcessor.WriteMessage` hands the writer the
   original message and the processor, rather than the formatted text, so a writer
   selected by message type receives a value of that type and formats it itself.
+- **Breaking:** `AppBuilder.ConfigureServices`, `ConfigureHost`, and
+  `ConfigureAppConfiguration` are additive — every delegate is applied, in the
+  order it was added — matching the `IHostBuilder` methods they wrap. They
+  previously kept only the last delegate.
 
 ### Removed
 

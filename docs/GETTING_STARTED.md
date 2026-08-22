@@ -96,6 +96,11 @@ Three things happen here that you do not have to write yourself:
 })
 ```
 
+Both overloads are additive, and so are `ConfigureHost` and `ConfigureAppConfiguration`: call them
+as many times as you like and every delegate runs, in the order you added them. That is the same
+behaviour as the `IHostBuilder` methods underneath, so registration can be split across helper
+methods without one call quietly replacing another.
+
 ## 4. Your first command: settings and AppCommand
 
 A command is a pair: a **settings** class describing the command line, and a **command** class
