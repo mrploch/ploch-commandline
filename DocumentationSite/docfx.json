@@ -3,17 +3,21 @@
     {
       "src": [
         {
+          "src": "../src/Spectre",
           "files": [
-            "**/**.csproj"
+            "**/*.csproj"
           ],
           "exclude": [
-            "**/**Tests/**",
-            "**/obj/**"
-          ],
-          "src": "../src"
+            "**/*Tests/**",
+            "**/obj/**",
+            "**/bin/**"
+          ]
         }
       ],
       "dest": "api",
+      "memberLayout": "separatePages",
+      "namespaceLayout": "nested",
+      "includePrivateMembers": false,
       "disableGitFeatures": false,
       "disableDefaultFilter": false
     }
@@ -22,19 +26,26 @@
     "content": [
       {
         "files": [
-          "../README.md",
-          "../**/README.md",
           "api/**.yml",
           "api/index.md"
         ]
       },
       {
         "files": [
-          "../**.md",
           "articles/**.md",
           "articles/**/toc.yml",
           "toc.yml",
-          "*.md"
+          "index.md"
+        ]
+      },
+      {
+        "src": "..",
+        "files": [
+          "docs/**/*.md",
+          "docs/**/toc.yml"
+        ],
+        "exclude": [
+          "docs/README.md"
         ]
       }
     ],
@@ -45,23 +56,22 @@
         ]
       }
     ],
-    "overwrite": [
-      {
-        "files": [
-          "apidoc/**.md",
-          "namespaces/**.md"
-        ],
-        "exclude": [
-          "obj/**",
-          "_site/**"
-        ]
-      }
-    ],
     "dest": "_site",
+    "globalMetadata": {
+      "_appName": "Ploch.CommandLine.Spectre",
+      "_appTitle": "Ploch.CommandLine.Spectre — Console Application Framework",
+      "_enableSearch": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/mrploch/ploch-commandline",
+        "branch": "main"
+      }
+    },
     "globalMetadataFiles": [],
     "fileMetadataFiles": [],
     "template": [
-      "default"
+      "default",
+      "modern"
     ],
     "postProcessors": [],
     "markdownEngineName": "markdig",
