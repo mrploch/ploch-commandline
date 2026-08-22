@@ -4,16 +4,20 @@
 name: Build
 on:
   push:
+    # Only main - publishing is gated on this ref, so no other branch push should build.
     branches: [ "main" ]
+  # No branches filter: on.pull_request.branches matches the pull request's BASE branch,
+  # so filtering it to main would leave every stacked PR (one based on another feature
+  # branch) with no build, no tests and no SonarCloud analysis at all. Every pull request
+  # gets a full build regardless of what it targets; the publishing steps stay gated below.
   pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 env:
   SONAR_PROJECT_KEY: mrploch_ploch-commandline
   SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
   SOLUTION_PATH: ./Ploch.CommandLine.Spectre.slnx
 permissions:
-  contents: write        # gh-pages deployment
+  contents: read         # checkout only - Pages deployment lives in publish-docs.yml
   checks: write          # test reporting
   pull-requests: write   # test reporting annotations on PRs
 jobs:
@@ -61,9 +65,6 @@ jobs:
 
       - name: Restore .NET tools
         run: dotnet tool restore
-
-      - name: Copy documentation files
-        run: cp ./README.md ./DocumentationSite/index.md
 
       # For PR builds, embed the PR number and branch name in the prerelease tag
       # so packages are clearly identifiable (e.g. 1.0.3-pr.42.fix-validation)
@@ -181,20 +182,17 @@ jobs:
           path: |
             **/CoverageResults/*.xml
 
-      # Build the DocFx site. Non-blocking: the docs pipeline is tracked separately
-      # (issue #6), and a documentation failure must never block package publishing.
-      - name: Build documentation
+      # Smoke-test the docs build (non-blocking). This workflow deliberately does NOT
+      # deploy GitHub Pages and does NOT overwrite DocumentationSite/index.md: the docs
+      # site has a purpose-written home page and a dedicated publish-docs.yml workflow
+      # that owns Pages deployment (issue #6). Two workflows racing to publish the same
+      # Pages site, or a `cp README.md index.md` reverting the home page on every build,
+      # would both be regressions.
+      - name: Build documentation (smoke test)
         id: docfx
         if: always()
         continue-on-error: true
         run: dotnet docfx DocumentationSite/docfx.json
-
-      - name: Deploy GitHub Pages
-        if: success() && steps.docfx.outcome == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./DocumentationSite/_site
 
       # Publish prerelease NuGet packages to GitHub Packages.
       # Only ever from a push to main - never from an arbitrary branch.
@@ -210,8 +208,13 @@ jobs:
       # Publish PR packages to GitHub Packages for testing/validation.
       # PR packages include the PR number and branch name in the prerelease tag
       # (configured by the "Configure PR package version" step above).
+      #
+      # Restricted to pull requests that actually target main. Now that the
+      # pull_request trigger has no base-branch filter, every stacked PR builds -
+      # but a PR onto another feature branch is an intermediate step, and publishing
+      # a validation package for each one would just fill the feed with noise.
       - name: Publish PR packages to GitHub Packages
-        if: success() && github.event_name == 'pull_request'
+        if: success() && github.event_name == 'pull_request' && github.base_ref == 'main'
         run: |
           if [ -z "$GH_PACKAGES_TOKEN" ]; then
             echo "::warning::GH_PACKAGES_TOKEN not available, skipping PR package publish"
