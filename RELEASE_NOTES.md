@@ -44,6 +44,9 @@ have been retired.
   ordinary invocation no longer appears to hang waiting for Enter.
 - **Breaking:** `EnvironmentSettings.Initialize` throws if called after `Current`
   has already been read, instead of silently doing nothing.
+- **Breaking:** `IMessageFormatterProcessor.WriteMessage` hands the writer the
+  original message and the processor, rather than the formatted text, so a writer
+  selected by message type receives a value of that type and formats it itself.
 
 ### Removed
 
@@ -70,3 +73,6 @@ have been retired.
   text contains `[` sequences that Spectre parses as markup.
 - The Serilog error-log sink sat outside its filtered sub-logger, so the "errors"
   file received every event.
+- `IOutput.Write` threw `InvalidCastException` whenever the registered writer for
+  the message expected a type a `string` could not be cast to — writing an
+  `Exception` through `Write` always crashed.

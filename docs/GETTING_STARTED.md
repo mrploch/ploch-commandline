@@ -296,6 +296,15 @@ table.AddRow(user.Id.ToString(), Markup.Escape(user.Name), Markup.Escape(user.Em
 `MarkupLineInterpolated` escapes its interpolation holes automatically — that is the difference
 between it and building a `Markup` from an interpolated string, which does not.
 
+**`IOutput.Write` dispatches on the type of the message.** A `FormattableString`, a `string` and an
+`IRenderable` are rendered directly; anything else is offered to the registered `IMessageWriter`s,
+and the writer whose message type matches receives the message itself along with the
+`IMessageFormatterProcessor`, so the writer decides how the value is formatted. Writing an
+`Exception` therefore renders the full exception through `ExceptionMessageWriter`, and writing a
+collection produces one line per item. Register your own with
+`services.AddMessageWriter<TMessage, TWriter>()` — and format the message inside `Write` rather than
+expecting to be handed formatted text.
+
 ## 7. Composing a multi-level CLI
 
 Sub-commands are grouped into **branches**. A branch is a verb with no behaviour of its own that

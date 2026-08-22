@@ -75,6 +75,13 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// <returns>
     ///     <see langword="true" /> if a registered writer handled the message; otherwise <see langword="false" />.
     /// </returns>
+    /// <remarks>
+    ///     The writer is selected by the type of <paramref name="message" /> and is then given that same message,
+    ///     together with this processor so it can format the message itself. Handing the writer the already-formatted
+    ///     text instead would defeat the type-based selection: a writer registered for a type a <see cref="string" />
+    ///     cannot be cast to — <see cref="Exception" />, for example — would fail the cast in
+    ///     <see cref="TypeMessageWriter{TMessage}.Write(object,IMessageFormatterProcessor)" />.
+    /// </remarks>
     public bool WriteMessage<TMessage>(TMessage? message)
     {
         if (message is null)
@@ -88,7 +95,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
             return false;
         }
 
-        writer.Write(GetMessageText(message));
+        writer.Write(message, this);
 
         return true;
     }
