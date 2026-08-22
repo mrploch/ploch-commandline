@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.DependencyInjection;
+using Ploch.Common.ArgumentChecking;
 using Ploch.Common.DependencyInjection;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -98,6 +99,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     configuration.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="appConfigurationConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method simplifies the customization of the application's configuration by allowing direct access to the
     ///     <see cref="IConfigurationBuilder" />. It can be used to add configuration sources, modify existing configurations,
@@ -112,6 +114,8 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureAppConfiguration(Action<IConfigurationBuilder> appConfigurationConfigurator)
     {
+        appConfigurationConfigurator.NotNull();
+
         return ConfigureAppConfiguration((_, builder) => appConfigurationConfigurator(builder));
     }
 
@@ -123,6 +127,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     <see cref="IConfigurationBuilder" /> for configuring the application's configuration.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="appConfigurationConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method allows for advanced customization of the application's configuration by enabling
     ///     the use of both the hosting context and the configuration builder. It can be used to add
@@ -137,7 +142,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> appConfigurationConfigurator)
     {
-        _appConfigurationConfigurators.Add(appConfigurationConfigurator);
+        _appConfigurationConfigurators.Add(appConfigurationConfigurator.NotNull());
 
         return this;
     }
@@ -151,6 +156,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     /// <returns>
     ///     The current instance of <see cref="AppBuilder" /> for method chaining.
     /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configureDelegate" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method allows customization of the application's host builder, enabling the addition
     ///     of services, configuration, and other host-level settings. It integrates with the
@@ -162,7 +168,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureHost(Action<IHostBuilder> configureDelegate)
     {
-        _hostBuilderConfigurators.Add(configureDelegate);
+        _hostBuilderConfigurators.Add(configureDelegate.NotNull());
 
         return this;
     }
@@ -174,6 +180,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     An action to configure the <see cref="IServiceCollection" /> for dependency injection.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="servicesConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method allows customization of the application's services by providing a delegate
     ///     that operates on the <see cref="IServiceCollection" />. It is useful for registering
@@ -188,6 +195,8 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureServices(Action<IServiceCollection> servicesConfigurator)
     {
+        servicesConfigurator.NotNull();
+
         return ConfigureServices((_, services) => servicesConfigurator(services));
     }
 
@@ -199,6 +208,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     <see cref="HostBuilderContext" /> and <see cref="IServiceCollection" /> for configuring services.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> to allow method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="servicesConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method enables the addition or modification of services in the application's dependency injection container.
     ///     It supports advanced configuration scenarios by providing access to the hosting context.
@@ -209,7 +219,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     /// </remarks>
     public AppBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> servicesConfigurator)
     {
-        _serviceCollectionConfigurators.Add(servicesConfigurator);
+        _serviceCollectionConfigurators.Add(servicesConfigurator.NotNull());
 
         return this;
     }

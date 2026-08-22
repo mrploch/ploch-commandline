@@ -295,6 +295,42 @@ public sealed class AppBuilderTests : IDisposable
         recorder.SecondConfigurationValue.Should().Be("with-context", "the overload taking the host context records into the same sequence");
     }
 
+    [Fact]
+    public void ConfigureServices_should_reject_a_null_delegate()
+    {
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+
+        var withoutContext = () => builder.ConfigureServices((Action<IServiceCollection>)null!);
+        var withContext = () => builder.ConfigureServices((Action<HostBuilderContext, IServiceCollection>)null!);
+
+        withoutContext.Should()
+                      .Throw<ArgumentNullException>("a delegate that is only stored would otherwise fail much later, while the host is being built")
+                      .WithParameterName("servicesConfigurator");
+        withContext.Should().Throw<ArgumentNullException>().WithParameterName("servicesConfigurator");
+    }
+
+    [Fact]
+    public void ConfigureAppConfiguration_should_reject_a_null_delegate()
+    {
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+
+        var withoutContext = () => builder.ConfigureAppConfiguration((Action<IConfigurationBuilder>)null!);
+        var withContext = () => builder.ConfigureAppConfiguration((Action<HostBuilderContext, IConfigurationBuilder>)null!);
+
+        withoutContext.Should().Throw<ArgumentNullException>().WithParameterName("appConfigurationConfigurator");
+        withContext.Should().Throw<ArgumentNullException>().WithParameterName("appConfigurationConfigurator");
+    }
+
+    [Fact]
+    public void ConfigureHost_should_reject_a_null_delegate()
+    {
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+
+        var act = () => builder.ConfigureHost(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("configureDelegate");
+    }
+
     /// <summary>
     ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
     ///     The probe reports back through a static slot rather than a registered service, so that the helper's own

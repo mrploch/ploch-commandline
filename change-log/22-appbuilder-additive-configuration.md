@@ -12,3 +12,6 @@
   `ConfigureServices` and `ConfigureAppConfiguration` record into the same
   sequence. Code that called one of these methods more than once and relied on
   last-call-wins must now collapse those calls into a single delegate.
+- **Breaking:** those three methods, and both overloads of the two that have
+  them, throw `ArgumentNullException` for a `null` delegate rather than
+  recording it and failing later while the host is built (#22).
