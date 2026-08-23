@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.CommandLine.Spectre.Tests.Testing;
@@ -74,12 +74,12 @@ public sealed class OutputServicesBundleTests : IDisposable
     }
 
     [Fact]
-    public void WriteMessage_should_report_that_a_string_was_handled()
+    public void WriteMessage_should_report_the_writer_that_handled_a_string()
     {
         using var provider = BuildProvider();
         var processor = provider.GetRequiredService<IMessageFormatterProcessor>();
 
-        processor.WriteMessage("a string").Should().BeTrue("a writer is registered for string");
+        processor.WriteMessage("a string").Should().NotBeNull("a writer is registered for string");
     }
 
     [Fact]

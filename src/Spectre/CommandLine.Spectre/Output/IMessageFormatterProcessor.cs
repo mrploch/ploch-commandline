@@ -30,12 +30,13 @@ public interface IMessageFormatterProcessor
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write.</param>
     /// <returns>
-    ///     <see langword="true" /> if a registered writer handled the message; otherwise <see langword="false" />,
-    ///     indicating the caller should fall back to its own rendering.
+    ///     The registered writer that rendered the message, or <see langword="null" /> if none could handle it,
+    ///     indicating the caller should fall back to its own rendering. The writer is returned rather than a simple
+    ///     flag so the caller can consult <see cref="IMessageWriter.WritesLineTerminator" />.
     /// </returns>
     /// <remarks>
     ///     The writer is chosen by the type of <paramref name="message" /> and receives that message unchanged,
     ///     along with this processor, so that formatting stays the writer's responsibility.
     /// </remarks>
-    bool WriteMessage<TMessage>(TMessage message);
+    IMessageWriter? WriteMessage<TMessage>(TMessage message);
 }

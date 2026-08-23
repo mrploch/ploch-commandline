@@ -11,26 +11,26 @@ namespace Ploch.CommandLine.Spectre.Tests.Output;
 public class MessageFormatterProcessorTests
 {
     [Fact]
-    public void WriteMessage_should_report_true_when_a_registered_writer_handles_the_message()
+    public void WriteMessage_should_report_the_writer_that_handled_the_message()
     {
         var writer = new RecordingStringWriter();
         var processor = new MessageFormatterProcessor([], [writer]);
 
         var handled = processor.WriteMessage("hello");
 
-        handled.Should().BeTrue();
+        handled.Should().NotBeNull();
         writer.Written.Should().ContainSingle().Which.Should().Be("hello");
     }
 
     [Fact]
-    public void WriteMessage_should_report_false_when_no_writer_can_handle_the_message()
+    public void WriteMessage_should_report_no_writer_when_none_can_handle_the_message()
     {
         var writer = new RecordingStringWriter();
         var processor = new MessageFormatterProcessor([], [writer]);
 
         var handled = processor.WriteMessage(42);
 
-        handled.Should().BeFalse();
+        handled.Should().BeNull();
         writer.Written.Should().BeEmpty("a writer that cannot handle the message must not be invoked");
     }
 
@@ -43,7 +43,7 @@ public class MessageFormatterProcessorTests
 
         var handled = processor.WriteMessage(exception);
 
-        handled.Should().BeTrue();
+        handled.Should().NotBeNull();
         writer.Written.Should()
               .ContainSingle()
               .Which.Should()
@@ -62,11 +62,11 @@ public class MessageFormatterProcessorTests
     }
 
     [Fact]
-    public void WriteMessage_should_report_false_for_a_null_message()
+    public void WriteMessage_should_report_no_writer_for_a_null_message()
     {
         var processor = new MessageFormatterProcessor([], [new RecordingStringWriter()]);
 
-        processor.WriteMessage<string>(null).Should().BeFalse();
+        processor.WriteMessage<string>(null).Should().BeNull();
     }
 
     [Fact]

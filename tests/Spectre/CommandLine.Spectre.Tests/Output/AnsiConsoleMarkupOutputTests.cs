@@ -360,6 +360,44 @@ public class AnsiConsoleMarkupOutputTests
         console.Output.Should().Be("a" + Environment.NewLine + "b" + Environment.NewLine);
     }
 
+    [Fact]
+    public void WriteLine_should_still_terminate_the_line_for_a_writer_that_renders_inline()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console,
+                                                 new MessageFormatterProcessor([], [new InlineProbeWriter(console.Console)]));
+
+        output.WriteLine(new ProbeMessage());
+
+        console.Output
+               .Should()
+               .Be(InlineProbeWriter.Rendered + Environment.NewLine,
+                   "a writer that does not terminate its own output must not cost WriteLine its line break");
+    }
+
+    [Fact]
+    public void Write_should_not_add_a_terminator_for_a_writer_that_renders_inline()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console,
+                                                 new MessageFormatterProcessor([], [new InlineProbeWriter(console.Console)]));
+
+        output.Write(new ProbeMessage());
+
+        console.Output.Should().Be(InlineProbeWriter.Rendered);
+    }
+
+    /// <summary>A message type no built-in writer claims, so the probe writer below is the one that handles it.</summary>
+    private sealed class ProbeMessage;
+
+    /// <summary>A writer that renders inline and therefore leaves the line terminator to <see cref="IOutput.WriteLine{TMessage}" />.</summary>
+    private sealed class InlineProbeWriter(IAnsiConsole console) : TypeMessageWriter<ProbeMessage>
+    {
+        public const string Rendered = "inline-probe";
+
+        public override void Write(ProbeMessage? message, IMessageFormatterProcessor? formatterProcessor = null) => console.Write(Rendered);
+    }
+
     private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
         new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
 
@@ -400,6 +438,6 @@ public class AnsiConsoleMarkupOutputTests
             return message?.ToString();
         }
 
-        public bool WriteMessage<TMessage>(TMessage message) => false;
+        public IMessageWriter? WriteMessage<TMessage>(TMessage message) => null;
     }
 }

@@ -88,7 +88,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write. If null, no action is taken.</param>
     /// <returns>
-    ///     <see langword="true" /> if a registered writer handled the message; otherwise <see langword="false" />.
+    ///     The registered writer that rendered the message, or <see langword="null" /> if none could handle it.
     /// </returns>
     /// <remarks>
     ///     The writer is selected by the type of <paramref name="message" /> and is then given that same message,
@@ -97,22 +97,18 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     ///     cannot be cast to — <see cref="Exception" />, for example — would fail the cast in
     ///     <see cref="TypeMessageWriter{TMessage}.Write(object,IMessageFormatterProcessor)" />.
     /// </remarks>
-    public bool WriteMessage<TMessage>(TMessage? message)
+    public IMessageWriter? WriteMessage<TMessage>(TMessage? message)
     {
         if (message is null)
         {
-            return false;
+            return null;
         }
 
         var writer = GetWriter(message);
-        if (writer is null)
-        {
-            return false;
-        }
 
-        writer.Write(message, this);
+        writer?.Write(message, this);
 
-        return true;
+        return writer;
     }
 
     /// <summary>

@@ -24,12 +24,23 @@
   from `ToString()` should pass a `FormattableString`, or use
   `MarkupLineInterpolated`.
 
-- `IMessageWriter` implementations now own the line termination of what they
-  render: `IOutput.WriteLine` adds no terminator of its own to a message a
-  writer handled. A writer whose output is line-oriented must emit its own
-  trailing newline; one whose output is inline must not. The built-in writers
-  already follow this, so `WriteLine(aCollection)` no longer leaves a blank
-  line after the last item and an empty collection no longer renders one (#31).
+- **Breaking:** `IMessageWriter` gains `WritesLineTerminator`, a property a
+  writer uses to declare that it already ends its output with a line break. It
+  defaults to `false`, so `IOutput.WriteLine` keeps appending a terminator for a
+  writer that renders inline. `EnumerableMessageWriter` and
+  `ExceptionMessageWriter` declare `true`, so `WriteLine(aCollection)` no longer
+  leaves a blank line after the last item and an empty collection no longer
+  renders one (#31).
+
+  A custom writer that emits its own trailing newline should override
+  `WritesLineTerminator` to return `true`. One that renders inline needs no
+  change.
+
+- **Breaking:** `IMessageFormatterProcessor.WriteMessage` returns the
+  `IMessageWriter` that rendered the message, or `null` if none could handle it,
+  instead of a `bool`. Callers need the writer itself in order to consult
+  `WritesLineTerminator`. Replace `if (processor.WriteMessage(x))` with
+  `if (processor.WriteMessage(x) is not null)` (#31).
 
 Markup written by the caller is unaffected: `Write`, `WriteLine`,
 `MarkupInterpolated` and `MarkupLineInterpolated` still interpret markup in a

@@ -9,6 +9,12 @@ namespace Ploch.CommandLine.Spectre.Output;
 public class ExceptionMessageWriter(IAnsiConsole output) : TypeMessageWriter<Exception>
 {
     /// <summary>
+    ///     Gets a value indicating whether this writer ends its output with a line terminator.
+    /// </summary>
+    /// <remarks>Always <see langword="true" />: Spectre's exception rendering ends with a line break.</remarks>
+    public override bool WritesLineTerminator => true;
+
+    /// <summary>
     ///     Writes an exception message to the configured output.
     /// </summary>
     /// <param name="message">The exception to be written. Can be null.</param>

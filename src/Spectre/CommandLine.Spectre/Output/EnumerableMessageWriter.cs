@@ -10,6 +10,12 @@ namespace Ploch.CommandLine.Spectre.Output;
 public class EnumerableMessageWriter(IAnsiConsole output) : TypeMessageWriter<IEnumerable>
 {
     /// <summary>
+    ///     Gets a value indicating whether this writer ends its output with a line terminator.
+    /// </summary>
+    /// <remarks>Always <see langword="true" />: every item is written on its own line.</remarks>
+    public override bool WritesLineTerminator => true;
+
+    /// <summary>
     ///     Writes each item in the enumerable collection to the output.
     /// </summary>
     /// <param name="enumerable">The enumerable collection to write. If null, a "No items to display" message is shown.</param>
