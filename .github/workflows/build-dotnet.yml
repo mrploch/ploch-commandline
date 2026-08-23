@@ -259,8 +259,29 @@ jobs:
       - name: Publish NuGet packages to GitHub Packages
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
-          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+          # `**` does not recurse here: globstar is off by default and GitHub runs steps with
+          # `bash -e`, so `./**/*.nupkg` matches a single directory level while packages are
+          # produced four levels down. Worse, an unmatched glob is passed through literally and
+          # `dotnet nuget push` exits 0 on it, so this step would report success having published
+          # nothing. tests/ and samples/ are excluded because Directory.Build.props packs every
+          # non-test project and the sample solution is built in Release above.
+          mapfile -t PACKAGES < <(find . -type f -name '*.nupkg' -not -path './tests/*' -not -path './samples/*' | sort)
+
+          if [ ${#PACKAGES[@]} -eq 0 ]; then
+            echo "::error::No .nupkg files were found. Refusing to report a successful publish."
+            exit 1
+          fi
+
+          for pkg in "${PACKAGES[@]}"; do
+            echo "Publishing $pkg"
+            dotnet nuget push "$pkg" --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
+          done
+
+          # Symbol packages are best-effort: a missing .snupkg is not a failed release.
+          find . -type f -name '*.snupkg' -not -path './tests/*' -not -path './samples/*' | sort | while IFS= read -r sym; do
+            echo "Publishing $sym"
+            dotnet nuget push "$sym" --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+          done
 
       # Publish PR packages to GitHub Packages for testing/validation.
       # PR packages include the PR number and branch name in the prerelease tag
@@ -277,5 +298,21 @@ jobs:
             echo "::warning::GH_PACKAGES_TOKEN not available, skipping PR package publish"
             exit 0
           fi
-          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
-          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+          # Same enumeration as the main-branch publish above; see the comment there for why a
+          # `./**/*.nupkg` glob silently publishes nothing.
+          mapfile -t PACKAGES < <(find . -type f -name '*.nupkg' -not -path './tests/*' -not -path './samples/*' | sort)
+
+          if [ ${#PACKAGES[@]} -eq 0 ]; then
+            echo "::error::No .nupkg files were found. Refusing to report a successful publish."
+            exit 1
+          fi
+
+          for pkg in "${PACKAGES[@]}"; do
+            echo "Publishing $pkg"
+            dotnet nuget push "$pkg" --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
+          done
+
+          find . -type f -name '*.snupkg' -not -path './tests/*' -not -path './samples/*' | sort | while IFS= read -r sym; do
+            echo "Publishing $sym"
+            dotnet nuget push "$sym" --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+          done
