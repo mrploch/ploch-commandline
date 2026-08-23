@@ -13,6 +13,9 @@ namespace Ploch.CommandLine.Spectre.Tests.Output;
 /// </summary>
 public class AnsiConsoleMarkupOutputTests
 {
+    /// <summary>Two items, hoisted so the collection tests do not allocate a constant array at each call site (CA1861).</summary>
+    private static readonly string[] TwoItems = ["a", "b"];
+
     [Fact]
     public void Write_should_render_a_plain_string_as_markup()
     {
@@ -330,7 +333,7 @@ public class AnsiConsoleMarkupOutputTests
         using var console = new RecordingConsole();
         var output = CreateOutputWithEnumerableWriter(console);
 
-        output.WriteLine(new[] { "a", "b" });
+        output.WriteLine(TwoItems);
 
         console.Output
                .Should()
@@ -355,7 +358,7 @@ public class AnsiConsoleMarkupOutputTests
         using var console = new RecordingConsole();
         var output = CreateOutputWithEnumerableWriter(console);
 
-        output.Write(new[] { "a", "b" });
+        output.Write(TwoItems);
 
         console.Output.Should().Be("a" + Environment.NewLine + "b" + Environment.NewLine);
     }
@@ -387,6 +390,12 @@ public class AnsiConsoleMarkupOutputTests
         console.Output.Should().Be("inline-probe");
     }
 
+    private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
+        new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
+
+    private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>
+        new(console.Console, new MessageFormatterProcessor([new StringMessageFormatter()], []));
+
     /// <summary>A message type no built-in writer claims, so the probe writer below is the one that handles it.</summary>
     private sealed class ProbeMessage(string text)
     {
@@ -399,12 +408,6 @@ public class AnsiConsoleMarkupOutputTests
         public override void Write(ProbeMessage? message, IMessageFormatterProcessor? formatterProcessor = null) =>
             console.Write(formatterProcessor?.GetMessageText(message?.Text) ?? message?.Text ?? string.Empty);
     }
-
-    private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
-        new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
-
-    private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>
-        new(console.Console, new MessageFormatterProcessor([new StringMessageFormatter()], []));
 
     private sealed class UnhandledMessage
     {
