@@ -13,7 +13,17 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!--
+      The repository builds clean, so the zero-warning bar is enforced rather than merely met:
+      without this a new warning lands silently and the bar erodes one commit at a time.
+      Low and moderate NuGet audit advisories (NU1901, NU1902) are exempt. They fire when an
+      advisory is published against a dependency that has not changed, so without the exemption
+      a minor advisory turns into a red build on an untouched branch. High and critical
+      advisories (NU1903, NU1904) stay fatal on purpose: those should stop a release rather
+      than wait for somebody to notice warning output.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>NU1901;NU1902</WarningsNotAsErrors>
     <!-- Versioning is handled by Nerdbank.GitVersioning (version.json). -->
     <!-- SourceLink: lets consumers step into this repository's sources when debugging. -->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -37,7 +47,6 @@
     -->
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(IsTestProject)">
@@ -45,7 +54,6 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition="!$(IsTestProject)">
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
