@@ -9,6 +9,11 @@
     Run this when renamed or removed public types leave stale pages behind: DocFX
     overwrites the metadata it regenerates but does not delete files whose source
     symbol no longer exists.
+
+.EXAMPLE
+    ./Clean-DocFx-Common.ps1 -WhatIf
+
+    Lists what would be removed without deleting anything.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param()
@@ -18,13 +23,27 @@ $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 try
 {
-    # -ErrorAction Ignore rather than a Test-Path guard: a clean tree is the expected
-    # state on a fresh clone, and absence is not a failure worth reporting.
-    Remove-Item -Path '_site' -Recurse -Force -Confirm:$false -ErrorAction Ignore
+    # A path that is simply absent is the expected state on a fresh clone, so it is skipped rather
+    # than ignored. Everything else -- a locked file, a permission failure, a partial recursive
+    # delete -- terminates, because reporting a clean state while stale pages survive would let the
+    # next DocFX build reuse them.
+    if (Test-Path -Path '_site')
+    {
+        Remove-Item -Path '_site' -Recurse -Force
+    }
 
-    # toc.yml is hand-authored; everything else under api/ is DocFX metadata output.
-    Remove-Item -Path 'api/*.yml' -Exclude 'toc.yml' -Force -Confirm:$false -ErrorAction Ignore
-    Remove-Item -Path 'api/.manifest' -Force -Confirm:$false -ErrorAction Ignore
+    if (Test-Path -Path 'api')
+    {
+        # toc.yml is hand-authored; everything else under api/ is DocFX metadata output. The glob is
+        # resolved inside the guard because PowerShell expands it before Remove-Item can react to a
+        # missing directory.
+        Remove-Item -Path 'api/*.yml' -Exclude 'toc.yml' -Force
+
+        if (Test-Path -Path 'api/.manifest')
+        {
+            Remove-Item -Path 'api/.manifest' -Force
+        }
+    }
 
     Write-Information 'DocFX output cleaned. Run "dotnet docfx DocumentationSite/docfx.json" to regenerate.' -InformationAction Continue
 }

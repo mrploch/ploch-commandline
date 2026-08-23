@@ -16,13 +16,14 @@
     <!--
       The repository builds clean, so the zero-warning bar is enforced rather than merely met:
       without this a new warning lands silently and the bar erodes one commit at a time.
-      NuGet audit warnings are exempt. They fire when an advisory is published against an
-      existing dependency, which would otherwise break CI on a commit that changed nothing;
-      a supply-chain advisory should surface as a warning to act on, not as a red build on
-      an untouched branch.
+      Low and moderate NuGet audit advisories (NU1901, NU1902) are exempt. They fire when an
+      advisory is published against a dependency that has not changed, so without the exemption
+      a minor advisory turns into a red build on an untouched branch. High and critical
+      advisories (NU1903, NU1904) stay fatal on purpose: those should stop a release rather
+      than wait for somebody to notice warning output.
     -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <WarningsNotAsErrors>NU1901;NU1902</WarningsNotAsErrors>
     <!-- Versioning is handled by Nerdbank.GitVersioning (version.json). -->
     <!-- SourceLink: lets consumers step into this repository's sources when debugging. -->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

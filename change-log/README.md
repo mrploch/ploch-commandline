@@ -4,7 +4,8 @@ Each user-visible change gets its own Markdown file in this folder, named after
 the issue or pull request it came from (for example `257-cancellation-token.md`).
 
 The release workflow concatenates every `*.md` file here into the GitHub Release
-notes, then moves them into `archive/` so the next release starts empty.
+notes, then moves them into `archive/` so the next release starts empty. This
+README is excluded from both steps and stays in place.
 
 ## What belongs here
 
