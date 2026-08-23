@@ -25,8 +25,7 @@ It includes:
 
 ## Getting Started
 
-TODO, GitHub Issue: [Ploch.CommandLine.Spectre Getting Started documentation #4
-](https://github.com/mrploch/ploch-commandline/issues/4)
+TODO, GitHub Issue: [Ploch.CommandLine.Spectre Getting Started documentation #4](https://github.com/mrploch/ploch-commandline/issues/4)
 
 ## Dependency Injection
 
@@ -39,5 +38,4 @@ This project provides following services bundles:
 
 - `AppServicesBundle` - registers services required for the app to run
 - `OutputServicesBundle` - registers services required for output formatting
-
 

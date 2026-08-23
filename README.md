@@ -1,6 +1,6 @@
 # Ploch CommandLine Applications
 
-# Overview
+## Overview
 
 **Ploch CommandLine Applications** is an opinionated library for building console applications in .NET Core.
 It builds on top of the [Spectre.Console](https://spectreconsole.net/) library, providing a few additional features:
