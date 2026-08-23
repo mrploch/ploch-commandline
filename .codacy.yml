@@ -23,8 +23,17 @@ engines:
   #
   # Test doubles implement IOutput and IMessageFormatter in full and necessarily leave most
   # parameters unused, so S1172 fires on the signature rather than on a defect.
+  #
+  # A per-engine exclude_paths list replaces the global one for that engine rather than adding to
+  # it, so the global entries are repeated here. Keep the two lists in step.
   sonarcsharp:
     exclude_paths:
       - "tests/**"
+      - ".agents/**"
+      - ".claude/**"
+      - ".cursor/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
   markdownlint:
     line_length: 120
