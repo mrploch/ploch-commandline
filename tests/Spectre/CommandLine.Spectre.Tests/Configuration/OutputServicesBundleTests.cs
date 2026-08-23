@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.Output;
+using Ploch.CommandLine.Spectre.Tests.Testing;
 using Ploch.Common.DependencyInjection;
+using Spectre.Console;
 
 namespace Ploch.CommandLine.Spectre.Tests.Configuration;
 
@@ -11,8 +13,25 @@ namespace Ploch.CommandLine.Spectre.Tests.Configuration;
 ///     every <see cref="IConvertible" /> that threw <see cref="NotImplementedException" />, and a write path
 ///     that emitted handled messages twice.
 /// </summary>
-public class OutputServicesBundleTests
+[Collection(GlobalConsoleState.Name)]
+public sealed class OutputServicesBundleTests : IDisposable
 {
+    private readonly IAnsiConsole _originalConsole = AnsiConsole.Console;
+    private readonly RecordingConsole _console = new();
+
+    public OutputServicesBundleTests()
+    {
+        // The bundle captures AnsiConsole.Console when it registers, so the swap has to happen before the provider is built.
+        AnsiConsole.Console = _console.Console;
+    }
+
+    public void Dispose()
+    {
+        AnsiConsole.Console = _originalConsole;
+        _console.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     [Fact]
     public void Bundle_should_resolve_the_message_formatter_processor()
     {
@@ -61,6 +80,31 @@ public class OutputServicesBundleTests
         var processor = provider.GetRequiredService<IMessageFormatterProcessor>();
 
         processor.WriteMessage("a string").Should().BeTrue("a writer is registered for string");
+    }
+
+    [Fact]
+    public void Write_should_render_an_exception_through_the_registered_exception_writer()
+    {
+        using var provider = BuildProvider();
+        var output = provider.GetRequiredService<IOutput>();
+
+        var act = () => output.Write(new InvalidOperationException("probe failure"));
+
+        act.Should().NotThrow("the writer registered for Exception must be handed the exception, not its formatted text");
+        _console.Output.Should().Contain("probe failure");
+    }
+
+    [Fact]
+    public void Write_should_render_one_line_per_item_for_a_collection()
+    {
+        using var provider = BuildProvider();
+        var output = provider.GetRequiredService<IOutput>();
+
+        output.Write<IEnumerable<string>>(["alpha", "beta"]);
+
+        _console.Output.Should()
+                .Be($"alpha{Environment.NewLine}beta{Environment.NewLine}",
+                    "the writer registered for IEnumerable receives the collection, so it enumerates the items rather than the characters of a formatted string");
     }
 
     [Fact]

@@ -33,5 +33,9 @@ public interface IMessageFormatterProcessor
     ///     <see langword="true" /> if a registered writer handled the message; otherwise <see langword="false" />,
     ///     indicating the caller should fall back to its own rendering.
     /// </returns>
+    /// <remarks>
+    ///     The writer is chosen by the type of <paramref name="message" /> and receives that message unchanged,
+    ///     along with this processor, so that formatting stays the writer's responsibility.
+    /// </remarks>
     bool WriteMessage<TMessage>(TMessage message);
 }

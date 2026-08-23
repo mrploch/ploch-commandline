@@ -14,13 +14,19 @@ namespace Ploch.CommandLine.Spectre.Tests;
 ///     which only happens once a command actually runs.
 /// </summary>
 /// <remarks>
-///     The three "keep only the last delegate" tests are characterisation tests: they pin the builder's current
-///     last-call-wins behaviour rather than endorsing it, so that changing it to compose the delegates (see issue
-///     #22) is a deliberate decision with a visible failure rather than a silent change.
+///     The three "combine every delegate" tests were characterisation tests pinning the builder's original
+///     last-call-wins behaviour; issue #22 made the three configuration methods additive, matching
+///     <see cref="IHostBuilder" /> and <c>AddServicesBundle</c>, and the tests now pin that instead.
 /// </remarks>
 [Collection(GlobalConsoleState.Name)]
 public sealed class AppBuilderTests : IDisposable
 {
+    /// <summary>Expected marker order for the additive-configuration tests; a field rather than a literal so CA1861 stays quiet.</summary>
+    private static readonly string[] FirstThenSecond = ["first", "second"];
+
+    /// <summary>Expected marker order when the two overloads of the same method are mixed.</summary>
+    private static readonly string[] WithoutThenWithContext = ["without-context", "with-context"];
+
     private readonly IAnsiConsole _originalConsole = AnsiConsole.Console;
     private readonly RecordingConsole _console = new();
 
@@ -201,7 +207,7 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     [Fact]
-    public void ConfigureServices_should_keep_only_the_last_delegate_it_was_given()
+    public void ConfigureServices_should_run_every_delegate_it_was_given()
     {
         var recorder = RunProbeCommand(builder =>
                                        {
@@ -211,13 +217,25 @@ public sealed class AppBuilderTests : IDisposable
 
         recorder.ExitCode.Should().Be(0);
         recorder.MarkerNames.Should()
-                .ContainSingle("the builder stores one delegate, so the earlier registration never runs")
-                .Which.Should()
-                .Be("second");
+                .Equal(FirstThenSecond, "the builder combines the delegates and runs them in the order they were added");
     }
 
     [Fact]
-    public void ConfigureHost_should_keep_only_the_last_delegate_it_was_given()
+    public void ConfigureServices_should_combine_both_overloads_into_the_same_sequence()
+    {
+        var recorder = RunProbeCommand(builder =>
+                                       {
+                                           builder.ConfigureServices(services => services.AddSingleton(new Marker { Name = "without-context" }));
+                                           builder.ConfigureServices((_, services) => services.AddSingleton(new Marker { Name = "with-context" }));
+                                       });
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.MarkerNames.Should()
+                .Equal(WithoutThenWithContext, "the overload taking the host context records into the same sequence");
+    }
+
+    [Fact]
+    public void ConfigureHost_should_run_every_delegate_it_was_given()
     {
         var recorder = RunProbeCommand(builder =>
                                        {
@@ -230,14 +248,11 @@ public sealed class AppBuilderTests : IDisposable
                                        });
 
         recorder.ExitCode.Should().Be(0);
-        recorder.MarkerNames.Should()
-                .ContainSingle("the builder stores one delegate, so the earlier registration never runs")
-                .Which.Should()
-                .Be("second");
+        recorder.MarkerNames.Should().Equal(FirstThenSecond, "the builder combines the delegates and applies them all to the host builder");
     }
 
     [Fact]
-    public void ConfigureAppConfiguration_should_keep_only_the_last_delegate_it_was_given()
+    public void ConfigureAppConfiguration_should_run_every_delegate_it_was_given()
     {
         var recorder = RunProbeCommand(builder =>
                                        {
@@ -255,14 +270,72 @@ public sealed class AppBuilderTests : IDisposable
 
         recorder.ExitCode.Should().Be(0);
         recorder.SecondConfigurationValue.Should().Be("from-the-second-call");
-        recorder.ConfigurationValue.Should().BeNull("the builder stores one delegate, so the earlier configuration source is never added");
+        recorder.ConfigurationValue.Should().Be("from-the-first-call", "the builder combines the delegates, so both configuration sources are added");
+    }
+
+    [Fact]
+    public void ConfigureAppConfiguration_should_combine_both_overloads_into_the_same_sequence()
+    {
+        var recorder = RunProbeCommand(builder =>
+                                       {
+                                           builder.ConfigureAppConfiguration(configuration =>
+                                                                                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                                                                                     {
+                                                                                         ["probe:key"] = "without-context"
+                                                                                     }));
+                                           builder.ConfigureAppConfiguration((_, configuration) =>
+                                                                                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                                                                                     {
+                                                                                         ["probe:other"] = "with-context"
+                                                                                     }));
+                                       });
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.ConfigurationValue.Should().Be("without-context");
+        recorder.SecondConfigurationValue.Should().Be("with-context", "the overload taking the host context records into the same sequence");
+    }
+
+    [Fact]
+    public void ConfigureServices_should_reject_a_null_delegate()
+    {
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+
+        var withoutContext = () => builder.ConfigureServices((Action<IServiceCollection>)null!);
+        var withContext = () => builder.ConfigureServices((Action<HostBuilderContext, IServiceCollection>)null!);
+
+        withoutContext.Should()
+                      .Throw<ArgumentNullException>("a delegate that is only stored would otherwise fail much later, while the host is being built")
+                      .WithParameterName("servicesConfigurator");
+        withContext.Should().Throw<ArgumentNullException>().WithParameterName("servicesConfigurator");
+    }
+
+    [Fact]
+    public void ConfigureAppConfiguration_should_reject_a_null_delegate()
+    {
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+
+        var withoutContext = () => builder.ConfigureAppConfiguration((Action<IConfigurationBuilder>)null!);
+        var withContext = () => builder.ConfigureAppConfiguration((Action<HostBuilderContext, IConfigurationBuilder>)null!);
+
+        withoutContext.Should().Throw<ArgumentNullException>().WithParameterName("appConfigurationConfigurator");
+        withContext.Should().Throw<ArgumentNullException>().WithParameterName("appConfigurationConfigurator");
+    }
+
+    [Fact]
+    public void ConfigureHost_should_reject_a_null_delegate()
+    {
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+
+        var act = () => builder.ConfigureHost(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("configureDelegate");
     }
 
     /// <summary>
     ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
-    ///     The probe reports back through a static slot rather than a registered service, because
-    ///     <see cref="AppBuilder.ConfigureServices(Action{IServiceCollection})" /> keeps only the last delegate it was
-    ///     given (issue #22) and the helper must not overwrite whatever the test itself configured.
+    ///     The probe reports back through a static slot rather than a registered service, so that the helper's own
+    ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly
+    ///     the registrations the test made.
     /// </summary>
     private static ProbeRecorder RunProbeCommand(Action<AppBuilder> configure, CancellationTokenSource? cancellationTokenSource = null)
     {

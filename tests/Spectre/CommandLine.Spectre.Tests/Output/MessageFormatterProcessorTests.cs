@@ -35,6 +35,33 @@ public class MessageFormatterProcessorTests
     }
 
     [Fact]
+    public void WriteMessage_should_hand_the_original_message_to_the_writer_rather_than_its_formatted_text()
+    {
+        var writer = new RecordingExceptionWriter();
+        var processor = new MessageFormatterProcessor([new ExceptionMessageFormatter()], [writer]);
+        var exception = new InvalidOperationException("probe failure");
+
+        var handled = processor.WriteMessage(exception);
+
+        handled.Should().BeTrue();
+        writer.Written.Should()
+              .ContainSingle()
+              .Which.Should()
+              .BeSameAs(exception, "the writer is chosen by the type of the message, so it has to be given that same message");
+    }
+
+    [Fact]
+    public void WriteMessage_should_supply_itself_as_the_formatter_processor_so_the_writer_can_format_the_message()
+    {
+        var writer = new RecordingExceptionWriter();
+        var processor = new MessageFormatterProcessor([], [writer]);
+
+        processor.WriteMessage(new InvalidOperationException("probe failure"));
+
+        writer.Processors.Should().ContainSingle().Which.Should().BeSameAs(processor, "formatting is the writer's job and it needs the processor to do it");
+    }
+
+    [Fact]
     public void WriteMessage_should_report_false_for_a_null_message()
     {
         var processor = new MessageFormatterProcessor([], [new RecordingStringWriter()]);
@@ -160,6 +187,20 @@ public class MessageFormatterProcessorTests
     {
         public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) =>
             message?.ToUpperInvariant() ?? string.Empty;
+    }
+
+    /// <summary>Records what a writer registered for <see cref="Exception" /> was actually handed.</summary>
+    private sealed class RecordingExceptionWriter : TypeMessageWriter<Exception>
+    {
+        public List<Exception?> Written { get; } = [];
+
+        public List<IMessageFormatterProcessor?> Processors { get; } = [];
+
+        public override void Write(Exception? message, IMessageFormatterProcessor? formatterProcessor = null)
+        {
+            Written.Add(message);
+            Processors.Add(formatterProcessor);
+        }
     }
 
     private sealed class RecordingStringWriter : TypeMessageWriter<string>

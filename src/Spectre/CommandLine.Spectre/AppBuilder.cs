@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.DependencyInjection;
+using Ploch.Common.ArgumentChecking;
 using Ploch.Common.DependencyInjection;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -20,10 +21,10 @@ namespace Ploch.CommandLine.Spectre;
 /// </remarks>
 public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancellationTokenSource)
 {
+    private readonly List<Action<HostBuilderContext, IConfigurationBuilder>> _appConfigurationConfigurators = [];
+    private readonly List<Action<IHostBuilder>> _hostBuilderConfigurators = [];
+    private readonly List<Action<HostBuilderContext, IServiceCollection>> _serviceCollectionConfigurators = [];
     private readonly HashSet<IServicesBundle> _servicesBundles = new() { new AppServicesBundle() };
-    private Action<HostBuilderContext, IConfigurationBuilder>? _appConfigurationConfigurator;
-    private Action<IHostBuilder>? _hostBuilderConfigurator;
-    private Action<HostBuilderContext, IServiceCollection>? _serviceCollectionConfigurator;
 
     /// <summary>
     ///     Creates a new instance of the <see cref="AppBuilder" /> class with the specified arguments.
@@ -58,7 +59,10 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                                   {
                                       InitializeBundles(services, context);
 
-                                      _serviceCollectionConfigurator?.Invoke(context, services);
+                                      foreach (var servicesConfigurator in _serviceCollectionConfigurators)
+                                      {
+                                          servicesConfigurator(context, services);
+                                      }
 
                                       services.AddSingleton(cancellationTokenSource);
                                   });
@@ -66,11 +70,17 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                                           {
                                               configurationBuilder.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
-                                              _appConfigurationConfigurator?.Invoke(context, configurationBuilder);
+                                              foreach (var appConfigurationConfigurator in _appConfigurationConfigurators)
+                                              {
+                                                  appConfigurationConfigurator(context, configurationBuilder);
+                                              }
                                           });
 
         // Add services to the container
-        _hostBuilderConfigurator?.Invoke(builder);
+        foreach (var hostBuilderConfigurator in _hostBuilderConfigurators)
+        {
+            hostBuilderConfigurator(builder);
+        }
 
         var registrar = new DependencyInjectionTypeRegistrar(builder);
 
@@ -89,16 +99,23 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     configuration.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="appConfigurationConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method simplifies the customization of the application's configuration by allowing direct access to the
     ///     <see cref="IConfigurationBuilder" />. It can be used to add configuration sources, modify existing configurations,
     ///     or apply specific settings without requiring access to the hosting context.
+    ///     <para>
+    ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureAppConfiguration" />.
+    ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
                      "UnusedMember.Global",
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureAppConfiguration(Action<IConfigurationBuilder> appConfigurationConfigurator)
     {
+        appConfigurationConfigurator.NotNull();
+
         return ConfigureAppConfiguration((_, builder) => appConfigurationConfigurator(builder));
     }
 
@@ -110,17 +127,22 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     <see cref="IConfigurationBuilder" /> for configuring the application's configuration.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="appConfigurationConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method allows for advanced customization of the application's configuration by enabling
     ///     the use of both the hosting context and the configuration builder. It can be used to add
     ///     configuration sources, modify existing configurations, or apply environment-specific settings.
+    ///     <para>
+    ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureAppConfiguration" />.
+    ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
                      "MemberCanBePrivate.Global",
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> appConfigurationConfigurator)
     {
-        _appConfigurationConfigurator = (context, builder) => { appConfigurationConfigurator?.Invoke(context, builder); };
+        _appConfigurationConfigurators.Add(appConfigurationConfigurator.NotNull());
 
         return this;
     }
@@ -134,17 +156,19 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     /// <returns>
     ///     The current instance of <see cref="AppBuilder" /> for method chaining.
     /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configureDelegate" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method allows customization of the application's host builder, enabling the addition
     ///     of services, configuration, and other host-level settings. It integrates with the
     ///     <see cref="Microsoft.Extensions.Hosting" /> framework.
+    ///     <para>Calls accumulate: every delegate is applied to the host builder, in the order it was added.</para>
     /// </remarks>
     [SuppressMessage("ReSharper",
                      "UnusedMember.Global",
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureHost(Action<IHostBuilder> configureDelegate)
     {
-        _hostBuilderConfigurator = configureDelegate;
+        _hostBuilderConfigurators.Add(configureDelegate.NotNull());
 
         return this;
     }
@@ -156,16 +180,23 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     An action to configure the <see cref="IServiceCollection" /> for dependency injection.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="servicesConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method allows customization of the application's services by providing a delegate
     ///     that operates on the <see cref="IServiceCollection" />. It is useful for registering
     ///     dependencies and configuring services required by the application.
+    ///     <para>
+    ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureServices" />.
+    ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
                      "UnusedMember.Global",
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureServices(Action<IServiceCollection> servicesConfigurator)
     {
+        servicesConfigurator.NotNull();
+
         return ConfigureServices((_, services) => servicesConfigurator(services));
     }
 
@@ -177,13 +208,18 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     ///     <see cref="HostBuilderContext" /> and <see cref="IServiceCollection" /> for configuring services.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> to allow method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="servicesConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
     ///     This method enables the addition or modification of services in the application's dependency injection container.
     ///     It supports advanced configuration scenarios by providing access to the hosting context.
+    ///     <para>
+    ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureServices" />.
+    ///     </para>
     /// </remarks>
     public AppBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> servicesConfigurator)
     {
-        _serviceCollectionConfigurator = servicesConfigurator;
+        _serviceCollectionConfigurators.Add(servicesConfigurator.NotNull());
 
         return this;
     }

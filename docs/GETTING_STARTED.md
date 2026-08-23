@@ -96,6 +96,11 @@ Three things happen here that you do not have to write yourself:
 })
 ```
 
+Both overloads are additive, and so are `ConfigureHost` and `ConfigureAppConfiguration`: call them
+as many times as you like and every delegate runs, in the order you added them. That is the same
+behaviour as the `IHostBuilder` methods underneath, so registration can be split across helper
+methods without one call quietly replacing another.
+
 ## 4. Your first command: settings and AppCommand
 
 A command is a pair: a **settings** class describing the command line, and a **command** class
@@ -295,6 +300,15 @@ table.AddRow(user.Id.ToString(), Markup.Escape(user.Name), Markup.Escape(user.Em
 
 `MarkupLineInterpolated` escapes its interpolation holes automatically — that is the difference
 between it and building a `Markup` from an interpolated string, which does not.
+
+**`IOutput.Write` dispatches on the type of the message.** A `FormattableString`, a `string` and an
+`IRenderable` are rendered directly; anything else is offered to the registered `IMessageWriter`s,
+and the writer whose message type matches receives the message itself along with the
+`IMessageFormatterProcessor`, so the writer decides how the value is formatted. Writing an
+`Exception` therefore renders the full exception through `ExceptionMessageWriter`, and writing a
+collection produces one line per item. Register your own with
+`services.AddMessageWriter<TMessage, TWriter>()` — and format the message inside `Write` rather than
+expecting to be handed formatted text.
 
 ## 7. Composing a multi-level CLI
 
