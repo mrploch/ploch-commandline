@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 using Spectre.Console;
@@ -276,6 +276,52 @@ public class AnsiConsoleMarkupOutputTests
 
         chained.Should().BeSameAs(output);
         console.Output.Should().Be("ab" + Environment.NewLine + "cd" + Environment.NewLine);
+    }
+
+    [Fact]
+    public void WriteError_should_print_bracketed_data_literally_instead_of_parsing_it_as_markup()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var write = () => output.WriteError("Value [archive] is invalid");
+
+        write.Should().NotThrow("the caller asked for red text, not for their message to be read as a style tag");
+        console.Output.Should().Be("Value [archive] is invalid");
+    }
+
+    [Fact]
+    public void WriteBold_should_print_a_bracketed_path_literally()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.WriteBold(@"C:\logs\[archive]\x.txt");
+
+        console.Output.Should().Be(@"C:\logs\[archive]\x.txt");
+    }
+
+    [Fact]
+    public void WriteErrorLine_should_print_bracketed_data_literally_and_terminate_the_line()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.WriteErrorLine("failed on [item]");
+
+        console.Output.Should().Be("failed on [item]" + Environment.NewLine);
+    }
+
+    [Fact]
+    public void WriteLine_should_dispatch_through_the_same_pipeline_as_Write()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.WriteLine(new UnhandledMessage());
+
+        console.Output.Should().Be(UnhandledMessage.Text + Environment.NewLine,
+                                   "WriteLine and Write must agree on how a message is rendered");
     }
 
     private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>

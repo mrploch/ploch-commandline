@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using Spectre.Console;
 
 namespace Ploch.CommandLine.Spectre.Output;
 
@@ -26,7 +27,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
         }
 
         var formattedArguments = message.GetArguments()
-                                        .Select(arg =>
+                                        .Select(object? (arg) =>
                                                 {
                                                     if (arg is null)
                                                     {
@@ -35,13 +36,24 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
 
                                                     var formatter = GetFormatter(arg);
 
-                                                    return formatter?.GetMessage(arg, this) ?? arg.ToString();
+                                                    // Without a formatter the original object is kept rather than stringified here, so that its
+                                                    // format specifier still applies when the string is composed: pre-rendering it would leave
+                                                    // "{0:N2}" applied to a string, which silently drops the specifier.
+                                                    return formatter is null ? arg : formatter.GetMessage(arg, this);
                                                 })
                                         .ToArray();
 
         var formattedMessage = FormattableStringFactory.Create(message.Format, formattedArguments);
 
-        return markupTag == null ? formattedMessage : FormattableStringFactory.Create($"[{markupTag}]{formattedMessage}[/]");
+        if (markupTag is null)
+        {
+            return formattedMessage;
+        }
+
+        // The tag wraps the format, not the rendered text, so the arguments remain arguments. Spectre escapes the
+        // interpolation holes of a FormattableString when it renders one, which stops a bracket in caller data from
+        // being parsed as a markup tag. Flattening the message into the format string first would forfeit that.
+        return FormattableStringFactory.Create($"[{markupTag}]{message.Format}[/]", formattedArguments);
     }
 
     /// <summary>
@@ -59,12 +71,17 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
         }
 
         var messageFormatter = GetFormatter(message);
-        if (messageFormatter == null)
+        var text = messageFormatter is null ? message.ToString() : messageFormatter.GetMessage(message, this);
+
+        if (markupTag is null)
         {
-            return markupTag == null ? message.ToString() : $"[{markupTag}]{message}[/]";
+            return text;
         }
 
-        return markupTag == null ? messageFormatter.GetMessage(message, this) : $"[{markupTag}]{messageFormatter.GetMessage(message, this)}[/]";
+        // The caller asked for a decoration, not for their data to be parsed as markup, so the content is escaped
+        // before the tag is applied. Text the caller passes to IOutput.Write directly is still treated as markup:
+        // that is the contract of a markup output, and only the tag added here is this library's doing.
+        return $"[{markupTag}]{Markup.Escape(text ?? string.Empty)}[/]";
     }
 
     /// <summary>
