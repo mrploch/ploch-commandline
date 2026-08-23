@@ -1,7 +1,30 @@
 ---
+# Paths excluded from every Codacy engine.
+#
+# These hold AI-assistant configuration, not project deliverables: `.agents/`, `.claude/` and
+# `.cursor/` are three near-identical mirrors of the same skills and rules, and the three root
+# files are the per-assistant entry points into them. Markdown-lint and agent-linter findings on
+# them measure the tooling, not the library, and they arrive in triplicate.
+#
+# Markdown that ships to consumers is deliberately NOT excluded and stays under review:
+# README.md, RELEASE_NOTES.md, docs/, change-log/, .github/ and every src/**/README.md.
+exclude_paths:
+  - ".agents/**"
+  - ".claude/**"
+  - ".cursor/**"
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - "GEMINI.md"
+
 engines:
-  sonarscharp:
+  # The engine key was previously misspelled "sonarscharp" and pointed at "src/**Tests/**", a path
+  # that matches nothing because test projects live under tests/. Both were silently no-ops, which
+  # is why analyser findings on test doubles reached the pull request at all.
+  #
+  # Test doubles implement IOutput and IMessageFormatter in full and necessarily leave most
+  # parameters unused, so S1172 fires on the signature rather than on a defect.
+  sonarcsharp:
     exclude_paths:
-      - "src/**Tests/**"
+      - "tests/**"
   markdownlint:
     line_length: 120
