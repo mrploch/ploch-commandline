@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 using Spectre.Console.Cli;
 
@@ -23,7 +23,7 @@ public sealed class CommandAppConfiguratorTests : IDisposable
         var commandApp = new Mock<ICommandApp>();
         Action<IConfigurator> configuration = _ => { };
 
-        new CommandAppConfigurator(commandApp.Object).Configure(configuration);
+        new CommandAppConfigurator(commandApp.Object, new CancellationTokenSource()).Configure(configuration);
 
         commandApp.Verify(app => app.Configure(configuration), Times.Once);
     }
@@ -32,10 +32,10 @@ public sealed class CommandAppConfiguratorTests : IDisposable
     public void Configure_should_return_an_executor_bound_to_the_same_command_app()
     {
         var commandApp = new Mock<ICommandApp>();
-        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>())).Returns(11);
+        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).Returns(11);
         EnvironmentSettings.Current = new EnvironmentSettings(isDebugging: false, pauseBeforeExit: false, new Dictionary<string, string?>());
 
-        var executor = new CommandAppConfigurator(commandApp.Object).Configure(_ => { });
+        var executor = new CommandAppConfigurator(commandApp.Object, new CancellationTokenSource()).Configure(_ => { });
 
         executor.Run("anything").Should().Be(11, "the executor must run the command app that was configured");
     }
@@ -43,7 +43,7 @@ public sealed class CommandAppConfiguratorTests : IDisposable
     [Fact]
     public void Configure_should_reject_a_null_configuration_action()
     {
-        var configurator = new CommandAppConfigurator(Mock.Of<ICommandApp>());
+        var configurator = new CommandAppConfigurator(Mock.Of<ICommandApp>(), new CancellationTokenSource());
 
         var act = () => configurator.Configure(null!);
 

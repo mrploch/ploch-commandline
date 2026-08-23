@@ -85,9 +85,21 @@ public class AppBuilder : IDisposable
 
             return new(new(args), cancellationTokenSource, cancelKeyPressHandler, ownsCancellationTokenSource: true);
 
+            // The handler also detaches itself, so the first interrupt is handled cooperatively and a second one
+            // takes the default path and terminates the process. Suppressing every interrupt would leave the
+            // application unkillable from the keyboard whenever the running command does not observe its token --
+            // a blocking call, or a third-party library in a tight loop. Detaching here and in Dispose is not a
+            // conflict: removing a handler that is already gone is a no-op, so whichever happens first wins and
+            // an application that simply runs to completion still releases the subscription.
+            //
+            // Unsubscribing by method group rather than through cancelKeyPressHandler is deliberate: the variable
+            // is not definitely assigned at the point this local function is converted to a delegate, so capturing
+            // it would not compile. Both conversions close over the same locals, so -= matches and removes it.
             void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
             {
-                AnsiConsole.WriteLine("Shutting down...");
+                Console.CancelKeyPress -= OnCancelKeyPress;
+                e.Cancel = true;
+                AnsiConsole.WriteLine("Shutting down... press Ctrl+C again to force an exit.");
 
                 // Ctrl+C is raised on the console's own thread and can land while Dispose runs on the main
                 // one. The source is then already gone, so there is nothing left to cancel - but the press
@@ -100,8 +112,6 @@ public class AppBuilder : IDisposable
                 {
                     AnsiConsole.WriteLine("Shutdown already in progress.");
                 }
-
-                e.Cancel = true;
             }
         }
         catch
@@ -173,7 +183,7 @@ public class AppBuilder : IDisposable
 
         app.Configure(configurator);
 
-        return new CommandAppExecutor(app);
+        return new CommandAppExecutor(app, _cancellationTokenSource);
     }
 
     /// <summary>

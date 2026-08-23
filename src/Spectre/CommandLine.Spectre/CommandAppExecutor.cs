@@ -7,7 +7,12 @@ namespace Ploch.CommandLine.Spectre;
 ///     Implements the <see cref="ICommandAppExecutor" /> interface to execute command-line applications.
 /// </summary>
 /// <param name="commandApp">The command application to execute.</param>
-public class CommandAppExecutor(ICommandApp commandApp) : ICommandAppExecutor
+/// <param name="cancellationTokenSource">
+///     The source whose token is handed to Spectre, and through it to every command. This is the source
+///     <see cref="AppBuilder.Create" /> cancels when the user interrupts the application, so a command that honours its
+///     <see cref="CancellationToken" /> stops when they do.
+/// </param>
+public class CommandAppExecutor(ICommandApp commandApp, CancellationTokenSource cancellationTokenSource) : ICommandAppExecutor
 {
     /// <summary>
     ///     Executes the command-line application synchronously with the specified arguments.
@@ -16,7 +21,7 @@ public class CommandAppExecutor(ICommandApp commandApp) : ICommandAppExecutor
     /// <returns>An integer representing the exit code of the application, where 0 typically indicates success.</returns>
     public int Run(params IEnumerable<string> args)
     {
-        var result = commandApp.Run(args);
+        var result = commandApp.Run(args, cancellationTokenSource.Token);
 
         PauseBeforeExitIfRequested();
 
@@ -33,7 +38,7 @@ public class CommandAppExecutor(ICommandApp commandApp) : ICommandAppExecutor
     /// </returns>
     public async Task<int> RunAsync(params IEnumerable<string> args)
     {
-        var result = await commandApp.RunAsync(args).ConfigureAwait(false);
+        var result = await commandApp.RunAsync(args, cancellationTokenSource.Token).ConfigureAwait(false);
 
         PauseBeforeExitIfRequested();
 
