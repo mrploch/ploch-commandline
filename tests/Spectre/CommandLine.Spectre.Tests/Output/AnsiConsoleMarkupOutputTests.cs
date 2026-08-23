@@ -324,6 +324,45 @@ public class AnsiConsoleMarkupOutputTests
                                    "WriteLine and Write must agree on how a message is rendered");
     }
 
+    [Fact]
+    public void WriteLine_should_not_append_a_terminator_after_a_writer_that_owns_line_termination()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutputWithEnumerableWriter(console);
+
+        output.WriteLine(new[] { "a", "b" });
+
+        console.Output
+               .Should()
+               .Be("a" + Environment.NewLine + "b" + Environment.NewLine,
+                   "EnumerableMessageWriter already writes a line per item, so a further terminator would leave a blank line");
+    }
+
+    [Fact]
+    public void WriteLine_should_write_nothing_for_an_empty_collection_handled_by_a_writer()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutputWithEnumerableWriter(console);
+
+        output.WriteLine(Array.Empty<string>());
+
+        console.Output.Should().BeEmpty("an empty collection has no lines, so it must not produce a stray blank one");
+    }
+
+    [Fact]
+    public void Write_should_still_delegate_a_collection_to_the_registered_writer()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutputWithEnumerableWriter(console);
+
+        output.Write(new[] { "a", "b" });
+
+        console.Output.Should().Be("a" + Environment.NewLine + "b" + Environment.NewLine);
+    }
+
+    private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
+        new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
+
     private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>
         new(console.Console, new MessageFormatterProcessor([new StringMessageFormatter()], []));
 

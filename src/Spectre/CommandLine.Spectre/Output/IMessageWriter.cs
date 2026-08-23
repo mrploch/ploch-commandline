@@ -1,4 +1,4 @@
-namespace Ploch.CommandLine.Spectre.Output;
+﻿namespace Ploch.CommandLine.Spectre.Output;
 
 /// <summary>
 ///     Defines a writer for outputting messages with optional formatting.
@@ -10,6 +10,11 @@ public interface IMessageWriter : IMessageHandler
     /// </summary>
     /// <param name="message">The message to write. Can be null.</param>
     /// <param name="formatterProcessor">Optional formatter processor to apply custom formatting to the message.</param>
+    /// <remarks>
+    ///     An implementation owns the line termination of what it renders. <see cref="IOutput.WriteLine{TMessage}" />
+    ///     adds no terminator of its own to a message a writer handled, so a writer whose output is line-oriented
+    ///     must emit its own trailing newline and one whose output is inline must not.
+    /// </remarks>
     void Write(object? message, IMessageFormatterProcessor? formatterProcessor = null);
 }
 
@@ -36,5 +41,10 @@ public interface IMessageWriter<in TMessage> : IMessageWriter where TMessage : a
     /// </summary>
     /// <param name="message">The message to write. Can be null.</param>
     /// <param name="formatterProcessor">Optional formatter processor to apply custom formatting to the message.</param>
+    /// <remarks>
+    ///     An implementation owns the line termination of what it renders. <see cref="IOutput.WriteLine{TMessage}" />
+    ///     adds no terminator of its own to a message a writer handled, so a writer whose output is line-oriented
+    ///     must emit its own trailing newline and one whose output is inline must not.
+    /// </remarks>
     void Write(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null);
 }

@@ -24,6 +24,13 @@
   from `ToString()` should pass a `FormattableString`, or use
   `MarkupLineInterpolated`.
 
+- `IMessageWriter` implementations now own the line termination of what they
+  render: `IOutput.WriteLine` adds no terminator of its own to a message a
+  writer handled. A writer whose output is line-oriented must emit its own
+  trailing newline; one whose output is inline must not. The built-in writers
+  already follow this, so `WriteLine(aCollection)` no longer leaves a blank
+  line after the last item and an empty collection no longer renders one (#31).
+
 Markup written by the caller is unaffected: `Write`, `WriteLine`,
 `MarkupInterpolated` and `MarkupLineInterpolated` still interpret markup in a
 string the caller supplies. Only the tag this library adds on the caller's

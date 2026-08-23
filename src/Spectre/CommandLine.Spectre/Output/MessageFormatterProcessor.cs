@@ -43,11 +43,9 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
                                                 })
                                         .ToArray();
 
-        var formattedMessage = FormattableStringFactory.Create(message.Format, formattedArguments);
-
         if (markupTag is null)
         {
-            return formattedMessage;
+            return FormattableStringFactory.Create(message.Format, formattedArguments);
         }
 
         // The tag wraps the format, not the rendered text, so the arguments remain arguments. Spectre escapes the

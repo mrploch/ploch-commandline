@@ -51,33 +51,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <returns>The current output instance for method chaining.</returns>
     public IOutput Write<TMessage>(TMessage message, IFormatProvider? format = null)
     {
-        if (message is FormattableString formattableString)
-        {
-            console.MarkupInterpolated(format ?? CultureInfo.CurrentCulture, formattableString);
-
-            return this;
-        }
-
-        if (message is string str)
-        {
-            console.Markup(str);
-
-            return this;
-        }
-
-        if (message is IRenderable renderable)
-        {
-            console.Write(renderable);
-
-            return this;
-        }
-
-        if (formatterProcessor.WriteMessage(message))
-        {
-            return this;
-        }
-
-        console.Write(message?.ToString() ?? string.Empty);
+        WriteCore(message, format);
 
         return this;
     }
@@ -166,11 +140,59 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     ///     renderable handling and the same registered <see cref="IMessageFormatter" /> and <see cref="IMessageWriter" />
     ///     instances it would through <see cref="Write{TMessage}" />. Rendering the message here instead would make a
     ///     custom registration take effect on one method and not the other.
+    ///     <para>
+    ///         When a registered <see cref="IMessageWriter" /> renders the message it also owns the line termination,
+    ///         and no further terminator is written. See <see cref="IMessageWriter.Write" /> for that contract.
+    ///     </para>
     /// </remarks>
     public IOutput WriteLine<TMessage>(TMessage message)
     {
-        Write(message);
+        // A registered writer owns the line termination of what it renders, so no terminator is added on top of one.
+        // EnumerableMessageWriter, for example, already emits a line per item; appending here would leave a blank
+        // line after the last one, and would turn an empty collection into a stray blank line.
+        return WriteCore(message) ? this : WriteLine();
+    }
 
-        return WriteLine();
+    /// <summary>
+    ///     Renders a message and reports whether a registered <see cref="IMessageWriter" /> was the one that rendered it.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the message to write.</typeparam>
+    /// <param name="message">The message to write.</param>
+    /// <param name="format">The format provider to use for formatting, or null to use the current culture.</param>
+    /// <returns>
+    ///     <see langword="true" /> if a registered <see cref="IMessageWriter" /> rendered the message and therefore owns
+    ///     its line termination; otherwise <see langword="false" />.
+    /// </returns>
+    private bool WriteCore<TMessage>(TMessage message, IFormatProvider? format = null)
+    {
+        if (message is FormattableString formattableString)
+        {
+            console.MarkupInterpolated(format ?? CultureInfo.CurrentCulture, formattableString);
+
+            return false;
+        }
+
+        if (message is string str)
+        {
+            console.Markup(str);
+
+            return false;
+        }
+
+        if (message is IRenderable renderable)
+        {
+            console.Write(renderable);
+
+            return false;
+        }
+
+        if (formatterProcessor.WriteMessage(message))
+        {
+            return true;
+        }
+
+        console.Write(message?.ToString() ?? string.Empty);
+
+        return false;
     }
 }
