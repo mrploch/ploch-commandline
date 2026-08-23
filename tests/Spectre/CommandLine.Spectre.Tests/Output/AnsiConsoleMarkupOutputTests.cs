@@ -397,7 +397,7 @@ public class AnsiConsoleMarkupOutputTests
     private sealed class InlineProbeWriter(IAnsiConsole console) : TypeMessageWriter<ProbeMessage>
     {
         public override void Write(ProbeMessage? message, IMessageFormatterProcessor? formatterProcessor = null) =>
-            console.Write(message?.Text ?? string.Empty);
+            console.Write(formatterProcessor?.GetMessageText(message?.Text) ?? message?.Text ?? string.Empty);
     }
 
     private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
@@ -421,10 +421,15 @@ public class AnsiConsoleMarkupOutputTests
         public override void Write(System.Collections.IEnumerable? message, IMessageFormatterProcessor? formatterProcessor = null) => WriteCount++;
     }
 
-    /// <summary>Records the markup tags the output adapter asks for, which is otherwise invisible once rendered.</summary>
+    /// <summary>
+    ///     Records the markup tags the output adapter asks for, and the messages it offers to the writer pipeline —
+    ///     both invisible once rendered.
+    /// </summary>
     private sealed class RecordingFormatterProcessor : IMessageFormatterProcessor
     {
         public List<string?> RequestedTags { get; } = [];
+
+        public List<object?> MessagesOfferedToWriters { get; } = [];
 
         public FormattableString GetMessageText(FormattableString? message, string? markupTag = null)
         {
@@ -440,7 +445,12 @@ public class AnsiConsoleMarkupOutputTests
             return message?.ToString();
         }
 
-        /// <summary>Handles nothing, so callers always fall back to their own rendering.</summary>
-        public IMessageWriter? WriteMessage<TMessage>(TMessage _) => null;
+        /// <summary>Records the offer and handles nothing, so callers always fall back to their own rendering.</summary>
+        public IMessageWriter? WriteMessage<TMessage>(TMessage message)
+        {
+            MessagesOfferedToWriters.Add(message);
+
+            return null;
+        }
     }
 }
