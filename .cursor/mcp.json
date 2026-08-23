@@ -2,7 +2,7 @@
   "mcpServers": {
     "contextstream": {
       "headers": {
-        "X-ContextStream-API-Key": "cbiq_tALPHr-a-gn2sOlSRo25ESHbCuy0Wk2QH8zFwO7Vjv8",
+        "X-ContextStream-API-Key": "${env:CONTEXTSTREAM_API_KEY}",
         "X-ContextStream-Auto-Hide-Integrations": "true",
         "X-ContextStream-Consolidated": "true",
         "X-ContextStream-Context-Pack-Enabled": "true",
