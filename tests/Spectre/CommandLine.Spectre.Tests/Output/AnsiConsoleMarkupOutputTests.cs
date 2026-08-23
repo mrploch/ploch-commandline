@@ -324,6 +324,85 @@ public class AnsiConsoleMarkupOutputTests
                                    "WriteLine and Write must agree on how a message is rendered");
     }
 
+    [Fact]
+    public void WriteLine_should_not_append_a_terminator_after_a_writer_that_owns_line_termination()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutputWithEnumerableWriter(console);
+
+        output.WriteLine(new[] { "a", "b" });
+
+        console.Output
+               .Should()
+               .Be("a" + Environment.NewLine + "b" + Environment.NewLine,
+                   "EnumerableMessageWriter already writes a line per item, so a further terminator would leave a blank line");
+    }
+
+    [Fact]
+    public void WriteLine_should_write_nothing_for_an_empty_collection_handled_by_a_writer()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutputWithEnumerableWriter(console);
+
+        output.WriteLine(Array.Empty<string>());
+
+        console.Output.Should().BeEmpty("an empty collection has no lines, so it must not produce a stray blank one");
+    }
+
+    [Fact]
+    public void Write_should_still_delegate_a_collection_to_the_registered_writer()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutputWithEnumerableWriter(console);
+
+        output.Write(new[] { "a", "b" });
+
+        console.Output.Should().Be("a" + Environment.NewLine + "b" + Environment.NewLine);
+    }
+
+    [Fact]
+    public void WriteLine_should_still_terminate_the_line_for_a_writer_that_renders_inline()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console,
+                                                 new MessageFormatterProcessor([], [new InlineProbeWriter(console.Console)]));
+
+        output.WriteLine(new ProbeMessage("inline-probe"));
+
+        console.Output
+               .Should()
+               .Be("inline-probe" + Environment.NewLine,
+                   "a writer that does not terminate its own output must not cost WriteLine its line break");
+    }
+
+    [Fact]
+    public void Write_should_not_add_a_terminator_for_a_writer_that_renders_inline()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console,
+                                                 new MessageFormatterProcessor([], [new InlineProbeWriter(console.Console)]));
+
+        output.Write(new ProbeMessage("inline-probe"));
+
+        console.Output.Should().Be("inline-probe");
+    }
+
+    /// <summary>A message type no built-in writer claims, so the probe writer below is the one that handles it.</summary>
+    private sealed class ProbeMessage(string text)
+    {
+        public string Text { get; } = text;
+    }
+
+    /// <summary>A writer that renders inline and therefore leaves the line terminator to <see cref="IOutput.WriteLine{TMessage}" />.</summary>
+    private sealed class InlineProbeWriter(IAnsiConsole console) : TypeMessageWriter<ProbeMessage>
+    {
+        public override void Write(ProbeMessage? message, IMessageFormatterProcessor? formatterProcessor = null) =>
+            console.Write(formatterProcessor?.GetMessageText(message?.Text) ?? message?.Text ?? string.Empty);
+    }
+
+    private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
+        new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
+
     private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>
         new(console.Console, new MessageFormatterProcessor([new StringMessageFormatter()], []));
 
@@ -342,10 +421,15 @@ public class AnsiConsoleMarkupOutputTests
         public override void Write(System.Collections.IEnumerable? message, IMessageFormatterProcessor? formatterProcessor = null) => WriteCount++;
     }
 
-    /// <summary>Records the markup tags the output adapter asks for, which is otherwise invisible once rendered.</summary>
+    /// <summary>
+    ///     Records the markup tags the output adapter asks for, and the messages it offers to the writer pipeline —
+    ///     both invisible once rendered.
+    /// </summary>
     private sealed class RecordingFormatterProcessor : IMessageFormatterProcessor
     {
         public List<string?> RequestedTags { get; } = [];
+
+        public List<object?> MessagesOfferedToWriters { get; } = [];
 
         public FormattableString GetMessageText(FormattableString? message, string? markupTag = null)
         {
@@ -361,6 +445,12 @@ public class AnsiConsoleMarkupOutputTests
             return message?.ToString();
         }
 
-        public bool WriteMessage<TMessage>(TMessage message) => false;
+        /// <summary>Records the offer and handles nothing, so callers always fall back to their own rendering.</summary>
+        public IMessageWriter? WriteMessage<TMessage>(TMessage message)
+        {
+            MessagesOfferedToWriters.Add(message);
+
+            return null;
+        }
     }
 }

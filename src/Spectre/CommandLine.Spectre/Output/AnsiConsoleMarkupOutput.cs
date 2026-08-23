@@ -51,33 +51,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <returns>The current output instance for method chaining.</returns>
     public IOutput Write<TMessage>(TMessage message, IFormatProvider? format = null)
     {
-        if (message is FormattableString formattableString)
-        {
-            console.MarkupInterpolated(format ?? CultureInfo.CurrentCulture, formattableString);
-
-            return this;
-        }
-
-        if (message is string str)
-        {
-            console.Markup(str);
-
-            return this;
-        }
-
-        if (message is IRenderable renderable)
-        {
-            console.Write(renderable);
-
-            return this;
-        }
-
-        if (formatterProcessor.WriteMessage(message))
-        {
-            return this;
-        }
-
-        console.Write(message?.ToString() ?? string.Empty);
+        WriteCore(message, format);
 
         return this;
     }
@@ -166,11 +140,68 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     ///     renderable handling and the same registered <see cref="IMessageFormatter" /> and <see cref="IMessageWriter" />
     ///     instances it would through <see cref="Write{TMessage}" />. Rendering the message here instead would make a
     ///     custom registration take effect on one method and not the other.
+    ///     <para>
+    ///         A terminator is still written unless the writer that rendered the message declares
+    ///         <see cref="IMessageWriter.WritesLineTerminator" />, so a writer that renders inline keeps this method's
+    ///         "followed by a line break" contract.
+    ///     </para>
     /// </remarks>
     public IOutput WriteLine<TMessage>(TMessage message)
     {
-        Write(message);
+        var writer = WriteCore(message);
+
+        // Only a writer that declares it already emitted a terminator suppresses this one. Suppressing it for every
+        // writer-handled message would silently drop the line break for a writer that renders inline, which is the
+        // one thing WriteLine promises. EnumerableMessageWriter declares true because it writes a line per item.
+        if (writer is { WritesLineTerminator: true })
+        {
+            return this;
+        }
 
         return WriteLine();
+    }
+
+    /// <summary>
+    ///     Renders a message and reports whether a registered <see cref="IMessageWriter" /> was the one that rendered it.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the message to write.</typeparam>
+    /// <param name="message">The message to write.</param>
+    /// <param name="format">The format provider to use for formatting, or null to use the current culture.</param>
+    /// <returns>
+    ///     The registered <see cref="IMessageWriter" /> that rendered the message, or <see langword="null" /> when the
+    ///     message was rendered directly by this class.
+    /// </returns>
+    private IMessageWriter? WriteCore<TMessage>(TMessage message, IFormatProvider? format = null)
+    {
+        if (message is FormattableString formattableString)
+        {
+            console.MarkupInterpolated(format ?? CultureInfo.CurrentCulture, formattableString);
+
+            return null;
+        }
+
+        if (message is string str)
+        {
+            console.Markup(str);
+
+            return null;
+        }
+
+        if (message is IRenderable renderable)
+        {
+            console.Write(renderable);
+
+            return null;
+        }
+
+        var writer = formatterProcessor.WriteMessage(message);
+        if (writer is not null)
+        {
+            return writer;
+        }
+
+        console.Write(message?.ToString() ?? string.Empty);
+
+        return null;
     }
 }
