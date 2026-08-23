@@ -212,10 +212,9 @@ jobs:
         env:
           NUGET_VERSION: ${{ steps.version.outputs.nuget_version }}
         run: |
-          NOTES=""
-          if [ -d "change-log" ] && [ "$(ls -A change-log/*.md 2>/dev/null)" ]; then
-            NOTES=$(cat change-log/*.md)
-          fi
+          # README.md documents the change-log folder itself and is deliberately excluded:
+          # a plain *.md glob would concatenate its worked examples into every release's notes.
+          NOTES=$(find change-log -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print0 2>/dev/null                   | sort -z | xargs -0 -r cat)
           if [ -z "$NOTES" ]; then
             NOTES="Release ${NUGET_VERSION}"
           fi
@@ -266,9 +265,12 @@ jobs:
       - name: Archive consumed change-log entries
         if: success()
         run: |
-          if [ -d "change-log" ] && [ "$(ls -A change-log/*.md 2>/dev/null)" ]; then
+          # Same exclusion as the notes step: archiving README.md would delete the folder's
+          # own documentation on the first release.
+          ENTRIES=$(find change-log -maxdepth 1 -type f -name '*.md' ! -name 'README.md' 2>/dev/null)
+          if [ -n "$ENTRIES" ]; then
             mkdir -p change-log/archive
-            mv change-log/*.md change-log/archive/ 2>/dev/null || true
+            find change-log -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print0               | xargs -0 -r -I{} mv {} change-log/archive/
           fi
 
       # Idempotent commit: only commit if there are staged changes
