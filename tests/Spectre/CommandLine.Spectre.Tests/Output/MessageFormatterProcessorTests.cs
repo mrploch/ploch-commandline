@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Ploch.CommandLine.Spectre.Output;
 
 namespace Ploch.CommandLine.Spectre.Tests.Output;
@@ -179,7 +179,44 @@ public class MessageFormatterProcessorTests
         var result = processor.GetMessageText(message);
 
         result.Format.Should().Be("{0}-{1}", "the result stays a composite format string rather than being flattened early");
-        result.GetArguments().Should().Equal("1", "2");
+        result.GetArguments().Should().Equal(1, 2);
+    }
+
+    [Fact]
+    public void GetMessageText_should_preserve_the_format_specifier_of_an_unformatted_argument()
+    {
+        var processor = new MessageFormatterProcessor([], []);
+
+        FormattableString message = $"total: {1234.5:N2}";
+
+        var result = processor.GetMessageText(message);
+
+        result.ToString(CultureInfo.InvariantCulture)
+              .Should()
+              .Be("total: 1,234.50", "stringifying the argument first would leave N2 applied to a string, which silently drops it");
+    }
+
+    [Fact]
+    public void GetMessageText_should_keep_the_arguments_of_a_markup_tagged_interpolated_message()
+    {
+        var processor = new MessageFormatterProcessor([], []);
+
+        FormattableString message = $"path: {"[archive]"}";
+
+        var result = processor.GetMessageText(message, "red");
+
+        result.Format.Should().Be("[red]path: {0}[/]", "only the tag is added; the message keeps its holes");
+        result.GetArguments().Should().Equal("[archive]");
+    }
+
+    [Fact]
+    public void GetMessageText_should_escape_a_tagged_message_that_contains_markup_characters()
+    {
+        var processor = new MessageFormatterProcessor([], []);
+
+        var result = processor.GetMessageText("Value [archive] is invalid", "red");
+
+        result.Should().Be("[red]Value [[archive]] is invalid[/]", "the caller asked for a colour, not for their data to be parsed as markup");
     }
 
     /// <summary>A formatter that visibly transforms its input, so a test can prove the formatter was actually applied.</summary>

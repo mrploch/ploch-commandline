@@ -161,24 +161,16 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     Dispatch is delegated to <see cref="Write{TMessage}" /> so that a message reaching this method sees the same
+    ///     renderable handling and the same registered <see cref="IMessageFormatter" /> and <see cref="IMessageWriter" />
+    ///     instances it would through <see cref="Write{TMessage}" />. Rendering the message here instead would make a
+    ///     custom registration take effect on one method and not the other.
+    /// </remarks>
     public IOutput WriteLine<TMessage>(TMessage message)
     {
-        if (message is FormattableString formattableString)
-        {
-            console.MarkupLineInterpolated(formattableString);
+        Write(message);
 
-            return this;
-        }
-
-        if (message is string str)
-        {
-            console.MarkupLine(str);
-
-            return this;
-        }
-
-        console.MarkupLine(message?.ToString() ?? string.Empty);
-
-        return this;
+        return WriteLine();
     }
 }
