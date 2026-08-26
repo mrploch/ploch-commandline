@@ -1,4 +1,19 @@
 ---
+# Per-tool rule configuration lives in the tool's own configuration file, not only in the
+# Codacy dashboard, so a decision to switch a rule off is reviewable in the diff that makes it:
+#
+#   SonarLint.xml   SonarC#  - the ACTIVE rule set (an allow-list, not an exclusion list)
+#   .checkov.yaml   Checkov  - skip-check entries
+#
+# Activation is a two-step process and the second step is easy to miss. Codacy only detects a
+# tool configuration file once it is present on the DEFAULT branch, so a file added on a feature
+# branch is inert until that branch merges. After it lands on `main`, open the repository's Code
+# patterns page, select the tool, and turn on "use configuration file"; from then on the file
+# governs the rules and the dashboard no longer does.
+#
+# Until that has happened for a given tool, the equivalent setting has to be made on the Code
+# patterns page as well, otherwise a rule the file switches off still runs. Keep the two in step
+# and treat the file as the record of intent.
 # Paths excluded from every Codacy engine.
 #
 # These hold AI-assistant configuration, not project deliverables: `.agents/`, `.claude/` and
