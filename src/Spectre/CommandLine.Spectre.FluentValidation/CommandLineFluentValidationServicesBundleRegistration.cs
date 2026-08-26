@@ -20,8 +20,10 @@ public static class CommandLineFluentValidationServicesBundleRegistration
     public static IServiceCollection AddCommandLineSettingsFluentValidation(this IServiceCollection services,
                                                                             Action<AssemblyListBuilder> validatorAssembliesBuilderAction)
     {
-        services.AddSingleton(typeof(ICommandSettingsValidator<>), typeof(FluentCommandSettingsValidator<>))
-                .AddServicesBundle(CommandLineFluentValidationServicesBundle.Create(validatorAssembliesBuilderAction));
+        // The bundle already registers the ICommandSettingsValidator<> mapping. Registering it here too appended a
+        // second, identical descriptor on every call, so IEnumerable<ICommandSettingsValidator<T>> resolved
+        // duplicates. AddSingleton appends unconditionally; it does not de-duplicate.
+        services.AddServicesBundle(CommandLineFluentValidationServicesBundle.Create(validatorAssembliesBuilderAction));
 
         return services;
     }

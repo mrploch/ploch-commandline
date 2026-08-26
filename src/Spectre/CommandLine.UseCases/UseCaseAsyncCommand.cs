@@ -33,6 +33,19 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
     protected TUseCase UseCase => useCase;
 
     /// <summary>
+    ///     Gets a value indicating whether every public settings value is echoed to the output before the use case
+    ///     runs. Defaults to <see langword="false" />.
+    /// </summary>
+    /// <remarks>
+    ///     This is opt-in because the echo is indiscriminate: it prints every public property of the settings type,
+    ///     and a derived command is free to add a password, an API token or a connection string as an option. Since
+    ///     this is a base class in a library, a consumer would not have chosen to disclose those values, and console
+    ///     output is routinely captured by CI logs. Override this to return <see langword="true" /> on a command
+    ///     whose settings are known to carry nothing sensitive.
+    /// </remarks>
+    protected virtual bool EchoSettings => false;
+
+    /// <summary>
     ///     Builds the use case request from the validated command settings.
     /// </summary>
     /// <param name="commandSettings">The settings supplied on the command line.</param>
@@ -52,11 +65,15 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
     protected override async Task<ExitCode> DoExecuteAsync(CommandContext context, TCommandSettings settings, CancellationToken cancellationToken)
     {
         Output.MarkupLineInterpolated($"Starting use case [underline]{UseCase.UseCaseName}[/]");
-        Output.WriteLine("[dim]Settings:[/]");
-        var propertyValues = settings.GetPropertyValues();
-        foreach (var (propertyName, propertyValue) in propertyValues)
+
+        if (EchoSettings)
         {
-            Output.MarkupLineInterpolated($"[dim]{propertyName}[/]: {propertyValue}");
+            Output.WriteLine("[dim]Settings:[/]");
+            var propertyValues = settings.GetPropertyValues();
+            foreach (var (propertyName, propertyValue) in propertyValues)
+            {
+                Output.MarkupLineInterpolated($"[dim]{propertyName}[/]: {propertyValue}");
+            }
         }
 
         var request = CreateRequest(settings);

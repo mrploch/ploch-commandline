@@ -46,9 +46,33 @@ public sealed class EnvironmentSettingsTests : IDisposable
         var loader = new CountingLoader(new(false, false, new Dictionary<string, string?>()), delay: TimeSpan.FromMilliseconds(20));
         EnvironmentSettings.Initialize(loader);
 
-        Parallel.For(0, 16, _ => EnvironmentSettings.Current.Should().NotBeNull());
+        var observed = new EnvironmentSettings[16];
+        Parallel.For(0, 16, index => observed[index] = EnvironmentSettings.Current);
 
         loader.LoadCount.Should().Be(1, "initialisation is synchronised, so a race must not load twice");
+        observed.Should().OnlyContain(settings => settings != null);
+        observed.Should()
+                .OnlyContain(settings => ReferenceEquals(settings, observed[0]),
+                             "the fast path reads the field outside the lock, so every racing caller must still observe the one published instance");
+    }
+
+    /// <summary>
+    ///     Reset clears the cache, so the next concurrent burst must reload - once. This pins the other half of the
+    ///     double-checked lock: that clearing the field republishes correctly rather than leaving a stale read.
+    /// </summary>
+    [Fact]
+    public void Current_should_reload_exactly_once_after_a_reset_under_concurrent_access()
+    {
+        EnvironmentSettings.Reset();
+        var loader = new CountingLoader(new(false, false, new Dictionary<string, string?>()), delay: TimeSpan.FromMilliseconds(20));
+        EnvironmentSettings.Initialize(loader);
+        _ = EnvironmentSettings.Current;
+
+        EnvironmentSettings.Reset();
+        EnvironmentSettings.Initialize(loader);
+        Parallel.For(0, 16, _ => EnvironmentSettings.Current.Should().NotBeNull());
+
+        loader.LoadCount.Should().Be(2, "the first burst loaded once; the burst after the reset must load exactly once more");
     }
 
     [Fact]

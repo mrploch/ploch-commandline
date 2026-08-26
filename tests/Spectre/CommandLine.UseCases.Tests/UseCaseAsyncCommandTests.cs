@@ -88,7 +88,7 @@ public class UseCaseAsyncCommandTests
 
     [Theory]
     [AutoMockData]
-    public async Task ExecuteAsync_should_echo_the_settings_and_name_the_use_case_before_running_it(CommandContext context)
+    public async Task ExecuteAsync_should_name_the_use_case_before_running_it(CommandContext context)
     {
         var output = new RecordingOutput();
         var command = CreateCommand(output, _ => Result<string>.Success("done"));
@@ -96,7 +96,6 @@ public class UseCaseAsyncCommandTests
         await command.ExecuteAsync(context, new StubSettings { Target = "widget-42" }, CancellationToken.None);
 
         output.Written.Should().ContainMatch($"*Starting use case*{nameof(StubUseCase)}*", "the progress line names the use case being run");
-        output.Written.Should().ContainMatch("*Target*widget-42*", "the settings the command received are echoed back");
     }
 
     [Theory]
@@ -108,6 +107,37 @@ public class UseCaseAsyncCommandTests
         var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
 
         result.Should().Be((int)ExitCode.InvalidInput, "ProcessSuccessResponse is a virtual extension point");
+    }
+
+    /// <summary>
+    ///     The echo prints every public settings property indiscriminately, and a derived command is free to add a
+    ///     password or API token as an option. Since this is a library base class the consumer never opted in, so the
+    ///     default has to be silence.
+    /// </summary>
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_not_echo_the_settings_by_default(CommandContext context)
+    {
+        var output = new RecordingOutput();
+        var command = CreateCommand(output, _ => Result<string>.Success("done"));
+
+        await command.ExecuteAsync(context, new StubSettings { Target = "s3cr3t-token" }, CancellationToken.None);
+
+        output.Written.Should().NotContainMatch("*s3cr3t-token*", "settings values must not be disclosed unless the command opts in");
+        output.Written.Should().NotContainMatch("*Settings:*");
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_echo_the_settings_when_the_command_opts_in(CommandContext context)
+    {
+        var output = new RecordingOutput();
+        var command = new EchoingCommand(output, new StubUseCase(_ => Result<string>.Success("done")));
+
+        await command.ExecuteAsync(context, new StubSettings { Target = "widget-42" }, CancellationToken.None);
+
+        output.Written.Should().ContainMatch("*Settings:*");
+        output.Written.Should().ContainMatch("*Target*widget-42*", "a command that opts in still gets the diagnostic");
     }
 
     private static StubUseCaseCommand CreateCommand(RecordingOutput output, Func<string, Result<string>> execute) =>
@@ -140,6 +170,12 @@ public class UseCaseAsyncCommandTests
                                                                          new ThrowingExceptionHandler())
     {
         protected override string CreateRequest(StubSettings commandSettings) => $"request-for-{commandSettings.Target}";
+    }
+
+    /// <summary>A command that opts the settings echo back on, the way a consumer with non-sensitive settings would.</summary>
+    private sealed class EchoingCommand(RecordingOutput output, StubUseCase useCase) : StubUseCaseCommand(output, useCase)
+    {
+        protected override bool EchoSettings => true;
     }
 
     private sealed class CustomExitCodeCommand(RecordingOutput output, StubUseCase useCase) : StubUseCaseCommand(output, useCase)

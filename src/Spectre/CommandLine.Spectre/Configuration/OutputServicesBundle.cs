@@ -38,8 +38,14 @@ public class OutputServicesBundle : ServicesBundle
     /// <summary>
     ///     Registers message formatters for different types of messages in the dependency injection container.
     /// </summary>
-    private void AddMessageFormatters() => Services.AddMessageFormatter<Exception, ExceptionMessageFormatter>()
-                                                   .AddMessageFormatter<Win32Exception, Win32ExceptionMessageFormatter>()
+    /// <remarks>
+    ///     Listed most-specific-first for readability. The processor selects the most derived matching formatter
+    ///     rather than the first registered, so this order is documentation rather than behaviour: it decides only
+    ///     ties between formatters whose types are unrelated, such as IEnumerable and IConvertible for a type
+    ///     implementing both.
+    /// </remarks>
+    private void AddMessageFormatters() => Services.AddMessageFormatter<Win32Exception, Win32ExceptionMessageFormatter>()
+                                                   .AddMessageFormatter<Exception, ExceptionMessageFormatter>()
                                                    .AddMessageFormatter<string, StringMessageFormatter>()
                                                    .AddMessageFormatter<IEnumerable, EnumerableMessageFormatter>()
                                                    .AddMessageFormatter<IConvertible, ConvertibleMessageFormatter>();

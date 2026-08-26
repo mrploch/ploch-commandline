@@ -30,6 +30,33 @@ public sealed class ConsoleAppInfoBannerTests : IDisposable
         RenderedLines(console).Should().HaveCountGreaterThan(3, "the FigletText banner spans several lines above the name line");
     }
 
+    /// <summary>
+    ///     The name and version are consumer-supplied and were interpolated straight into a markup string, so an
+    ///     application called "Widget [Dev]" threw while rendering its own start-up banner. Markup is honoured where
+    ///     the caller wrote it and escaped where this library adds the tag, so the brackets must survive as text.
+    /// </summary>
+    [Fact]
+    public void PrintAppInfo_should_not_parse_the_application_name_as_markup()
+    {
+        using var console = UseRecordingConsole();
+
+        var act = () => new ConsoleAppInfo { Name = "Widget [Dev]" }.PrintAppInfo();
+
+        act.Should().NotThrow("consumer metadata must not be parsed as a style tag");
+        RenderedLines(console).Should().Contain("Widget [Dev]", "the brackets belong to the name, not to the markup");
+    }
+
+    [Fact]
+    public void PrintAppInfo_should_not_parse_the_description_as_markup()
+    {
+        using var console = UseRecordingConsole();
+
+        var act = () => new ConsoleAppInfo { Name = "Widget", Description = "Handles [square] brackets" }.PrintAppInfo();
+
+        act.Should().NotThrow();
+        RenderedLines(console).Should().Contain("Handles [square] brackets");
+    }
+
     [Fact]
     public void PrintAppInfo_should_append_the_version_to_the_name_line()
     {

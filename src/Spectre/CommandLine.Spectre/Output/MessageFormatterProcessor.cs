@@ -112,15 +112,51 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     }
 
     /// <summary>
+    ///     Selects the handler whose <see cref="IMessageHandler.MessageType" /> is the most derived among those that
+    ///     accept the message.
+    /// </summary>
+    /// <remarks>
+    ///     Selection used to be first-registered-wins, which made registration order load-bearing and the pipeline
+    ///     silently unextensible: the built-in bundle registers a handler for <see cref="Exception" />, and because
+    ///     bundles register before consumer code, a consumer handler for their own exception type could never be
+    ///     reached. Choosing the most derived match makes the outcome independent of registration order. Handlers
+    ///     whose types are unrelated - IEnumerable and IConvertible, for a type implementing both - are not
+    ///     comparable, so registration order still breaks that tie, as it does for an exact duplicate.
+    /// </remarks>
+    /// <typeparam name="THandler">The handler type being selected.</typeparam>
+    /// <param name="handlers">The registered handlers, in registration order.</param>
+    /// <param name="message">The message to match.</param>
+    /// <returns>The most specific handler that accepts the message, or <see langword="null" /> if none does.</returns>
+    private static THandler? SelectMostSpecific<THandler>(IEnumerable<THandler> handlers, object? message)
+        where THandler : class, IMessageHandler
+    {
+        THandler? best = null;
+
+        foreach (var handler in handlers)
+        {
+            if (!handler.CanHandle(message))
+            {
+                continue;
+            }
+
+            // A candidate whose type the incumbent can be assigned from is at least as derived. Equal types are
+            // excluded so an exact duplicate registration keeps the first one rather than the last.
+            if (best is null || (best.MessageType != handler.MessageType && best.MessageType.IsAssignableFrom(handler.MessageType)))
+            {
+                best = handler;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
     ///     Gets the appropriate formatter for the specified message.
     /// </summary>
     /// <typeparam name="TMessage">The type of the message.</typeparam>
     /// <param name="message">The message to get a formatter for.</param>
     /// <returns>An <see cref="IMessageFormatter" /> that can handle the message, or null if none is found.</returns>
-    private IMessageFormatter? GetFormatter<TMessage>(TMessage? message)
-    {
-        return formatters.FirstOrDefault(messageFormatter => messageFormatter.CanHandle(message));
-    }
+    private IMessageFormatter? GetFormatter<TMessage>(TMessage? message) => SelectMostSpecific(formatters, message);
 
     /// <summary>
     ///     Gets the appropriate writer for the specified message.
@@ -128,8 +164,5 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// <typeparam name="TMessage">The type of the message.</typeparam>
     /// <param name="message">The message to get a writer for.</param>
     /// <returns>An <see cref="IMessageWriter" /> that can handle the message, or null if none is found.</returns>
-    private IMessageWriter? GetWriter<TMessage>(TMessage? message)
-    {
-        return writers.FirstOrDefault(messageWriter => messageWriter.CanHandle(message));
-    }
+    private IMessageWriter? GetWriter<TMessage>(TMessage? message) => SelectMostSpecific(writers, message);
 }

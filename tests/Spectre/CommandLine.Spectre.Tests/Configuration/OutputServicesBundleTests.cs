@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.ComponentModel;
+using Microsoft.Extensions.DependencyInjection;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.CommandLine.Spectre.Tests.Testing;
@@ -118,6 +119,35 @@ public sealed class OutputServicesBundleTests : IDisposable
         formatterDescriptors.Select(descriptor => descriptor.ImplementationType)
                             .Should()
                             .OnlyHaveUniqueItems("a formatter registered twice would be instantiated twice");
+    }
+
+    /// <summary>
+    ///     The processor picks the first formatter whose <c>CanHandle</c> accepts the message, and <c>CanHandle</c> is
+    ///     an <c>IsInstanceOfType</c> check. Registering the general exception formatter ahead of the Win32 one made
+    ///     the Win32 formatter unreachable, so its native error code never appeared.
+    /// </summary>
+    [Fact]
+    public void GetMessageText_should_prefer_the_Win32_formatter_over_the_general_exception_formatter()
+    {
+        using var provider = BuildProvider();
+        var processor = provider.GetRequiredService<IMessageFormatterProcessor>();
+
+        var text = processor.GetMessageText(new Win32Exception(5));
+
+        text.Should().Contain("Error Code", "the more specific Win32 formatter reports the native error code");
+        text.Should().Contain("5");
+    }
+
+    [Fact]
+    public void GetMessageText_should_still_use_the_general_formatter_for_a_plain_exception()
+    {
+        using var provider = BuildProvider();
+        var processor = provider.GetRequiredService<IMessageFormatterProcessor>();
+
+        var text = processor.GetMessageText(new InvalidOperationException("boom"));
+
+        text.Should().Contain("boom");
+        text.Should().NotContain("Error Code", "a plain exception has no native error code to report");
     }
 
     private static ServiceProvider BuildProvider()

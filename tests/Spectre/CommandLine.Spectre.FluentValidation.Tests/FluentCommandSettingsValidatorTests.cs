@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
 using Objectivity.AutoFixture.XUnit2.AutoMoq.Attributes;
 using Spectre.Console.Cli;
 
@@ -15,7 +16,7 @@ public class FluentCommandSettingsValidatorTests
     [AutoMockData]
     public void Validate_should_fall_back_to_the_built_in_settings_validation_when_no_fluent_validator_is_supplied(CommandContext context)
     {
-        var validator = new FluentCommandSettingsValidator<SelfValidatingSettings>();
+        var validator = CreateValidator<SelfValidatingSettings>();
 
         var result = validator.Validate(context, new SelfValidatingSettings { Message = "rejected by the settings themselves" });
 
@@ -27,7 +28,7 @@ public class FluentCommandSettingsValidatorTests
     [AutoMockData]
     public void Validate_should_report_success_when_the_fluent_validator_accepts_the_settings(CommandContext context)
     {
-        var validator = new FluentCommandSettingsValidator<TestCommandSettings>(new AcceptingValidator());
+        var validator = CreateValidator<TestCommandSettings>(new AcceptingValidator());
 
         validator.Validate(context, new TestCommandSettings()).Successful.Should().BeTrue();
     }
@@ -36,12 +37,30 @@ public class FluentCommandSettingsValidatorTests
     [AutoMockData]
     public void Validate_should_report_the_fluent_validator_failures(CommandContext context)
     {
-        var validator = new FluentCommandSettingsValidator<TestCommandSettings>(new RejectingValidator());
+        var validator = CreateValidator<TestCommandSettings>(new RejectingValidator());
 
         var result = validator.Validate(context, new TestCommandSettings());
 
         result.Successful.Should().BeFalse();
         result.Message.Should().Contain("Not Empty String Property");
+    }
+
+    /// <summary>
+    ///     Builds the validator the way DI does. It resolves IValidator per validation from a scope rather than
+    ///     taking one by constructor, so the test has to supply a container rather than an instance.
+    /// </summary>
+    private static FluentCommandSettingsValidator<TSettings> CreateValidator<TSettings>(IValidator<TSettings>? fluentValidator = null)
+        where TSettings : CommandSettings
+    {
+        var services = new ServiceCollection();
+        if (fluentValidator is not null)
+        {
+            services.AddScoped(_ => fluentValidator);
+        }
+
+        var provider = services.BuildServiceProvider();
+
+        return new(provider.GetRequiredService<IServiceScopeFactory>());
     }
 
     private sealed class SelfValidatingSettings : CommandSettings

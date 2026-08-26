@@ -200,7 +200,15 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
             return writer;
         }
 
-        console.Write(message?.ToString() ?? string.Empty);
+        // A caller that supplied a provider expects it to be honoured. Parameterless ToString() ignores it and
+        // formats with the current culture, so Write(1234.5, germanCulture) rendered "1234.5" instead of "1234,5".
+        // The IFormattable result is coalesced for the same reason the ToString() one is: a custom implementation
+        // may return null, which previously rendered as empty output rather than failing inside console.Write.
+        var text = message is IFormattable formattable
+                       ? formattable.ToString(format: null, format ?? CultureInfo.CurrentCulture) ?? string.Empty
+                       : message?.ToString() ?? string.Empty;
+
+        console.Write(text);
 
         return null;
     }

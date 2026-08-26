@@ -47,23 +47,16 @@ public static class SerilogLoggingConfigurator
     ///     additional service registrations.
     /// </returns>
     /// <remarks>
-    ///     This method performs two main operations:
-    ///     <list type="number">
-    ///         <item>
-    ///             <description>Registers a <see cref="SerilogConfigurationBundle" /> with the service collection</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>Configures Serilog directly using the Microsoft.Extensions.Logging integration</description>
-    ///         </item>
-    ///     </list>
     ///     <para>
-    ///         The configuration includes multiple sinks (file, console, Spectre.Console), enrichers
-    ///         (thread information, context), and formatting options optimized for command-line applications.
-    ///         File logging includes automatic rotation and separate error logging for better log management.
+    ///         This method registers a <see cref="SerilogConfigurationBundle" /> with the service collection, and
+    ///         nothing else. It previously also configured Serilog a second time through the
+    ///         Microsoft.Extensions.Logging integration, which silently dropped the output template; that call was
+    ///         removed so the bundle is the single place the logger is configured.
     ///     </para>
     ///     <para>
-    ///         Note: This method suppresses CS8604 warnings related to potential null reference arguments
-    ///         because the <see cref="SerilogConfigurationBundle" /> constructor can handle null configuration values.
+    ///         The bundle configures multiple sinks (file, console, Spectre.Console), enrichers (thread information,
+    ///         context), and formatting options suited to command-line applications. File logging includes automatic
+    ///         rotation and separate error logging.
     ///     </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">

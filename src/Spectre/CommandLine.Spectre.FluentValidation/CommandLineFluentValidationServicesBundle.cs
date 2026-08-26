@@ -35,6 +35,11 @@ public class CommandLineFluentValidationServicesBundle(params IEnumerable<Assemb
     /// </summary>
     public override void DoConfigure()
     {
-        Services.AddValidatorsFromAssemblies(validatorAssemblies).AddSingleton(typeof(ICommandSettingsValidator<>), typeof(FluentCommandSettingsValidator<>));
+        // Validators keep FluentValidation's default scoped lifetime, so a consumer validator is free to depend on a
+        // DbContext or any other scoped service. FluentCommandSettingsValidator<> is a singleton - Spectre resolves
+        // commands from the root provider - but it resolves the validator inside a scope per validation rather than
+        // injecting it, so the singleton never captures a scoped dependency.
+        Services.AddValidatorsFromAssemblies(validatorAssemblies)
+                .AddSingleton(typeof(ICommandSettingsValidator<>), typeof(FluentCommandSettingsValidator<>));
     }
 }

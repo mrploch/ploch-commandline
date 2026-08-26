@@ -26,11 +26,14 @@ public static class ConsoleAppInfoExtensions
             nameInfoString += $" {appInfo.Version}";
         }
 
-        AnsiConsole.MarkupLine($"[{appInfo.AppNameInfoColor}]{nameInfoString}[/]");
+        // Escaped, not interpolated as markup: the name and version are consumer-supplied, so an application
+        // called "Tool [Dev]" would otherwise be parsed as a style tag and throw while rendering its own banner.
+        // Markup is honoured where the caller wrote it; escaped where this library adds the tag.
+        AnsiConsole.MarkupLine($"[{appInfo.AppNameInfoColor}]{Markup.Escape(nameInfoString ?? string.Empty)}[/]");
 
         if (!appInfo.Description!.IsNullOrEmpty())
         {
-            AnsiConsole.MarkupLine($"[{appInfo.AppDescriptionColor} italic]{appInfo.Description}[/]");
+            AnsiConsole.MarkupLine($"[{appInfo.AppDescriptionColor} italic]{Markup.Escape(appInfo.Description!)}[/]");
         }
 
         AnsiConsole.WriteLine();

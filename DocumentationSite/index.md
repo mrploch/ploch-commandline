@@ -28,9 +28,11 @@ stable releases go to [NuGet.org](https://www.nuget.org/profiles/mrploch).
 Define a settings class and a command:
 
 ```csharp
-using Ploch.CommandLine.Spectre.Commands;
-using Spectre.Console.Cli;
 using System.ComponentModel;
+using Ploch.CommandLine.Spectre;
+using Ploch.CommandLine.Spectre.Commands;
+using Ploch.CommandLine.Spectre.Output;
+using Spectre.Console.Cli;
 
 public class GreetSettings : CommandSettings
 {
@@ -44,11 +46,10 @@ public class GreetSettings : CommandSettings
 }
 
 public class GreetCommand(
-    CommandArgumentsRootProcessor settingsProcessor,
     ICommandSettingsValidator<GreetSettings> validator,
     IExceptionHandler exceptionHandler,
     IOutput output)
-    : AppCommand<GreetSettings>(settingsProcessor, validator, exceptionHandler, output)
+    : AppCommand<GreetSettings>(validator, exceptionHandler)
 {
     protected override ExitCode DoExecute(
         CommandContext context, GreetSettings settings, CancellationToken cancellationToken)
@@ -60,6 +61,10 @@ public class GreetCommand(
     }
 }
 ```
+
+`AppCommand<TSettings>` takes only the validator and the exception handler. Anything else
+the command needs — an `IOutput`, a use case, your own services — is an ordinary constructor
+parameter resolved from the container, as `IOutput` is here.
 
 Wire it up in `Program.cs`:
 
@@ -111,11 +116,17 @@ which exposes `Run` and `RunAsync`.
 | `AsyncAppCommand<TSettings>` | Asynchronous commands. Implement `DoExecuteAsync`. |
 | `UseCaseAsyncCommand<...>` | Commands that delegate to an `IResultUseCase`. |
 
-Each base class validates the settings, runs the settings-processing pipeline,
-invokes your implementation, and routes any exception to the configured
-`IExceptionHandler`. Cancellation is handled separately from failure: an
-`OperationCanceledException` returns `ExitCode.Cancelled` and never reaches the
+Each base class validates the settings, invokes your implementation, and routes any
+exception to the configured `IExceptionHandler`. Cancellation is handled separately from
+failure: an `OperationCanceledException` returns `ExitCode.Cancelled` and never reaches the
 exception handler.
+
+The settings-processing pipeline is run by the **asynchronous** bases only.
+`AsyncAppCommand<TSettings>` and `UseCaseAsyncCommand<...>` take a
+`CommandArgumentsRootProcessor` and call it before your implementation;
+`AppCommand<TSettings>` does not take one and validates then executes directly. A
+synchronous command that needs the pipeline should take the processor itself, or derive
+from `AsyncAppCommand<TSettings>` instead.
 
 ### Exit codes
 

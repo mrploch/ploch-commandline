@@ -9,7 +9,11 @@
 public class EnvironmentSettings(bool isDebugging, bool pauseBeforeExit, IReadOnlyDictionary<string, string?> devRuntimeVariables)
 {
     private static readonly object SyncRoot = new();
-    private static EnvironmentSettings? _current;
+
+    // volatile because the getter reads this outside the lock. Without it the unsynchronised fast path is a broken
+    // double-checked lock: another thread could observe a non-null reference before the writes that initialised the
+    // instance are visible. Benign on x86, not on ARM64.
+    private static volatile EnvironmentSettings? _current;
     private static IEnvironmentSettingsLoader _settingsLoader = new EnvironmentSettingsLoader();
 
     /// <summary>

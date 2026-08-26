@@ -390,11 +390,60 @@ public class AnsiConsoleMarkupOutputTests
         console.Output.Should().Be("inline-probe");
     }
 
+    /// <summary>
+    ///     The provider was honoured only on the <see cref="FormattableString" /> path. Every other value fell through
+    ///     to a parameterless <c>ToString()</c>, which formats with the current culture and silently discarded the
+    ///     provider the caller had asked for.
+    /// </summary>
+    [Fact]
+    public void Write_should_use_the_supplied_format_provider_for_a_plain_scalar()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.Write(1234.5, CultureInfo.GetCultureInfo("de-DE"));
+
+        console.Output.Should().Be("1234,5", "de-DE uses a comma as the decimal separator");
+    }
+
+    [Fact]
+    public void Write_should_fall_back_to_the_current_culture_when_no_provider_is_supplied()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.Write(1234.5);
+
+        console.Output.Should().Be(1234.5.ToString(CultureInfo.CurrentCulture), "omitting a provider must not change behaviour");
+    }
+
+    /// <summary>
+    ///     A custom <see cref="IFormattable" /> may return null. The old fallback coalesced that to an empty string
+    ///     via <c>?? string.Empty</c>; routing through IFormattable must not lose that protection.
+    /// </summary>
+    [Fact]
+    public void Write_should_not_throw_when_a_formattable_returns_null()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var act = () => output.Write(new NullReturningFormattable(), CultureInfo.InvariantCulture);
+
+        act.Should().NotThrow("a null result must render as empty output, as it did before");
+        console.Output.Should().BeEmpty();
+    }
+
     private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
         new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
 
     private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>
         new(console.Console, new MessageFormatterProcessor([new StringMessageFormatter()], []));
+
+    /// <summary>An IFormattable whose ToString deliberately returns null, which the framework permits.</summary>
+    private sealed class NullReturningFormattable : IFormattable
+    {
+        public string ToString(string? format, IFormatProvider? formatProvider) => null!;
+    }
 
     /// <summary>A message type no built-in writer claims, so the probe writer below is the one that handles it.</summary>
     private sealed class ProbeMessage(string text)
