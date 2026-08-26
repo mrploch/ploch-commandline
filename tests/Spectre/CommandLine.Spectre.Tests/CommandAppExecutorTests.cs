@@ -31,7 +31,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         SetPauseBeforeExit(false);
         string[] expectedArguments = ["build", "--verbose"];
 
-        new CommandAppExecutor(commandApp.Object, new CancellationTokenSource()).Run("build", "--verbose").Should().Be(7);
+        new CommandAppExecutor(commandApp.Object, CancellationToken.None).Run("build", "--verbose").Should().Be(7);
 
         commandApp.Verify(app => app.Run(It.Is<IEnumerable<string>>(args => args.SequenceEqual(expectedArguments)), It.IsAny<CancellationToken>()),
                           Times.Once);
@@ -44,7 +44,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(3);
         SetPauseBeforeExit(false);
 
-        var result = await new CommandAppExecutor(commandApp.Object, new CancellationTokenSource()).RunAsync("build");
+        var result = await new CommandAppExecutor(commandApp.Object, CancellationToken.None).RunAsync("build");
 
         result.Should().Be(3);
     }
@@ -55,7 +55,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         using var console = UseRecordingConsole();
         SetPauseBeforeExit(false);
 
-        new CommandAppExecutor(Mock.Of<ICommandApp>(), new CancellationTokenSource()).Run("build");
+        new CommandAppExecutor(Mock.Of<ICommandApp>(), CancellationToken.None).Run("build");
 
         console.Output.Should().BeEmpty("an ordinary invocation must not appear to hang waiting for Enter");
     }
@@ -68,7 +68,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         var input = new TrackingReader();
         Console.SetIn(input);
 
-        new CommandAppExecutor(Mock.Of<ICommandApp>(), new CancellationTokenSource()).Run("build");
+        new CommandAppExecutor(Mock.Of<ICommandApp>(), CancellationToken.None).Run("build");
 
         console.Output.Should().Contain("Press Enter to exit...");
         input.ReadLineCount.Should().Be(1);
@@ -82,14 +82,14 @@ public sealed class CommandAppExecutorTests : IDisposable
         var input = new TrackingReader();
         Console.SetIn(input);
 
-        await new CommandAppExecutor(Mock.Of<ICommandApp>(), new CancellationTokenSource()).RunAsync("build");
+        await new CommandAppExecutor(Mock.Of<ICommandApp>(), CancellationToken.None).RunAsync("build");
 
         console.Output.Should().Contain("Press Enter to exit...");
         input.ReadLineCount.Should().Be(1, "Run and RunAsync must honour the setting identically");
     }
 
     [Fact]
-    public void Run_should_hand_Spectre_the_token_of_the_source_it_was_built_with()
+    public void Run_should_hand_Spectre_the_token_it_was_built_with()
     {
         var commandApp = new Mock<ICommandApp>();
         CancellationToken received = default;
@@ -99,7 +99,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         SetPauseBeforeExit(false);
         using var cancellationTokenSource = new CancellationTokenSource();
 
-        new CommandAppExecutor(commandApp.Object, cancellationTokenSource).Run("build");
+        new CommandAppExecutor(commandApp.Object, cancellationTokenSource.Token).Run("build");
 
         received.CanBeCanceled.Should().BeTrue("a token that can never be cancelled makes the whole feature inert");
         received.IsCancellationRequested.Should().BeFalse();
@@ -112,7 +112,7 @@ public sealed class CommandAppExecutorTests : IDisposable
     }
 
     [Fact]
-    public async Task RunAsync_should_hand_Spectre_the_token_of_the_source_it_was_built_with()
+    public async Task RunAsync_should_hand_Spectre_the_token_it_was_built_with()
     {
         var commandApp = new Mock<ICommandApp>();
         CancellationToken received = default;
@@ -122,7 +122,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         SetPauseBeforeExit(false);
         using var cancellationTokenSource = new CancellationTokenSource();
 
-        await new CommandAppExecutor(commandApp.Object, cancellationTokenSource).RunAsync("build");
+        await new CommandAppExecutor(commandApp.Object, cancellationTokenSource.Token).RunAsync("build");
 
         received.CanBeCanceled.Should().BeTrue();
 

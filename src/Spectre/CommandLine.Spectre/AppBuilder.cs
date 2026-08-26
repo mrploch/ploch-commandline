@@ -76,6 +76,8 @@ public class AppBuilder : IDisposable
         var cancellationTokenSource = new CancellationTokenSource();
         try
         {
+            var interruptHandled = 0;
+
             // The delegate is held rather than re-converted so Dispose can unsubscribe this exact instance.
             // Console.CancelKeyPress is a process-wide event: left subscribed, it pins the source and the
             // closure for the life of the process, and every further Create call adds another handler on top.
@@ -89,7 +91,7 @@ public class AppBuilder : IDisposable
             // takes the default path and terminates the process. Suppressing every interrupt would leave the
             // application unkillable from the keyboard whenever the running command does not observe its token --
             // a blocking call, or a third-party library in a tight loop. Detaching here and in Dispose is not a
-            // conflict: removing a handler that is already gone is a no-op, so whichever happens first wins and
+            // conflict: removing a handler that is already gone is a no-op, so whichever happens first wins, and
             // an application that simply runs to completion still releases the subscription.
             //
             // Unsubscribing by method group rather than through cancelKeyPressHandler is deliberate: the variable
@@ -97,20 +99,39 @@ public class AppBuilder : IDisposable
             // it would not compile. Both conversions close over the same locals, so -= matches and removes it.
             void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
             {
+                // Unsubscribing inside the handler stops future raises, but it cannot remove this delegate from an
+                // invocation list a concurrent raise has already captured. Without this one-shot guard two interrupts
+                // dispatched close together could both set Cancel = true, suppressing the termination promised above
+                // and requiring a third press.
+                if (Interlocked.Exchange(ref interruptHandled, 1) != 0)
+                {
+                    e.Cancel = false;
+
+                    return;
+                }
+
                 Console.CancelKeyPress -= OnCancelKeyPress;
                 e.Cancel = true;
                 AnsiConsole.WriteLine("Shutting down... press Ctrl+C again to force an exit.");
 
-                // Ctrl+C is raised on the console's own thread and can land while Dispose runs on the main
-                // one. The source is then already gone, so there is nothing left to cancel - but the press
-                // was user-initiated and still gets an answer.
                 try
                 {
                     cancellationTokenSource.Cancel();
                 }
                 catch (ObjectDisposedException)
                 {
+                    // Ctrl+C is raised on the console's own thread and can land while Dispose runs on the main one.
+                    // The source is then already gone, so there is nothing left to cancel - but the press was
+                    // user-initiated and still gets an answer.
                     AnsiConsole.WriteLine("Shutdown already in progress.");
+                }
+                catch (AggregateException exception)
+                {
+                    // Cancel() invokes consumer cancellation callbacks synchronously and wraps anything they throw.
+                    // This runs on the CancelKeyPress thread, where an unhandled exception terminates the process --
+                    // the exact opposite of the graceful shutdown being requested. Reported rather than swallowed,
+                    // but only the message: a stack trace is noise while the application is already on its way out.
+                    AnsiConsole.WriteLine($"A cancellation callback failed during shutdown: {exception.Message}");
                 }
             }
         }
@@ -183,7 +204,7 @@ public class AppBuilder : IDisposable
 
         app.Configure(configurator);
 
-        return new CommandAppExecutor(app, _cancellationTokenSource);
+        return new CommandAppExecutor(app, _cancellationTokenSource.Token);
     }
 
     /// <summary>

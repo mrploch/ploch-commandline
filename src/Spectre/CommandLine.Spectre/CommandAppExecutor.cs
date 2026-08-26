@@ -7,12 +7,19 @@ namespace Ploch.CommandLine.Spectre;
 ///     Implements the <see cref="ICommandAppExecutor" /> interface to execute command-line applications.
 /// </summary>
 /// <param name="commandApp">The command application to execute.</param>
-/// <param name="cancellationTokenSource">
-///     The source whose token is handed to Spectre, and through it to every command. This is the source
-///     <see cref="AppBuilder.Create" /> cancels when the user interrupts the application, so a command that honours its
+/// <param name="cancellationToken">
+///     The token handed to Spectre, and through it to every command. <see cref="AppBuilder.Create" /> cancels the
+///     source behind this token when the user interrupts the application, so a command that honours its
 ///     <see cref="CancellationToken" /> stops when they do.
 /// </param>
-public class CommandAppExecutor(ICommandApp commandApp, CancellationTokenSource cancellationTokenSource) : ICommandAppExecutor
+/// <remarks>
+///     The token is taken rather than the <see cref="CancellationTokenSource" /> behind it. This type only ever
+///     observes cancellation, it never requests it, so it has no use for the source. Taking the token also decouples
+///     execution from the source's lifetime: <see cref="CancellationTokenSource.Token" /> throws
+///     <see cref="ObjectDisposedException" /> once the source is disposed, whereas a token captured beforehand stays
+///     usable.
+/// </remarks>
+public class CommandAppExecutor(ICommandApp commandApp, CancellationToken cancellationToken) : ICommandAppExecutor
 {
     /// <summary>
     ///     Executes the command-line application synchronously with the specified arguments.
@@ -21,7 +28,7 @@ public class CommandAppExecutor(ICommandApp commandApp, CancellationTokenSource 
     /// <returns>An integer representing the exit code of the application, where 0 typically indicates success.</returns>
     public int Run(params IEnumerable<string> args)
     {
-        var result = commandApp.Run(args, cancellationTokenSource.Token);
+        var result = commandApp.Run(args, cancellationToken);
 
         PauseBeforeExitIfRequested();
 
@@ -38,7 +45,7 @@ public class CommandAppExecutor(ICommandApp commandApp, CancellationTokenSource 
     /// </returns>
     public async Task<int> RunAsync(params IEnumerable<string> args)
     {
-        var result = await commandApp.RunAsync(args, cancellationTokenSource.Token).ConfigureAwait(false);
+        var result = await commandApp.RunAsync(args, cancellationToken).ConfigureAwait(false);
 
         PauseBeforeExitIfRequested();
 

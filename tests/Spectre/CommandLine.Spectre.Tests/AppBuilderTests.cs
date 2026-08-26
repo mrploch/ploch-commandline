@@ -195,6 +195,32 @@ public sealed class AppBuilderTests : IDisposable
         recorder.CancellationTokenSource.Should().BeSameAs(cancellationTokenSource, "commands cancel the application through this source");
     }
 
+    /// <summary>
+    ///     The DI-registration test above passes even if <see cref="AppBuilder.ConfigureCommandApp" /> hands the
+    ///     executor an unrelated token, because it only inspects the container. This one drives the real Spectre
+    ///     pipeline and asserts on the token the command was actually invoked with, so a regression to
+    ///     <c>CancellationToken.None</c> at the executor call site fails here.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_hand_the_running_command_the_token_of_the_source_it_was_built_with()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        var recorder = RunProbeCommand(_ => { }, cancellationTokenSource);
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.ExecutionToken
+                .CanBeCanceled.Should()
+                .BeTrue("CancellationToken.None can never be cancelled, which would make the whole feature inert");
+        recorder.ExecutionToken.IsCancellationRequested.Should().BeFalse();
+
+        cancellationTokenSource.Cancel();
+
+        recorder.ExecutionToken
+                .IsCancellationRequested.Should()
+                .BeTrue("the command must observe the very source the application was built with, not a detached one");
+    }
+
     [Fact]
     public void Create_should_feed_the_supplied_arguments_into_the_host_configuration()
     {
@@ -443,6 +469,12 @@ public sealed class AppBuilderTests : IDisposable
         public string? SecondConfigurationValue { get; set; }
 
         public CancellationTokenSource? CancellationTokenSource { get; set; }
+
+        /// <summary>
+        ///     The token Spectre handed to <c>Execute</c>. Distinct from <see cref="CancellationTokenSource" />,
+        ///     which only proves the source reached the container: this proves it reached the running command.
+        /// </summary>
+        public CancellationToken ExecutionToken { get; set; }
     }
 
     private sealed class ProbeSettings : CommandSettings
@@ -461,6 +493,7 @@ public sealed class AppBuilderTests : IDisposable
             recorder.ConfigurationValue = configuration["probe:key"];
             recorder.SecondConfigurationValue = configuration["probe:other"];
             recorder.CancellationTokenSource = cancellationTokenSource;
+            recorder.ExecutionToken = cancellationToken;
             recorder.MarkerNames.AddRange(services.GetServices<Marker>().Select(marker => marker.Name));
             recorder.Marker = services.GetService<Marker>();
 
