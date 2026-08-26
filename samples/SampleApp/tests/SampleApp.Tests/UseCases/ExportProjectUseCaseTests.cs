@@ -35,6 +35,41 @@ public class ExportProjectUseCaseTests
         }
     }
 
+    /// <summary>
+    ///     The project name becomes a path segment, so a stored name containing a separator would let an export
+    ///     requested for one directory write somewhere else entirely.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_should_reject_a_project_name_that_escapes_the_output_directory()
+    {
+        var outputPath = Path.Combine(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
+        var escapedName = ".." + Path.DirectorySeparatorChar + "outside";
+        var project = new ProjectItem(escapedName, "Traversal probe", "Console", DateTime.UtcNow);
+        _projectRepositoryMock.Setup(r => r.GetByNameAsync(escapedName, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        var siblingPath = Path.GetFullPath(Path.Combine(outputPath, "..", "outside.json"));
+
+        try
+        {
+            var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
+                .ExecuteAsync(new ExportProjectRequest(escapedName, outputPath), CancellationToken.None);
+
+            result.IsSuccess.Should().BeFalse("a name that escapes the requested directory must not be exported");
+            File.Exists(siblingPath).Should().BeFalse("nothing may be written outside the requested output directory");
+        }
+        finally
+        {
+            if (File.Exists(siblingPath))
+            {
+                File.Delete(siblingPath);
+            }
+
+            if (Directory.Exists(outputPath))
+            {
+                Directory.Delete(outputPath, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public async Task ExecuteAsync_should_report_not_found_for_an_unknown_project()
     {

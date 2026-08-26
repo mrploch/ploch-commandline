@@ -21,13 +21,27 @@ public class ExportProjectUseCase(IProjectRepository projectRepository) : IResul
             return Result<ExportProjectResponse>.NotFound($"Project '{request.Name}' was not found.");
         }
 
+        // The project name reaches this method from a command argument and is about to become a path
+        // segment. Left unchecked, a name such as "../outside" turns an export requested for "./exports"
+        // into a write to "./outside.json" - outside the directory the caller asked for.
+        var fileName = $"{project.Name}.json";
+        if (fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            return Result<ExportProjectResponse>.Invalid(new ValidationError
+                                                         {
+                                                             Identifier = nameof(request.Name),
+                                                             ErrorMessage =
+                                                                 $"Project name '{project.Name}' cannot be used as a file name. Names must not contain path separators or other characters that are invalid in a file name."
+                                                         });
+        }
+
         // A use case that reports a successful export has to have exported something: the file is
         // written here, and an I/O failure becomes a failed Result rather than a silent success.
         string manifestPath;
         try
         {
             Directory.CreateDirectory(request.OutputPath);
-            manifestPath = Path.Combine(request.OutputPath, $"{project.Name}.json");
+            manifestPath = Path.Combine(request.OutputPath, fileName);
 
             var manifest = JsonSerializer.Serialize(project, JsonOptions);
             await File.WriteAllTextAsync(manifestPath, manifest, cancellationToken);
