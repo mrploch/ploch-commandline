@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using Ardalis.Result;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
@@ -93,9 +94,23 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
     /// </summary>
     /// <param name="result">The failed result returned by the use case.</param>
     /// <returns><see cref="ExitCode.Error" />.</returns>
+    /// <remarks>
+    ///     Both message collections are rendered. <c>Result.Error</c> fills <c>Errors</c>, while
+    ///     <c>Result.Invalid</c> fills <c>ValidationErrors</c> and leaves <c>Errors</c> empty - so reading only one
+    ///     of them makes a whole class of failure arrive on the console with no explanation at all. When both
+    ///     collections are empty - or carry nothing but whitespace - the status is shown, so the reason after the
+    ///     label is never blank.
+    /// </remarks>
     protected virtual ExitCode ProcessFailureResponse(Result<TUseCaseResponse> result)
     {
-        Output.MarkupLineInterpolated($"[red]Use case failed: {string.Join(", ", result.Errors)}[/]");
+        var messages = result.Errors
+                             .Concat(result.ValidationErrors.Select(DescribeValidationError))
+                             .Where(message => !string.IsNullOrWhiteSpace(message))
+                             .ToArray();
+
+        var detail = messages.Length == 0 ? result.Status.ToString() : string.Join(", ", messages);
+
+        Output.MarkupLineInterpolated($"[red]Use case failed: {detail}[/]");
 
         return ExitCode.Error;
     }
@@ -111,4 +126,17 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
 
         return ExitCode.Success;
     }
+
+    /// <summary>
+    ///     Describes a validation error for the console.
+    /// </summary>
+    /// <param name="validationError">The validation error to describe.</param>
+    /// <returns>The error message, or the identifier when the error carries no message.</returns>
+    /// <remarks>
+    ///     A <see cref="ValidationError" /> is not obliged to carry an <c>ErrorMessage</c>. Falling back to the
+    ///     identifier still names the offending field, which is more use than dropping the error and reporting the
+    ///     bare status.
+    /// </remarks>
+    private static string DescribeValidationError(ValidationError validationError) =>
+        string.IsNullOrWhiteSpace(validationError.ErrorMessage) ? validationError.Identifier : validationError.ErrorMessage;
 }

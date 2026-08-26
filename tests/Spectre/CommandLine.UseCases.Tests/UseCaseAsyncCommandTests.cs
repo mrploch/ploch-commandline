@@ -140,6 +140,55 @@ public class UseCaseAsyncCommandTests
         output.Written.Should().ContainMatch("*Target*widget-42*", "a command that opts in still gets the diagnostic");
     }
 
+    /// <summary>
+    ///     Result.Invalid puts its messages in ValidationErrors and leaves Errors empty, so rendering only Errors
+    ///     printed "Use case failed:" with nothing after it - the user was told it failed but not why.
+    /// </summary>
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_report_validation_errors_from_an_invalid_result(CommandContext context)
+    {
+        var output = new RecordingOutput();
+        var command = CreateCommand(output,
+                                    _ => Result<string>.Invalid(new ValidationError { Identifier = "Name", ErrorMessage = "Name is unusable" }));
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        output.Written.Should().ContainMatch("*Use case failed*Name is unusable*", "an Invalid result carries its reason in ValidationErrors");
+    }
+
+    /// <summary>
+    ///     A ValidationError is not obliged to carry an ErrorMessage. Naming the offending field beats dropping the
+    ///     error and falling back to the bare status.
+    /// </summary>
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_fall_back_to_the_identifier_when_a_validation_error_has_no_message(CommandContext context)
+    {
+        var output = new RecordingOutput();
+        var command = CreateCommand(output, _ => Result<string>.Invalid(new ValidationError { Identifier = "DestinationPath" }));
+
+        await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        output.Written.Should().ContainMatch("*DestinationPath*", "the identifier is the only thing the error carries");
+        output.Written.Should().NotContainMatch("*Use case failed: Invalid*", "the status is a last resort, not a substitute for a known field");
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_report_the_status_when_a_failure_carries_no_message(CommandContext context)
+    {
+        var output = new RecordingOutput();
+        var command = CreateCommand(output, _ => Result<string>.Invalid());
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        output.Written.Should().ContainMatch("*Use case failed*Invalid*", "a failure with no message must still say what happened");
+        output.Written.Should().NotContainMatch("*Use case failed: [/]*", "an empty reason is not an explanation");
+    }
+
     private static StubUseCaseCommand CreateCommand(RecordingOutput output, Func<string, Result<string>> execute) =>
         CreateCommand(output, new StubUseCase(execute));
 
