@@ -53,12 +53,19 @@ public class CommandAppExecutor(ICommandApp commandApp, CancellationToken cancel
     }
 
     /// <summary>
-    ///     Waits for the user to press Enter when <see cref="EnvironmentSettings.PauseBeforeExit" /> is set.
-    ///     Applied identically by <see cref="Run" /> and <see cref="RunAsync" />.
+    ///     Waits for the user to press Enter when <see cref="EnvironmentSettings.PauseBeforeExit" /> is set and the
+    ///     run was not cancelled. Applied identically by <see cref="Run" /> and <see cref="RunAsync" />.
     /// </summary>
-    private static void PauseBeforeExitIfRequested()
+    private void PauseBeforeExitIfRequested()
     {
         if (!EnvironmentSettings.Current.PauseBeforeExit)
+        {
+            return;
+        }
+
+        // Skipped after cancellation: the user has already asked the application to stop, so prompting them to press
+        // Enter before it will exit turns a requested shutdown into a hang.
+        if (cancellationToken.IsCancellationRequested)
         {
             return;
         }

@@ -23,6 +23,18 @@
   terminates" needed a third press. The handler is now one-shot via
   `Interlocked.Exchange` (#32).
 
+- A cancelled run no longer pauses for input on the way out. With
+  `PauseBeforeExit` set, `Run`/`RunAsync` printed "Press Enter to exit..." and
+  blocked on stdin even after Ctrl+C, turning the shutdown the user had just
+  requested into a hang. The prompt is now skipped when the token is already
+  cancelled (#14).
+
+- The interrupt handler cancels before it writes to the console. It runs on the
+  `CancelKeyPress` thread, where console I/O can block or throw; writing first
+  risked skipping the cancellation entirely after `e.Cancel` had already
+  suppressed termination, leaving the application neither stopped nor killable
+  from the keyboard (#32).
+
 - An exception thrown by a consumer's cancellation callback no longer takes the
   process down. `CancellationTokenSource.Cancel` runs those callbacks
   synchronously and wraps anything they throw in an `AggregateException`, which
@@ -30,13 +42,22 @@
   caught and reported, so a failing callback cannot turn a graceful shutdown
   into a crash (#32).
 
+- An interrupt that arrives after the builder has been disposed no longer
+  suppresses itself. `AppBuilder` became `IDisposable` on `main` and releases the
+  cancellation source it owns, so `Cancel()` on the `CancelKeyPress` thread can
+  race disposal and throw `ObjectDisposedException`. The handler now hands that
+  interrupt back to the default path — `e.Cancel = false` — instead of
+  suppressing a press that cancels nothing: the run it exists to interrupt is
+  already over, and a suppressed press that does nothing is the unkillable
+  behaviour this change set exists to remove (#32).
+
 ### Changed
 
 - **Breaking:** `CommandAppExecutor` and `CommandAppConfigurator` take a
   `CancellationToken` as a second constructor argument. It is required rather
   than optional so that an application built through either type cannot
   silently end up without cancellation. Code constructing them directly must
-  supply one; `AppBuilder` passes `cancellationTokenSource.Token` already (#14).
+  supply one; `AppBuilder` passes the token of the source it owns already (#14).
 
   A token is taken rather than the `CancellationTokenSource` behind it, for
   three reasons. Neither type ever calls `Cancel`, so the source advertises a

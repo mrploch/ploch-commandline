@@ -66,10 +66,23 @@ public class AppBuilder : IDisposable
     /// <param name="args">The command-line arguments to initialize the application.</param>
     /// <returns>A new instance of <see cref="AppBuilder" />.</returns>
     /// <remarks>
-    ///     The returned builder owns both the cancellation source it creates and the <c>Console.CancelKeyPress</c>
-    ///     handler it installs, and releases them on <see cref="Dispose()" />. Dispose it once the application has
-    ///     finished running — the cancellation token stays live for the whole run, so an earlier scope exit would
-    ///     tear down the application it is meant to be shutting down.
+    ///     <para>
+    ///         This also installs a <see cref="Console.CancelKeyPress" /> handler and creates the
+    ///         <see cref="CancellationTokenSource" /> the application cancels through. The first Ctrl+C cancels that
+    ///         source cooperatively, so a command honouring its <see cref="CancellationToken" /> can stop and tidy up;
+    ///         a second Ctrl+C takes the default path and terminates the process, so a command that ignores its token
+    ///         never leaves the application unkillable from the keyboard.
+    ///     </para>
+    ///     <para>
+    ///         The source is registered in the container, so a command can resolve it to request shutdown itself.
+    ///     </para>
+    ///     <para>
+    ///         The returned builder owns both the source it creates and the handler it installs, and releases them on
+    ///         <see cref="Dispose()" />. Dispose it once the application has finished running — the cancellation token
+    ///         stays live for the whole run, so an earlier scope exit would tear down the application it is meant to
+    ///         be shutting down. The handler also detaches itself once an interrupt has been handled, so an
+    ///         interrupted application releases the subscription without waiting for disposal.
+    ///     </para>
     /// </remarks>
     public static AppBuilder Create(params IEnumerable<string> args)
     {
@@ -112,8 +125,10 @@ public class AppBuilder : IDisposable
 
                 Console.CancelKeyPress -= OnCancelKeyPress;
                 e.Cancel = true;
-                AnsiConsole.WriteLine("Shutting down... press Ctrl+C again to force an exit.");
 
+                // Cancel before writing anything. This runs on the CancelKeyPress thread, where console I/O can block
+                // or throw; doing it first would risk skipping the cancellation entirely after e.Cancel has already
+                // suppressed termination, leaving the application neither stopped nor killable from the keyboard.
                 try
                 {
                     cancellationTokenSource.Cancel();
@@ -121,18 +136,23 @@ public class AppBuilder : IDisposable
                 catch (ObjectDisposedException)
                 {
                     // Ctrl+C is raised on the console's own thread and can land while Dispose runs on the main one.
-                    // The source is then already gone, so there is nothing left to cancel - but the press was
-                    // user-initiated and still gets an answer.
-                    AnsiConsole.WriteLine("Shutdown already in progress.");
+                    // The source is then already gone and the run this handler exists to interrupt is over, so the
+                    // interrupt is handed back to the default path rather than suppressed: a press that both cancels
+                    // nothing and blocks termination is a press that does nothing.
+                    e.Cancel = false;
+
+                    return;
                 }
                 catch (AggregateException exception)
                 {
                     // Cancel() invokes consumer cancellation callbacks synchronously and wraps anything they throw.
-                    // This runs on the CancelKeyPress thread, where an unhandled exception terminates the process --
-                    // the exact opposite of the graceful shutdown being requested. Reported rather than swallowed,
-                    // but only the message: a stack trace is noise while the application is already on its way out.
+                    // An unhandled exception on this thread terminates the process -- the exact opposite of the
+                    // graceful shutdown being requested. Reported rather than swallowed, but only the message: a
+                    // stack trace is noise while the application is already on its way out.
                     AnsiConsole.WriteLine($"A cancellation callback failed during shutdown: {exception.Message}");
                 }
+
+                AnsiConsole.WriteLine("Shutting down... press Ctrl+C again to force an exit.");
             }
         }
         catch

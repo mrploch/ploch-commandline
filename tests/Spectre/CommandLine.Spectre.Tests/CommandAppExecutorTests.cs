@@ -131,6 +131,42 @@ public sealed class CommandAppExecutorTests : IDisposable
         received.IsCancellationRequested.Should().BeTrue();
     }
 
+    /// <summary>
+    ///     Wiring the token up made this reachable: a cancelled run that also had PauseBeforeExit set would print
+    ///     "Press Enter to exit..." and block on stdin, turning the shutdown the user just asked for into a hang.
+    /// </summary>
+    [Fact]
+    public void Run_should_not_pause_for_input_when_the_run_was_cancelled()
+    {
+        using var console = UseRecordingConsole();
+        SetPauseBeforeExit(true);
+        var input = new TrackingReader();
+        Console.SetIn(input);
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        new CommandAppExecutor(Mock.Of<ICommandApp>(), cancellationTokenSource.Token).Run("build");
+
+        input.ReadLineCount.Should().Be(0, "the user has already asked the application to stop");
+        console.Output.Should().NotContain("Press Enter to exit...");
+    }
+
+    [Fact]
+    public async Task RunAsync_should_not_pause_for_input_when_the_run_was_cancelled()
+    {
+        using var console = UseRecordingConsole();
+        SetPauseBeforeExit(true);
+        var input = new TrackingReader();
+        Console.SetIn(input);
+        using var cancellationTokenSource = new CancellationTokenSource();
+        await cancellationTokenSource.CancelAsync();
+
+        await new CommandAppExecutor(Mock.Of<ICommandApp>(), cancellationTokenSource.Token).RunAsync("build");
+
+        input.ReadLineCount.Should().Be(0, "Run and RunAsync must honour cancellation identically");
+        console.Output.Should().NotContain("Press Enter to exit...");
+    }
+
     private static void SetPauseBeforeExit(bool pauseBeforeExit) =>
         EnvironmentSettings.Current = new EnvironmentSettings(isDebugging: false, pauseBeforeExit, new Dictionary<string, string?>());
 
