@@ -162,6 +162,26 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     }
 
     /// <summary>
+    ///     Renders a message that no writer, formatter or built-in branch claimed, honouring the caller's format
+    ///     provider.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the message to render.</typeparam>
+    /// <param name="message">The message to render.</param>
+    /// <param name="format">The format provider to apply, or <see langword="null" /> for the current culture.</param>
+    /// <returns>The text to write, never <see langword="null" />.</returns>
+    /// <remarks>
+    ///     Split out of <see cref="WriteCore{TMessage}" /> so that method's branching stays within the complexity
+    ///     budget. A parameterless <c>ToString()</c> would ignore the provider and format with the current culture,
+    ///     and the result is coalesced because a custom <see cref="IFormattable" /> may return
+    ///     <see langword="null" /> - which previously rendered as empty output rather than failing inside
+    ///     <c>console.Write</c>.
+    /// </remarks>
+    private static string RenderFallbackText<TMessage>(TMessage message, IFormatProvider? format) =>
+        message is IFormattable formattable
+            ? formattable.ToString(format: null, format ?? CultureInfo.CurrentCulture) ?? string.Empty
+            : message?.ToString() ?? string.Empty;
+
+    /// <summary>
     ///     Renders a message and reports whether a registered <see cref="IMessageWriter" /> was the one that rendered it.
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
@@ -202,13 +222,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
 
         // A caller that supplied a provider expects it to be honoured. Parameterless ToString() ignores it and
         // formats with the current culture, so Write(1234.5, germanCulture) rendered "1234.5" instead of "1234,5".
-        // The IFormattable result is coalesced for the same reason the ToString() one is: a custom implementation
-        // may return null, which previously rendered as empty output rather than failing inside console.Write.
-        var text = message is IFormattable formattable
-                       ? formattable.ToString(format: null, format ?? CultureInfo.CurrentCulture) ?? string.Empty
-                       : message?.ToString() ?? string.Empty;
-
-        console.Write(text);
+        console.Write(RenderFallbackText(message, format));
 
         return null;
     }

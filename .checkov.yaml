@@ -1,0 +1,18 @@
+# Checkov configuration for Codacy's Checkov engine, read from the repository root.
+#
+# Codacy reads the copy on the branch being analysed, so a change here takes effect on the
+# pull request that makes it.
+skip-check:
+  # CKV_GHA_7 "The build output cannot be affected by user parameters other than the build
+  # entry point and the top-level source location" requires workflow_dispatch to declare no
+  # inputs at all. It encodes the SLSA expectation of a hermetic, parameterless build.
+  #
+  # release.yml is a deliberately manual release: a maintainer triggers it and states the
+  # version to cut, which NBGV then uses to tag and publish. Removing the inputs would mean
+  # deriving the version from somewhere else - a pre-pushed tag, or a committed file - which
+  # is a different release process, not a safer version of this one.
+  #
+  # The injection risk the rule guards against is already handled separately: both inputs are
+  # passed to steps through env vars rather than interpolated into run blocks, so they cannot
+  # break out into shell (see the note on githubactions:S7635 in release.yml).
+  - CKV_GHA_7
