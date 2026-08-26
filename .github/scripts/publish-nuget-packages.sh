@@ -7,8 +7,13 @@
 #         script's own arguments carry nothing secret. That narrows the exposure, it does
 #         not remove it: `dotnet nuget push -k` still places the key in the dotnet
 #         process's command line, where it is readable from /proc for the life of that
-#         process. Eliminating it entirely would need an auth mechanism `nuget push`
-#         does not currently offer.
+#         process. NuGet.Config already carries packageSourceCredentials for the "github"
+#         source using %GH_PACKAGES_TOKEN%, so pushing to the source name instead of the
+#         URL would drop `-k` and keep the key off every command line. That is deferred to
+#         #45 rather than changed here: this publish path is not exercised by CI on a PR
+#         targeting a feature branch, so a credential-resolution failure would first show
+#         up on a push to main - a bad place to discover it, in the very step this branch
+#         exists to make reliable.
 #
 # Why a script and not two inline `run:` blocks: the main-branch and pull-request publish
 # steps previously carried a copy each of this logic, and the `./**/*.nupkg` glob bug that
