@@ -25,6 +25,20 @@ public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettin
     /// </remarks>
     private static readonly string[] ApplicationSections = ["SampleAppSettings", "Logging", "Serilog"];
 
+    /// <summary>
+    ///     Key fragments whose values are redacted wherever they appear beneath an allowed section.
+    /// </summary>
+    /// <remarks>
+    ///     The section allow-list above keeps whole trees out, but it does not make the leaves inside them safe. The
+    ///     environment provider can populate any key beneath an allowed section - Serilog__WriteTo__0__Args__apiKey
+    ///     is a real example - and the recursion below would print it verbatim. Matching on the full path rather than
+    ///     the leaf key catches ConnectionStrings:Default as well as Args:apiKey.
+    ///     Name matching is a heuristic, not a guarantee: it is the right shape for a sample, but a real application
+    ///     handling secrets should keep them out of renderable configuration in the first place.
+    /// </remarks>
+    private static readonly string[] SensitivePathFragments =
+        ["password", "pwd", "secret", "token", "apikey", "api_key", "credential", "connectionstring", "privatekey", "accesskey"];
+
     /// <inheritdoc />
     protected override ExitCode DoExecute(CommandContext? context, ConfigShowCommandSettings settings, CancellationToken cancellationToken)
     {
@@ -70,6 +84,13 @@ public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettin
         var children = section.GetChildren().ToList();
         if (children.Count == 0 && section.Value != null)
         {
+            if (IsSensitive(section.Path))
+            {
+                parentNode.AddNode("[dim]Value:[/] [yellow]<redacted>[/]");
+
+                return;
+            }
+
             // Keys and values come from JSON and the environment: escape them so a value
             // containing '[' renders as text instead of being parsed as markup.
             parentNode.AddNode($"[dim]Value:[/] [green]{Markup.Escape(section.Value)}[/]");
@@ -83,4 +104,7 @@ public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettin
             AddSectionChildren(childNode, child);
         }
     }
+
+    private static bool IsSensitive(string path) =>
+        SensitivePathFragments.Any(fragment => path.Contains(fragment, StringComparison.OrdinalIgnoreCase));
 }
