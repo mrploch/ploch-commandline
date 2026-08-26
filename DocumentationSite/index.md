@@ -156,6 +156,7 @@ message type and falls back to `ToString()` when none matches.
 
 ## Learn more
 
+- [Getting Started](../docs/GETTING_STARTED.md) — build a CLI from an empty directory, one feature at a time.
 - [Articles](articles/intro.md) — task-focused guides.
 - [API documentation](api/index.md) — generated reference for every public type.
 - [Sample application](https://github.com/mrploch/ploch-commandline/tree/main/samples) — a complete multi-level CLI showcase.

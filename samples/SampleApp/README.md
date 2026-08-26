@@ -27,10 +27,12 @@ repository it lives in.
 | Standalone (default) | `dotnet build` | Restores `Ploch.*` from NuGet, as a consumer would |
 | In-repository | `dotnet build -p:UsePlochProjectReferences=true` | Swaps those packages for `ProjectReference`s to the library sources in this repository |
 
-**The default mode cannot restore yet.** The `Ploch.CommandLine.*` packages have not been published
-(that is [issue #7](https://github.com/mrploch/ploch-commandline/issues/7)); until they are, a
-plain `dotnet build` fails at restore. Use `-p:UsePlochProjectReferences=true`, which is also what
-CI runs, so the sample cannot drift away from the libraries.
+**The default mode restores from GitHub Packages,** which needs a `GH_PACKAGES_TOKEN` with
+`read:packages` in the environment — `NuGet.Config` maps it to the `github` source. The
+`Ploch.CommandLine.*` packages are not on nuget.org yet (that is
+[issue #7](https://github.com/mrploch/ploch-commandline/issues/7)), so without that token a plain
+`dotnet build` still fails at restore. Use `-p:UsePlochProjectReferences=true`, which is what CI
+runs and needs no feed access, so the sample cannot drift away from the libraries.
 
 The switch lives in [`ProjectReferences.props`](ProjectReferences.props), imported conditionally by
 [`Directory.Build.targets`](Directory.Build.targets) — **targets**, not props: `Directory.Build.props`
@@ -93,8 +95,8 @@ $ sample info
 │ Framework            │ .NET 10.0.11                               │
 │ OS Description       │ Microsoft Windows 10.0.26200               │
 │ Process Architecture │ X64                                        │
-│ Current Directory    │ C:\DevNet\my\mrploch\ploch-commandline-wt9 │
-│ Machine Name         │ KPLOCH-MSI                                 │
+│ Current Directory    │ C:\projects\sample-app                     │
+│ Machine Name         │ EXAMPLE-HOST                               │
 │ Environment Setting  │ Development                                │
 ╰──────────────────────┴────────────────────────────────────────────╯
 

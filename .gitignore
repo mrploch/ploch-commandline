@@ -411,3 +411,6 @@ qodana.sarif.json
 
 # JetBrains IDE metadata in any folder (the root-only .idea/** rule misses nested ones)
 **/.idea/
+
+# Agent-written summary reports (see .claude/rules/summaries.md)
+/temp/

@@ -74,3 +74,42 @@
 - `AddSerilog`'s `<remarks>` described a second, direct Serilog configuration step
   that was deliberately removed because it silently dropped the output template.
   The documentation now matches the implementation (#11).
+
+### Fixed (second review round)
+
+- **Behavioural change / bug fix:** `EnumerableMessageFormatter` renders each item
+  again when no `IMessageFormatterProcessor` is supplied. Output that was
+  previously a bare emoji per line now carries the item text, so a caller that
+  wants empty item bodies must supply a processor returning an empty string. The null-conditional call returned
+  `null`, so every line was a bare emoji and the item's own text was dropped —
+  contradicting both the parameter being optional and the method's own
+  documentation. It now falls back to the item's `ToString()` (#11).
+
+### Changed (second review round)
+
+- The standalone sample restores and builds again. `Ploch.Common` and
+  `Ploch.Common.DependencyInjection` were pinned to `2.0.1` while the
+  `Ploch.CommandLine.Spectre` package requires `>= 4.0.20-prerelease`, which
+  failed with `NU1109` and then `CS7069`. Both are now `4.0.21-prerelease`.
+  `PlochPackagesVersion` floats across the `1.0` prerelease line instead of a
+  fixed `0.0.1-prerelease` that did not exist — NuGet was silently substituting
+  the oldest published build under `NU1603` (#11, closes #46).
+
+- The getting-started guide is reachable from the documentation site. It was
+  built into the site but linked from neither the navigation nor the home page,
+  and the package README still pointed at a TODO issue. Two pre-existing broken
+  links to `samples/SampleApp/README.md` are now absolute GitHub URLs, since
+  `samples/` is not part of the docfx content set (#11).
+
+- Captured console output in `docs/GETTING_STARTED.md` and
+  `samples/SampleApp/README.md` no longer publishes a contributor's workstation
+  path and machine name (#11).
+
+- The `summaries` rule, in both its `.claude` and `.cursor` copies, no longer
+  hard-codes one contributor's absolute Windows path and a Windows-only viewer
+  command. It now resolves a repository-relative `temp/` directory and lists the
+  per-platform open command (#11).
+
+- `Ploch.CommandLine.Spectre.FluentValidation.Tests` runs on xUnit v3, matching
+  the other three Spectre test projects and the repository testing rule. It was
+  the only project still on xUnit 2 with the XUnit2 AutoMoq package (#11).

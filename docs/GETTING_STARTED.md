@@ -2,13 +2,14 @@
 
 A hands-on walkthrough: you build a small CLI from an empty directory, one feature at a time, and
 run it after every step. Every console listing below is real output captured from the finished
-application, not an illustration.
+application rather than an illustration, with machine-specific values — paths and host names —
+replaced by neutral placeholders.
 
 For the conceptual overview — what each package is for, how the pieces fit together — see the
 documentation site home page and the *Introduction* article. This guide is deliberately practical
 and does not repeat them.
 
-The finished application lives in [`samples/SampleApp`](../samples/SampleApp/README.md). If you
+The finished application lives in [`samples/SampleApp`](https://github.com/mrploch/ploch-commandline/blob/main/samples/SampleApp/README.md). If you
 would rather read the code than type it, start there.
 
 ## Contents
@@ -177,8 +178,8 @@ $ mytool info
 │ Framework            │ .NET 10.0.11                               │
 │ OS Description       │ Microsoft Windows 10.0.26200               │
 │ Process Architecture │ X64                                        │
-│ Current Directory    │ C:\DevNet\my\mrploch\ploch-commandline-wt9 │
-│ Machine Name         │ KPLOCH-MSI                                 │
+│ Current Directory    │ C:\projects\sample-app                     │
+│ Machine Name         │ EXAMPLE-HOST                               │
 │ Environment Setting  │ Development                                │
 ╰──────────────────────┴────────────────────────────────────────────╯
 
@@ -767,7 +768,7 @@ dotnet run --project samples/SampleApp/src/SampleApp -p:UsePlochProjectReference
 dotnet test samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -p:UsePlochProjectReferences=true
 ```
 
-See [`samples/SampleApp/README.md`](../samples/SampleApp/README.md) for the full command tour and
+See [`samples/SampleApp/README.md`](https://github.com/mrploch/ploch-commandline/blob/main/samples/SampleApp/README.md) for the full command tour and
 for the difference between the standalone (NuGet) and in-repository (project reference) build
 modes.
 

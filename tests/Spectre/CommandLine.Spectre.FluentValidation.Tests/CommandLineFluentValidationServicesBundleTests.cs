@@ -1,12 +1,11 @@
-using FluentAssertions;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Objectivity.AutoFixture.XUnit2.AutoMoq.Attributes;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.DependencyInjection;
 using Ploch.Common.DependencyInjection;
+using Ploch.TestingSupport.XUnit3.AutoMoq;
 using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre.FluentValidation.Tests;

@@ -12,11 +12,17 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- Set this to the published version of Ploch packages.
-         These are used in standalone mode (PackageReference).
-         When UsePlochProjectReferences=true, ProjectReferences.props removes
-         these PackageReferences and replaces them with ProjectReferences. -->
-    <PlochPackagesVersion>0.0.1-prerelease</PlochPackagesVersion>
+    <!-- The published version of the Ploch.CommandLine.* packages, used in standalone mode
+         (PackageReference). When UsePlochProjectReferences=true, ProjectReferences.props removes
+         these PackageReferences and replaces them with ProjectReferences.
+
+         Pinned, not floating. A fixed 0.0.1-prerelease did not exist, so NuGet silently substituted
+         the OLDEST published build (NU1603) and the sample compiled against a months-old package
+         while appearing to pin one. A floating 1.0.*-* fixed that but replaced it with a different
+         problem: this sample is copied by consumers, and floating makes its restore time-dependent,
+         lets the four Ploch packages resolve to different builds, and does not settle onto the
+         stable release once v1 ships. Bump this deliberately as part of the release commit. -->
+    <PlochPackagesVersion>1.0.26-pr.11.3-spectre-console-in.g45b21c88cb</PlochPackagesVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Ploch packages">
@@ -24,8 +30,11 @@
     <PackageVersion Include="Ploch.CommandLine.Spectre.FluentValidation" Version="$(PlochPackagesVersion)" />
     <PackageVersion Include="Ploch.CommandLine.Spectre.Serilog" Version="$(PlochPackagesVersion)" />
     <PackageVersion Include="Ploch.CommandLine.UseCases" Version="$(PlochPackagesVersion)" />
-    <PackageVersion Include="Ploch.Common" Version="2.0.1" />
-    <PackageVersion Include="Ploch.Common.DependencyInjection" Version="2.0.1" />
+    <!-- Must be at least 4.0.20-prerelease: that is what the Ploch.CommandLine.Spectre package
+         depends on, and 2.0.1 made the standalone restore fail with NU1109 (package downgrade)
+         followed by CS7069, because AssemblyListBuilder does not exist in the 2.x assembly. -->
+    <PackageVersion Include="Ploch.Common" Version="4.0.21-prerelease" />
+    <PackageVersion Include="Ploch.Common.DependencyInjection" Version="4.0.21-prerelease" />
   </ItemGroup>
 
   <ItemGroup Label="Spectre.Console">

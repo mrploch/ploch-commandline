@@ -15,8 +15,8 @@ public class EnumerableMessageFormatter : TypeMessageFormatter<IEnumerable>
     /// </summary>
     /// <param name="enumerable">The IEnumerable collection to format. If null, an empty string is returned.</param>
     /// <param name="formatterProcessor">
-    ///     Optional processor that can be used to format individual items in the collection.
-    ///     If provided, it will be used to convert each item to its string representation.
+    ///     Optional processor used to format individual items in the collection. When it is omitted, each item is
+    ///     rendered with its own <see cref="object.ToString" />.
     /// </param>
     /// <returns>
     ///     A string containing each item of the collection on a separate line,
@@ -32,7 +32,14 @@ public class EnumerableMessageFormatter : TypeMessageFormatter<IEnumerable>
         var sb = new StringBuilder();
         foreach (var item in enumerable)
         {
-            sb.AppendLine(Emoji.Known.BackhandIndexPointingRight + " " + formatterProcessor?.GetMessageText(item));
+            // Only the absence of a processor falls back to the item's own ToString. A processor that returns
+            // null is answering, not abstaining: GetMessageText is declared string?, so a formatter may return null
+            // to suppress an item, and coalescing that to ToString() would print the very text it withheld.
+            // Previously the null-conditional call alone yielded null whenever no processor was supplied, so every
+            // line rendered as a bare emoji and the item text was dropped - contradicting the optional parameter.
+            var text = formatterProcessor is null ? item?.ToString() : formatterProcessor.GetMessageText(item);
+
+            sb.Append(Emoji.Known.BackhandIndexPointingRight).Append(' ').AppendLine(text ?? string.Empty);
         }
 
         return sb.ToString();

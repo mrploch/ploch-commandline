@@ -25,7 +25,10 @@ It includes:
 
 ## Getting Started
 
-TODO, GitHub Issue: [Ploch.CommandLine.Spectre Getting Started documentation #4](https://github.com/mrploch/ploch-commandline/issues/4)
+See the [Getting Started guide](https://github.com/mrploch/ploch-commandline/blob/main/docs/GETTING_STARTED.md),
+which walks through a first command, dependency injection, configuration, validation and logging.
+A complete runnable example lives in
+[`samples/SampleApp`](https://github.com/mrploch/ploch-commandline/tree/main/samples/SampleApp).
 
 ## Dependency Injection
 
