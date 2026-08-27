@@ -13,7 +13,7 @@ public class ExportProjectUseCaseTests
     [Fact]
     public async Task ExecuteAsync_should_write_a_manifest_for_an_existing_project()
     {
-        var outputPath = Path.Combine(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
+        var outputPath = Path.Join(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
         var project = new ProjectItem("SpectreDemo", "Demo project", "Console", DateTime.UtcNow);
         _projectRepositoryMock.Setup(r => r.GetByNameAsync("SpectreDemo", It.IsAny<CancellationToken>())).ReturnsAsync(project);
 
@@ -42,11 +42,11 @@ public class ExportProjectUseCaseTests
     [Fact]
     public async Task ExecuteAsync_should_reject_a_project_name_that_escapes_the_output_directory()
     {
-        var outputPath = Path.Combine(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
+        var outputPath = Path.Join(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
         var escapedName = ".." + Path.DirectorySeparatorChar + "outside";
         var project = new ProjectItem(escapedName, "Traversal probe", "Console", DateTime.UtcNow);
         _projectRepositoryMock.Setup(r => r.GetByNameAsync(escapedName, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        var siblingPath = Path.GetFullPath(Path.Combine(outputPath, "..", "outside.json"));
+        var siblingPath = Path.GetFullPath(Path.Join(outputPath, "..", "outside.json"));
 
         try
         {
@@ -79,7 +79,7 @@ public class ExportProjectUseCaseTests
     [Fact]
     public async Task ExecuteAsync_should_export_a_project_whose_name_begins_with_two_dots()
     {
-        var outputPath = Path.Combine(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
+        var outputPath = Path.Join(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
         const string dottedName = "..archive";
         var project = new ProjectItem(dottedName, "Leading dot-dot probe", "Console", DateTime.UtcNow);
         _projectRepositoryMock.Setup(r => r.GetByNameAsync(dottedName, It.IsAny<CancellationToken>())).ReturnsAsync(project);

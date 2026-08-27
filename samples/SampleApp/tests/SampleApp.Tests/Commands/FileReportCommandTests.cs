@@ -17,7 +17,7 @@ public class FileReportCommandTests
     [Fact]
     public async Task ExecuteAsync_should_return_invalid_input_when_the_file_does_not_exist()
     {
-        var settings = new FileReportCommandSettings { Path = Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.csv") };
+        var settings = new FileReportCommandSettings { Path = Path.Join(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.csv") };
 
         var result = await CreateCommand().ExecuteAsync(CreateContext(), settings, CancellationToken.None);
 
@@ -27,7 +27,7 @@ public class FileReportCommandTests
     [Fact]
     public async Task ExecuteAsync_should_return_success_for_an_existing_file()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"report-{Guid.NewGuid():N}.csv");
+        var path = Path.Join(Path.GetTempPath(), $"report-{Guid.NewGuid():N}.csv");
         await File.WriteAllTextAsync(path, "id,name", TestContext.Current.CancellationToken);
 
         try
