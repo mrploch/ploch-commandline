@@ -127,8 +127,15 @@ jobs:
       # `dotnet-sonarscanner`, so the `dotnet sonarscanner` shorthand that works for a
       # GLOBAL install is not the documented form for a local tool. (dotnet-coverage was
       # installed here too and never invoked - coverage comes from Coverlet MSBuild.)
+      #
+      # Skipped for pull requests opened from a fork. GitHub withholds repository secrets from those
+      # runs, so SONAR_TOKEN arrives empty and the scanner fails to authenticate - and because this
+      # step precedes Build and Test, an external contributor's pull request would fail before a
+      # single line was compiled, with an error about a token they cannot be given. Skipping keeps
+      # the step blocking where it can actually run: every branch in this repository.
       - name: SonarScanner Begin
         id: sonar-begin
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
