@@ -13,7 +13,7 @@ public sealed class SerilogLoggingConfiguratorTests : IDisposable
 {
     private const string Template = "REGISTERED|{Level:u3}|{Message:lj}{NewLine}";
 
-    private readonly string _logDirectory = Path.Combine(Path.GetTempPath(), "ploch-commandline-serilog-tests", Guid.NewGuid().ToString("N"));
+    private readonly string _logDirectory = Path.Join(Path.GetTempPath(), "ploch-commandline-serilog-tests", Guid.NewGuid().ToString("N"));
 
     public SerilogLoggingConfiguratorTests() => Directory.CreateDirectory(_logDirectory);
 
@@ -68,7 +68,7 @@ public sealed class SerilogLoggingConfiguratorTests : IDisposable
 
     private string ReadLogFile(string fileName)
     {
-        var path = Path.Combine(_logDirectory, fileName);
+        var path = Path.Join(_logDirectory, fileName);
         File.Exists(path).Should().BeTrue($"the registration is expected to create {fileName}");
 
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);

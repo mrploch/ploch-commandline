@@ -13,7 +13,7 @@ namespace Ploch.CommandLine.Spectre.Serilog.Tests;
 /// </summary>
 public sealed class LoggerConfigurationExtensionsTests : IDisposable
 {
-    private readonly string _logDirectory = Path.Combine(Path.GetTempPath(), "ploch-commandline-serilog-tests", Guid.NewGuid().ToString("N"));
+    private readonly string _logDirectory = Path.Join(Path.GetTempPath(), "ploch-commandline-serilog-tests", Guid.NewGuid().ToString("N"));
 
     public LoggerConfigurationExtensionsTests() => Directory.CreateDirectory(_logDirectory);
 
@@ -96,8 +96,37 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
         }
 
         var processName = Process.GetCurrentProcess().ProcessName;
-        File.Exists(Path.Combine(_logDirectory, $"{processName}.log")).Should().BeTrue();
-        File.Exists(Path.Combine(_logDirectory, $"{processName}-errors.log")).Should().BeTrue();
+        File.Exists(Path.Join(_logDirectory, $"{processName}.log")).Should().BeTrue();
+        File.Exists(Path.Join(_logDirectory, $"{processName}-errors.log")).Should().BeTrue();
+    }
+
+    /// <summary>
+    ///     logName shapes a file path, so a rooted value used to make Path.Combine discard logPath entirely and
+    ///     write to the root instead - the library silently ignoring the very parameter documented to control where
+    ///     logs go. The test asserts the negative that matters: nothing appears at the rooted location.
+    /// </summary>
+    [Fact]
+    public void ConfigureSerilog_should_not_write_outside_the_log_directory_for_a_rooted_log_name()
+    {
+        var rootedName = Path.Combine(Path.GetTempPath(), $"escaped-{Guid.NewGuid():N}");
+        var escapedPath = $"{rootedName}.log";
+
+        try
+        {
+            using (var logger = new LoggerConfiguration().ConfigureSerilog(logName: rootedName, logPath: _logDirectory).CreateLogger())
+            {
+                logger.Information("an informational message");
+            }
+
+            File.Exists(escapedPath).Should().BeFalse("a rooted logName must not override the configured logPath");
+        }
+        finally
+        {
+            if (File.Exists(escapedPath))
+            {
+                File.Delete(escapedPath);
+            }
+        }
     }
 
     private static IConfiguration BuildConfiguration(params (string Key, string Value)[] settings) =>
@@ -117,7 +146,7 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
     /// <summary>Reads a log file while the sink may still hold it open.</summary>
     private string ReadLogFile(string fileName)
     {
-        var path = Path.Combine(_logDirectory, fileName);
+        var path = Path.Join(_logDirectory, fileName);
         File.Exists(path).Should().BeTrue($"the configuration is expected to create {fileName}");
 
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);

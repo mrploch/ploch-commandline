@@ -172,7 +172,11 @@ public static class LoggerConfigurationExtensions
         logPath ??= AppDomain.CurrentDomain.BaseDirectory;
         suffix = suffix != null ? $"-{suffix}" : null;
 
-        return Path.Combine(logPath, $"{logName}{suffix}.log");
+        // Path.Join, not Path.Combine: logName is a public parameter of AddSerilog, and Combine discards
+        // everything before a rooted later segment - so logName: "C:\app" silently wrote to C:pp.log and
+        // ignored logPath altogether, violating the documented contract of the very parameter beside it.
+        // Join keeps the file under logPath. For an ordinary name the two produce an identical string.
+        return Path.Join(logPath, $"{logName}{suffix}.log");
     }
 
     /// <summary>
