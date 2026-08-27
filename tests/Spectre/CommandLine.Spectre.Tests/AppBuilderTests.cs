@@ -49,7 +49,8 @@ public sealed class AppBuilderTests : IDisposable
     public void WithName_should_set_the_name_used_by_the_start_up_banner()
     {
         var appInfo = new ConsoleAppInfo();
-        var builder = new AppBuilder(appInfo, new CancellationTokenSource());
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(appInfo, cancellationTokenSource);
 
         builder.WithName("Widget Tool").Should().BeSameAs(builder, "the fluent methods chain");
 
@@ -60,7 +61,8 @@ public sealed class AppBuilderTests : IDisposable
     public void WithVersion_should_set_the_version_used_by_the_start_up_banner()
     {
         var appInfo = new ConsoleAppInfo();
-        var builder = new AppBuilder(appInfo, new CancellationTokenSource());
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(appInfo, cancellationTokenSource);
 
         builder.WithVersion(new Version(1, 2, 3)).Should().BeSameAs(builder);
 
@@ -71,7 +73,8 @@ public sealed class AppBuilderTests : IDisposable
     public void WithDescription_should_set_the_description_used_by_the_start_up_banner()
     {
         var appInfo = new ConsoleAppInfo();
-        var builder = new AppBuilder(appInfo, new CancellationTokenSource());
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(appInfo, cancellationTokenSource);
 
         builder.WithDescription("Does widget things").Should().BeSameAs(builder);
 
@@ -90,7 +93,8 @@ public sealed class AppBuilderTests : IDisposable
     [Fact]
     public void ConfigureCommandApp_should_reject_an_application_without_a_name()
     {
-        var builder = new AppBuilder(new ConsoleAppInfo(), new CancellationTokenSource());
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo(), cancellationTokenSource);
 
         var act = () => builder.ConfigureCommandApp(_ => { });
 
@@ -298,7 +302,8 @@ public sealed class AppBuilderTests : IDisposable
     [Fact]
     public void ConfigureServices_should_reject_a_null_delegate()
     {
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
 
         var withoutContext = () => builder.ConfigureServices((Action<IServiceCollection>)null!);
         var withContext = () => builder.ConfigureServices((Action<HostBuilderContext, IServiceCollection>)null!);
@@ -312,7 +317,8 @@ public sealed class AppBuilderTests : IDisposable
     [Fact]
     public void ConfigureAppConfiguration_should_reject_a_null_delegate()
     {
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
 
         var withoutContext = () => builder.ConfigureAppConfiguration((Action<IConfigurationBuilder>)null!);
         var withContext = () => builder.ConfigureAppConfiguration((Action<HostBuilderContext, IConfigurationBuilder>)null!);
@@ -324,7 +330,8 @@ public sealed class AppBuilderTests : IDisposable
     [Fact]
     public void ConfigureHost_should_reject_a_null_delegate()
     {
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, new CancellationTokenSource());
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
 
         var act = () => builder.ConfigureHost(null!);
 
@@ -339,9 +346,14 @@ public sealed class AppBuilderTests : IDisposable
     /// </summary>
     private static ProbeRecorder RunProbeCommand(Action<AppBuilder> configure, CancellationTokenSource? cancellationTokenSource = null)
     {
+        // Only the source this helper creates is disposed here. A caller-supplied one belongs to the test that
+        // made it and may still be needed after this call returns, so disposing it would be a use-after-dispose
+        // waiting to happen.
+        using var ownedCancellationTokenSource = cancellationTokenSource is null ? new CancellationTokenSource() : null;
+
         var recorder = new ProbeRecorder();
         ProbeCommand.Recorder = recorder;
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource ?? new CancellationTokenSource());
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource ?? ownedCancellationTokenSource!);
         configure(builder);
 
         var executor = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
