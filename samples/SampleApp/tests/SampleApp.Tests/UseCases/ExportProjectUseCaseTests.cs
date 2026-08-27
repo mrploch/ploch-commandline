@@ -70,6 +70,37 @@ public class ExportProjectUseCaseTests
         }
     }
 
+    /// <summary>
+    ///     A containment check written as "does the relative path start with ..?" rejects this name, because
+    ///     "..archive.json" does start with those two characters - while resolving to a file directly inside the
+    ///     requested directory. Comparing the resolved parent directory instead is what keeps a legitimate leading
+    ///     dot-dot working, so this test exists to stop that regressing to a prefix test.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_should_export_a_project_whose_name_begins_with_two_dots()
+    {
+        var outputPath = Path.Combine(Path.GetTempPath(), $"export-{Guid.NewGuid():N}");
+        const string dottedName = "..archive";
+        var project = new ProjectItem(dottedName, "Leading dot-dot probe", "Console", DateTime.UtcNow);
+        _projectRepositoryMock.Setup(r => r.GetByNameAsync(dottedName, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+
+        try
+        {
+            var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
+                .ExecuteAsync(new ExportProjectRequest(dottedName, outputPath), CancellationToken.None);
+
+            result.IsSuccess.Should().BeTrue("the name resolves inside the requested directory, so it is not an escape");
+            File.Exists(Path.Join(outputPath, "..archive.json")).Should().BeTrue("the manifest belongs directly in the requested directory");
+        }
+        finally
+        {
+            if (Directory.Exists(outputPath))
+            {
+                Directory.Delete(outputPath, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public async Task ExecuteAsync_should_report_not_found_for_an_unknown_project()
     {
