@@ -11,13 +11,14 @@ from the same container as everything else. Register your services with
 `ConfigureServices` and take them as constructor parameters:
 
 ```csharp
-var executor = AppBuilder.Create(args)
-                         .ConfigureServices(services =>
-                         {
-                             services.AddSingleton<IUserService, UserService>();
-                             services.AddTransient<CreateProjectUseCase>();
-                         })
-                         .ConfigureCommandApp(config => config.AddCommand<UserAddCommand>("add"));
+using var appBuilder = AppBuilder.Create(args)
+                                 .ConfigureServices(services =>
+                                 {
+                                     services.AddSingleton<IUserService, UserService>();
+                                     services.AddTransient<CreateProjectUseCase>();
+                                 });
+
+var executor = appBuilder.ConfigureCommandApp(config => config.AddCommand<UserAddCommand>("add"));
 ```
 
 If you already package registrations as a `ServicesBundle` from

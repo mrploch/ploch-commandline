@@ -64,14 +64,18 @@ Add the optional packages as you reach the steps that need them:
 ```csharp
 using Ploch.CommandLine.Spectre;
 
-var executor = AppBuilder.Create(args)
-                         .WithName("My Tool")
-                         .WithVersion(new Version(1, 0, 0))
-                         .WithDescription("Does something useful.")
-                         .ConfigureCommandApp(config =>
-                         {
-                             config.SetApplicationName("mytool");
-                         });
+// The builder owns the Ctrl+C handler and the cancellation source it creates, so dispose it once
+// the run has returned. The token stays live for the whole run, so an earlier scope exit would
+// cancel the application it is meant to be shutting down.
+using var appBuilder = AppBuilder.Create(args)
+                                 .WithName("My Tool")
+                                 .WithVersion(new Version(1, 0, 0))
+                                 .WithDescription("Does something useful.");
+
+var executor = appBuilder.ConfigureCommandApp(config =>
+{
+    config.SetApplicationName("mytool");
+});
 
 return executor.Run(args);
 ```
@@ -84,7 +88,9 @@ Three things happen here that you do not have to write yourself:
   provider. Anything you register with `ConfigureServices` is injectable into commands.
 - **Ctrl+C.** `AppBuilder.Create` installs a `Console.CancelKeyPress` handler that cancels a
   `CancellationTokenSource` instead of killing the process, which is what the token your commands
-  receive is linked to (see [Cancellation](#12-cancellation)).
+  receive is linked to (see [Cancellation](#12-cancellation)). The builder owns both: disposing it
+  unsubscribes the handler and releases the source. `Console.CancelKeyPress` is process-wide, so a
+  builder that is never disposed keeps its handler installed for the life of the process.
 
 `ConfigureServices` has two overloads — one taking just `IServiceCollection`, one taking the
 `HostBuilderContext` as well, which is how you reach `IConfiguration` during registration:

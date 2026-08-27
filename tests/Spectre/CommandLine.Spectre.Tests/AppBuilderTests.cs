@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.Tests.Testing;
@@ -336,6 +336,66 @@ public sealed class AppBuilderTests : IDisposable
         var act = () => builder.ConfigureHost(null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("configureDelegate");
+    }
+
+    [Fact]
+    public void Dispose_should_release_the_cancellation_token_source_it_created()
+    {
+        CancellationTokenSource? cancellationTokenSource;
+
+        using (var builder = AppBuilder.Create().WithName("Widget Tool"))
+        {
+            var recorder = new ProbeRecorder();
+            ProbeCommand.Recorder = recorder;
+            var executor = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
+
+            // Run inside the block: the source has to stay live for the whole run, so the probe reaches
+            // for the very instance the builder published to the application's services.
+            executor.Run("probe").Should().Be(0);
+            cancellationTokenSource = recorder.CancellationTokenSource;
+            cancellationTokenSource.Should().NotBeNull("the probe resolves the source the builder registered");
+        }
+
+        var useAfterDispose = () => cancellationTokenSource!.Token;
+        useAfterDispose.Should()
+                       .Throw<ObjectDisposedException>("Create makes the source itself, so the builder owns it and releases it on Dispose");
+    }
+
+    [Fact]
+    public void Dispose_should_leave_a_caller_supplied_cancellation_token_source_alone()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+
+        builder.Dispose();
+
+        var useAfterDispose = () => cancellationTokenSource.Token;
+        useAfterDispose.Should().NotThrow("a source handed to the constructor belongs to the caller, who may still need it afterwards");
+        cancellationTokenSource.IsCancellationRequested.Should().BeFalse("disposing the builder is not a request to cancel");
+    }
+
+    [Fact]
+    public void Dispose_should_be_safe_to_call_more_than_once()
+    {
+        var builder = AppBuilder.Create().WithName("Widget Tool");
+        builder.Dispose();
+
+        Action disposeAgain = builder.Dispose;
+
+        disposeAgain.Should().NotThrow("Dispose has to be idempotent - a using block around an already-disposed builder is legal");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_reject_a_disposed_builder()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        builder.Dispose();
+
+        var act = () => builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
+
+        act.Should()
+           .Throw<ObjectDisposedException>("building after disposal would publish a released cancellation source to the application's services");
     }
 
     /// <summary>

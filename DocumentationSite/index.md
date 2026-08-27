@@ -71,18 +71,20 @@ Wire it up in `Program.cs`:
 ```csharp
 using Ploch.CommandLine.Spectre;
 
-var executor = AppBuilder.Create(args)
-                         .WithName("greeter")
-                         .WithVersion(new Version(1, 0, 0))
-                         .WithDescription("A greeting utility.")
-                         .ConfigureServices(services => services.AddSingleton<IClock, SystemClock>())
-                         .ConfigureCommandApp(config =>
-                         {
-                             config.SetApplicationName("greeter");
-                             config.AddCommand<GreetCommand>("greet")
-                                   .WithDescription("Greet someone by name.")
-                                   .WithExample("greet", "Alice", "--loud");
-                         });
+// The builder owns the Ctrl+C handler and cancellation source it creates; dispose it after the run.
+using var appBuilder = AppBuilder.Create(args)
+                                 .WithName("greeter")
+                                 .WithVersion(new Version(1, 0, 0))
+                                 .WithDescription("A greeting utility.")
+                                 .ConfigureServices(services => services.AddSingleton<IClock, SystemClock>());
+
+var executor = appBuilder.ConfigureCommandApp(config =>
+{
+    config.SetApplicationName("greeter");
+    config.AddCommand<GreetCommand>("greet")
+          .WithDescription("Greet someone by name.")
+          .WithExample("greet", "Alice", "--loud");
+});
 
 return executor.Run(args);
 ```
@@ -103,6 +105,9 @@ usual hosting extension points are available:
 - `ConfigureServices` — register services into the container that resolves your commands.
 - `ConfigureAppConfiguration` — add configuration sources such as `appsettings.json`.
 - `ConfigureHost` — reach the underlying `IHostBuilder` directly.
+- `Dispose` — release the `Console.CancelKeyPress` handler and the `CancellationTokenSource` that
+  `Create` installed. A builder constructed directly with your own source owns neither and leaves
+  both alone.
 - `AddServicesBundle<TBundle>` — register a `ServicesBundle` from `Ploch.Common.DependencyInjection`.
 
 `ConfigureCommandApp` terminates the chain and returns an `ICommandAppExecutor`,

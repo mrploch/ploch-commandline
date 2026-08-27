@@ -13,6 +13,9 @@ using Ploch.CommandLine.Spectre.Serilog;
 using Spectre.Console.Cli;
 
 // 1. Create and configure the AppBuilder
+// AppBuilder becomes IDisposable in the next release, at which point this becomes a "using"
+// declaration so the Ctrl+C handler and cancellation source it owns are released after the run.
+// This sample builds against the published package, so it adopts that once the package ships.
 var appBuilder = AppBuilder.Create(args)
                            .WithName("Ploch.CommandLine.Spectre Sample CLI")
                            .WithVersion(new Version(1, 0, 0))

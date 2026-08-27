@@ -128,6 +128,15 @@
   contradicting both the parameter being optional and the method's own
   documentation. It now falls back to the item's `ToString()` (#11).
 
+- `AppBuilder` releases the `Console.CancelKeyPress` handler and the `CancellationTokenSource`
+  that `AppBuilder.Create` installs. Neither was ever released. `Console.CancelKeyPress` is a
+  process-wide event, so every `Create` call left one more handler subscribed for the life of the
+  process, pinning both the cancellation source and the closure around it. The builder is now
+  `IDisposable` and tears down exactly what it created; a source supplied through the public
+  constructor belongs to the caller and is deliberately left untouched. Configuring a disposed
+  builder now throws `ObjectDisposedException` instead of publishing a released cancellation
+  source to the application's services (#11, refs #32).
+
 ### Changed (second review round)
 
 - The standalone sample restores and builds again. `Ploch.Common` and
@@ -156,3 +165,9 @@
 - `Ploch.CommandLine.Spectre.FluentValidation.Tests` runs on xUnit v3, matching
   the other three Spectre test projects and the repository testing rule. It was
   the only project still on xUnit 2 with the XUnit2 AutoMoq package (#11).
+
+- `AppBuilder` implements `IDisposable`. Source- and binary-compatible for existing callers — the
+  type gains an interface, nothing is removed or re-signed — but the recommended usage changes:
+  hold the builder in a `using` declaration and let it fall out of scope *after* the run returns,
+  because the cancellation token stays live for the whole run. A builder that is never disposed
+  behaves exactly as before (#11).

@@ -19,29 +19,110 @@ namespace Ploch.CommandLine.Spectre;
 ///     library for command-line interface functionality and Microsoft.Extensions.Hosting for dependency injection and
 ///     configuration.
 /// </remarks>
-public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancellationTokenSource)
+public class AppBuilder : IDisposable
 {
     private readonly List<Action<HostBuilderContext, IConfigurationBuilder>> _appConfigurationConfigurators = [];
+    private readonly ConsoleAppInfo _appInfo;
+
+    /// <summary>The handler installed by <see cref="Create" />, or <see langword="null" /> when this builder did not install one.</summary>
+    private readonly ConsoleCancelEventHandler? _cancelKeyPressHandler;
+
+    private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly List<Action<IHostBuilder>> _hostBuilderConfigurators = [];
+
+    /// <summary>Whether <see cref="_cancellationTokenSource" /> was created here and is therefore ours to dispose.</summary>
+    private readonly bool _ownsCancellationTokenSource;
+
     private readonly List<Action<HostBuilderContext, IServiceCollection>> _serviceCollectionConfigurators = [];
     private readonly HashSet<IServicesBundle> _servicesBundles = new() { new AppServicesBundle() };
+    private bool _disposed;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="AppBuilder" /> class around a caller-supplied cancellation source.
+    /// </summary>
+    /// <param name="appInfo">Metadata describing the application being built.</param>
+    /// <param name="cancellationTokenSource">
+    ///     The cancellation source to publish to the application's services. It remains the caller's to dispose —
+    ///     <see cref="Dispose()" /> leaves it alone. Use <see cref="Create" /> to have the builder own one instead.
+    /// </param>
+    public AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancellationTokenSource)
+        : this(appInfo, cancellationTokenSource, cancelKeyPressHandler: null, ownsCancellationTokenSource: false)
+    { }
+
+    private AppBuilder(ConsoleAppInfo appInfo,
+                       CancellationTokenSource cancellationTokenSource,
+                       ConsoleCancelEventHandler? cancelKeyPressHandler,
+                       bool ownsCancellationTokenSource)
+    {
+        _appInfo = appInfo;
+        _cancellationTokenSource = cancellationTokenSource;
+        _cancelKeyPressHandler = cancelKeyPressHandler;
+        _ownsCancellationTokenSource = ownsCancellationTokenSource;
+    }
 
     /// <summary>
     ///     Creates a new instance of the <see cref="AppBuilder" /> class with the specified arguments.
     /// </summary>
     /// <param name="args">The command-line arguments to initialize the application.</param>
     /// <returns>A new instance of <see cref="AppBuilder" />.</returns>
+    /// <remarks>
+    ///     The returned builder owns both the cancellation source it creates and the <c>Console.CancelKeyPress</c>
+    ///     handler it installs, and releases them on <see cref="Dispose()" />. Dispose it once the application has
+    ///     finished running — the cancellation token stays live for the whole run, so an earlier scope exit would
+    ///     tear down the application it is meant to be shutting down.
+    /// </remarks>
     public static AppBuilder Create(params IEnumerable<string> args)
     {
-        var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
-                                  {
-                                      AnsiConsole.WriteLine("Shutting down...");
-                                      cts.Cancel();
-                                      e.Cancel = true;
-                                  };
+        var cancellationTokenSource = new CancellationTokenSource();
+        try
+        {
+            // Held as a field so Dispose can unsubscribe this exact delegate instance. Console.CancelKeyPress is a
+            // process-wide event: left subscribed, it pins the source and this closure for the life of the process,
+            // and every further Create call adds another handler on top.
+            ConsoleCancelEventHandler cancelKeyPressHandler = (_, e) =>
+                                                              {
+                                                                  AnsiConsole.WriteLine("Shutting down...");
 
-        return new(new(args), cts);
+                                                                  // Ctrl+C is raised on the console's own thread and can land while Dispose
+                                                                  // runs on the main one. The source is then already gone, so there is nothing
+                                                                  // left to cancel - but the press was user-initiated and still gets an answer.
+                                                                  try
+                                                                  {
+                                                                      cancellationTokenSource.Cancel();
+                                                                  }
+                                                                  catch (ObjectDisposedException)
+                                                                  {
+                                                                      AnsiConsole.WriteLine("Shutdown already in progress.");
+                                                                  }
+
+                                                                  e.Cancel = true;
+                                                              };
+
+            Console.CancelKeyPress += cancelKeyPressHandler;
+
+            return new(new(args), cancellationTokenSource, cancelKeyPressHandler, ownsCancellationTokenSource: true);
+        }
+        catch
+        {
+            // Nothing has taken ownership yet, so the source would otherwise leak on a failed construction.
+            cancellationTokenSource.Dispose();
+
+            throw;
+        }
+    }
+
+    /// <summary>
+    ///     Releases the cancellation source and the <c>Console.CancelKeyPress</c> handler this builder owns.
+    /// </summary>
+    /// <remarks>
+    ///     A builder created through <see cref="Create" /> owns both and releases both. A builder constructed with
+    ///     <see cref="AppBuilder(ConsoleAppInfo, CancellationTokenSource)" /> owns neither, so disposing it is a no-op
+    ///     and the caller's cancellation source is left intact.
+    /// </remarks>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -51,9 +132,11 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     /// <returns>An instance of <see cref="ICommandAppExecutor" /> allowing execution of the app.</returns>
     public ICommandAppExecutor ConfigureCommandApp(Action<IConfigurator> configurator)
     {
-        appInfo.Validate();
-        appInfo.PrintAppInfo();
-        var builder = Host.CreateDefaultBuilder(appInfo.Args?.ToArray());
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        _appInfo.Validate();
+        _appInfo.PrintAppInfo();
+        var builder = Host.CreateDefaultBuilder(_appInfo.Args?.ToArray());
 
         builder.ConfigureServices((context, services) =>
                                   {
@@ -64,7 +147,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
                                           servicesConfigurator(context, services);
                                       }
 
-                                      services.AddSingleton(cancellationTokenSource);
+                                      services.AddSingleton(_cancellationTokenSource);
                                   });
         builder.ConfigureAppConfiguration((context, configurationBuilder) =>
                                           {
@@ -243,7 +326,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
     public AppBuilder WithDescription(string description)
     {
-        appInfo.Description = description;
+        _appInfo.Description = description;
 
         return this;
     }
@@ -255,7 +338,7 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
     public AppBuilder WithName(string name)
     {
-        appInfo.Name = name;
+        _appInfo.Name = name;
 
         return this;
     }
@@ -267,9 +350,41 @@ public class AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancella
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
     public AppBuilder WithVersion(Version version)
     {
-        appInfo.Version = version;
+        _appInfo.Version = version;
 
         return this;
+    }
+
+    /// <summary>
+    ///     Releases the resources this builder owns.
+    /// </summary>
+    /// <param name="disposing">
+    ///     <see langword="true" /> when called from <see cref="Dispose()" />; <see langword="false" /> when called from a
+    ///     finalizer, in which case the managed resources below must not be touched.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            if (_cancelKeyPressHandler is not null)
+            {
+                Console.CancelKeyPress -= _cancelKeyPressHandler;
+            }
+
+            // Only a source this builder created. One handed in through the public constructor belongs to the
+            // caller and may still be in use after the builder is gone.
+            if (_ownsCancellationTokenSource)
+            {
+                _cancellationTokenSource.Dispose();
+            }
+        }
+
+        _disposed = true;
     }
 
     private void InitializeBundles(IServiceCollection services, HostBuilderContext context)
