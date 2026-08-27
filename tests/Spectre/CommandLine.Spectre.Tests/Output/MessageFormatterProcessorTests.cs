@@ -118,7 +118,7 @@ public class MessageFormatterProcessorTests
     {
         var processor = new MessageFormatterProcessor([], []);
 
-        processor.GetMessageText((FormattableString?)null).ToString(CultureInfo.InvariantCulture).Should().BeEmpty();
+        processor.GetMessageText((FormattableString?)null, formatProvider: CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture).Should().BeEmpty();
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class MessageFormatterProcessorTests
 
         FormattableString message = $"greeting: {"hello"}";
 
-        var result = processor.GetMessageText(message);
+        var result = processor.GetMessageText(message, formatProvider: CultureInfo.InvariantCulture);
 
         result.ToString(CultureInfo.InvariantCulture).Should().Be("greeting: HELLO", "each argument is passed through the matching formatter");
     }
@@ -140,7 +140,7 @@ public class MessageFormatterProcessorTests
 
         FormattableString message = $"value: [{(string?)null}]";
 
-        var result = processor.GetMessageText(message);
+        var result = processor.GetMessageText(message, formatProvider: CultureInfo.InvariantCulture);
 
         result.ToString(CultureInfo.InvariantCulture).Should().Be("value: []");
     }
@@ -152,7 +152,7 @@ public class MessageFormatterProcessorTests
 
         FormattableString message = $"count: {17}";
 
-        var result = processor.GetMessageText(message);
+        var result = processor.GetMessageText(message, formatProvider: CultureInfo.InvariantCulture);
 
         result.ToString(CultureInfo.InvariantCulture).Should().Be("count: 17");
     }
@@ -164,7 +164,7 @@ public class MessageFormatterProcessorTests
 
         FormattableString message = $"count: {17}";
 
-        var result = processor.GetMessageText(message, "red");
+        var result = processor.GetMessageText(message, "red", formatProvider: CultureInfo.InvariantCulture);
 
         result.ToString(CultureInfo.InvariantCulture).Should().Be("[red]count: 17[/]");
     }
@@ -176,7 +176,7 @@ public class MessageFormatterProcessorTests
 
         FormattableString message = $"{1}-{2}";
 
-        var result = processor.GetMessageText(message);
+        var result = processor.GetMessageText(message, formatProvider: CultureInfo.InvariantCulture);
 
         result.Format.Should().Be("{0}-{1}", "the result stays a composite format string rather than being flattened early");
         result.GetArguments().Should().Equal(1, 2);
@@ -189,7 +189,7 @@ public class MessageFormatterProcessorTests
 
         FormattableString message = $"total: {1234.5:N2}";
 
-        var result = processor.GetMessageText(message);
+        var result = processor.GetMessageText(message, formatProvider: CultureInfo.InvariantCulture);
 
         result.ToString(CultureInfo.InvariantCulture)
               .Should()
@@ -203,7 +203,7 @@ public class MessageFormatterProcessorTests
 
         FormattableString message = $"path: {"[archive]"}";
 
-        var result = processor.GetMessageText(message, "red");
+        var result = processor.GetMessageText(message, "red", formatProvider: CultureInfo.InvariantCulture);
 
         result.Format.Should().Be("[red]path: {0}[/]", "only the tag is added; the message keeps its holes");
         result.GetArguments().Should().Equal("[archive]");
@@ -214,7 +214,7 @@ public class MessageFormatterProcessorTests
     {
         var processor = new MessageFormatterProcessor([], []);
 
-        var result = processor.GetMessageText("Value [archive] is invalid", "red");
+        var result = processor.GetMessageText("Value [archive] is invalid", "red", formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().Be("[red]Value [[archive]] is invalid[/]", "the caller asked for a colour, not for their data to be parsed as markup");
     }
@@ -222,7 +222,7 @@ public class MessageFormatterProcessorTests
     /// <summary>A formatter that visibly transforms its input, so a test can prove the formatter was actually applied.</summary>
     private sealed class UpperCasingFormatter : TypeMessageFormatter<string>
     {
-        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) =>
+        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
             message?.ToUpperInvariant() ?? string.Empty;
     }
 
@@ -233,7 +233,7 @@ public class MessageFormatterProcessorTests
 
         public List<IMessageFormatterProcessor?> Processors { get; } = [];
 
-        public override void Write(Exception? message, IMessageFormatterProcessor? formatterProcessor = null)
+        public override void Write(Exception? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
         {
             Written.Add(message);
             Processors.Add(formatterProcessor);
@@ -244,6 +244,6 @@ public class MessageFormatterProcessorTests
     {
         public List<string?> Written { get; } = [];
 
-        public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null) => Written.Add(message);
+        public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => Written.Add(message);
     }
 }

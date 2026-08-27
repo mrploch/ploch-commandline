@@ -1,4 +1,32 @@
+### Changed
+
+- **Breaking.** `IFormatProvider` is threaded through the whole output pipeline.
+  `IMessageFormatter.GetMessage`, `IMessageFormatterProcessor.GetMessageText` and
+  `WriteMessage`, and `IMessageWriter.Write` each take a trailing optional
+  `IFormatProvider? formatProvider = null`. Source-compatible for callers, since
+  the parameter is optional; binary-breaking for both callers and implementers,
+  because the signatures changed — consumers must rebuild, and any type
+  implementing or overriding these members must add the parameter (#11).
+
 ### Fixed
+
+- `IOutput.Write` honours the supplied `IFormatProvider` for a value a registered
+  writer handles, not only for a plain scalar. The provider stopped at
+  `WriteMessage`, so `Write(new[] { 1234.5 }, germanCulture)` reached
+  `EnumerableMessageWriter` and its nested `ConvertibleMessageFormatter` with no
+  provider and formatted with the current culture — rendering `1234.5` while the
+  caller had asked for `1234,5`. The provider now travels with the message to the
+  writer and on to any formatter the writer consults, and is applied when the
+  interpolated string is finally rendered — that last step is where its holes are
+  formatted, so a provider not applied there was silently discarded (#11).
+
+- `UseCaseAsyncCommand` renders a failed result's validation errors.
+  `Result.Invalid(...)` stores its messages in `ValidationErrors` and leaves
+  `Errors` empty, and only `Errors` was read — so an invalid request reached the
+  console as `Use case failed:` with nothing after it. Both collections are now
+  rendered; a validation error carrying only an identifier falls back to that
+  identifier, and a failure with no message at all reports its status rather than
+  leaving the reason blank (#11).
 
 - The start-up banner no longer crashes on an application name or description
   containing `[`. `PrintAppInfo` interpolated consumer-supplied metadata straight

@@ -18,11 +18,14 @@ public class EnumerableMessageFormatter : TypeMessageFormatter<IEnumerable>
     ///     Optional processor used to format individual items in the collection. When it is omitted, each item is
     ///     rendered with its own <see cref="object.ToString" />.
     /// </param>
+    /// <param name="formatProvider">
+    ///     The format provider applied to each item, or <see langword="null" /> to use the current culture.
+    /// </param>
     /// <returns>
     ///     A string containing each item of the collection on a separate line,
     ///     prefixed with a pointing finger emoji, or an empty string if the collection is null.
     /// </returns>
-    public override string GetMessage(IEnumerable? enumerable, IMessageFormatterProcessor? formatterProcessor = null)
+    public override string GetMessage(IEnumerable? enumerable, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
     {
         if (enumerable is null)
         {
@@ -37,7 +40,9 @@ public class EnumerableMessageFormatter : TypeMessageFormatter<IEnumerable>
             // to suppress an item, and coalescing that to ToString() would print the very text it withheld.
             // Previously the null-conditional call alone yielded null whenever no processor was supplied, so every
             // line rendered as a bare emoji and the item text was dropped - contradicting the optional parameter.
-            var text = formatterProcessor is null ? item?.ToString() : formatterProcessor.GetMessageText(item);
+            var text = formatterProcessor is null
+                           ? FormattedText.Render(item, formatProvider)
+                           : formatterProcessor.GetMessageText(item, formatProvider: formatProvider);
 
             sb.Append(Emoji.Known.BackhandIndexPointingRight).Append(' ').AppendLine(text ?? string.Empty);
         }

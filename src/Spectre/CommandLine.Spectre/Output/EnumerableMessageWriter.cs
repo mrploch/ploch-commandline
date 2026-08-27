@@ -23,7 +23,10 @@ public class EnumerableMessageWriter(IAnsiConsole output) : TypeMessageWriter<IE
     ///     Optional formatter processor that can be used to format each item before writing.
     ///     If null, the item's default string representation is used.
     /// </param>
-    public override void Write(IEnumerable? enumerable, IMessageFormatterProcessor? formatterProcessor = null)
+    /// <param name="formatProvider">
+    ///     The format provider applied to each item, or <see langword="null" /> to use the current culture.
+    /// </param>
+    public override void Write(IEnumerable? enumerable, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
     {
         if (enumerable is null)
         {
@@ -34,7 +37,9 @@ public class EnumerableMessageWriter(IAnsiConsole output) : TypeMessageWriter<IE
 
         foreach (var item in enumerable)
         {
-            output.WriteLine(formatterProcessor == null ? item.ToString()! : formatterProcessor.GetMessageText(item)!);
+            output.WriteLine(formatterProcessor == null
+                                 ? FormattedText.Render(item, formatProvider)
+                                 : formatterProcessor.GetMessageText(item, formatProvider: formatProvider)!);
         }
     }
 }

@@ -16,14 +16,17 @@ public abstract class TypeMessageFormatter<TMessage> : TypeMessageHandler<TMessa
     /// </summary>
     /// <param name="message">The message to format.</param>
     /// <param name="formatterProcessor">The processor used to format nested messages, if any.</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <returns>The formatted message.</returns>
-    public string GetMessage(object? message, IMessageFormatterProcessor? formatterProcessor = null) => GetMessage((TMessage?)message, formatterProcessor);
+    public string GetMessage(object? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+        GetMessage((TMessage?)message, formatterProcessor, formatProvider);
 
     /// <summary>
     ///     Formats a message of type <typeparamref name="TMessage" />.
     /// </summary>
     /// <param name="message">The message to format.</param>
     /// <param name="formatterProcessor">The processor used to format nested messages, if any.</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <returns>The formatted message.</returns>
-    public abstract string GetMessage(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null);
+    public abstract string GetMessage(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null);
 }

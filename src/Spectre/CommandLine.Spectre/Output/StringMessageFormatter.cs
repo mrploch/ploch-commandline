@@ -10,6 +10,8 @@ public class StringMessageFormatter : TypeMessageFormatter<string>
     /// </summary>
     /// <param name="message">The message to format.</param>
     /// <param name="formatterProcessor">The processor used to format nested messages. Not used by this formatter.</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <returns>The message, or <see cref="string.Empty" /> when <paramref name="message" /> is <see langword="null" />.</returns>
-    public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) => message ?? string.Empty;
+    public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+        message ?? string.Empty;
 }

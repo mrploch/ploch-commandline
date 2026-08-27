@@ -13,8 +13,12 @@ public class BaseExceptionMessageFormatter<TException> : TypeMessageFormatter<TE
     /// </summary>
     /// <param name="message">The exception to format. Cannot be null.</param>
     /// <param name="formatterProcessor">Optional formatter processor that can be used for additional formatting. Can be null.</param>
+    /// <param name="formatProvider">
+    ///     Unused. Exception text is already rendered, so there is nothing for a provider to format; the
+    ///     parameter is present only to satisfy the contract.
+    /// </param>
     /// <returns>A formatted string representation of the exception including type name, message, and inner exception details if present.</returns>
-    public override string GetMessage(TException? message, IMessageFormatterProcessor? formatterProcessor = null)
+    public override string GetMessage(TException? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
     {
         message.NotNull();
 

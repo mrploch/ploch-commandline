@@ -22,12 +22,15 @@ public abstract class TypeMessageWriter<TMessage> : TypeMessageHandler<TMessage>
     /// </summary>
     /// <param name="message">The message to write.</param>
     /// <param name="formatterProcessor">The processor used to format nested messages, if any.</param>
-    public abstract void Write(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null);
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
+    public abstract void Write(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null);
 
     /// <summary>
     ///     Writes a message supplied as <see cref="object" />, casting it to <typeparamref name="TMessage" />.
     /// </summary>
     /// <param name="message">The message to write.</param>
     /// <param name="formatterProcessor">The processor used to format nested messages, if any.</param>
-    public void Write(object? message, IMessageFormatterProcessor? formatterProcessor = null) => Write((TMessage?)message, formatterProcessor);
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
+    public void Write(object? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+        Write((TMessage?)message, formatterProcessor, formatProvider);
 }

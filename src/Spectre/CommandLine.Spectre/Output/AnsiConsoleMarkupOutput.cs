@@ -176,10 +176,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     ///     <see langword="null" /> - which previously rendered as empty output rather than failing inside
     ///     <c>console.Write</c>.
     /// </remarks>
-    private static string RenderFallbackText<TMessage>(TMessage message, IFormatProvider? format) =>
-        message is IFormattable formattable
-            ? formattable.ToString(format: null, format ?? CultureInfo.CurrentCulture) ?? string.Empty
-            : message?.ToString() ?? string.Empty;
+    private static string RenderFallbackText<TMessage>(TMessage message, IFormatProvider? format) => FormattedText.Render(message, format);
 
     /// <summary>
     ///     Renders a message and reports whether a registered <see cref="IMessageWriter" /> was the one that rendered it.
@@ -214,7 +211,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
             return null;
         }
 
-        var writer = formatterProcessor.WriteMessage(message);
+        var writer = formatterProcessor.WriteMessage(message, format);
         if (writer is not null)
         {
             return writer;

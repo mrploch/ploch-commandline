@@ -22,11 +22,12 @@ public interface IMessageWriter : IMessageHandler
     /// </summary>
     /// <param name="message">The message to write. Can be null.</param>
     /// <param name="formatterProcessor">Optional formatter processor to apply custom formatting to the message.</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <remarks>
     ///     A writer that emits its own trailing newline must report <see cref="WritesLineTerminator" /> as
     ///     <see langword="true" />, so that <see cref="IOutput.WriteLine{TMessage}" /> does not add a second one.
     /// </remarks>
-    void Write(object? message, IMessageFormatterProcessor? formatterProcessor = null);
+    void Write(object? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null);
 }
 
 /// <summary>
@@ -52,9 +53,10 @@ public interface IMessageWriter<in TMessage> : IMessageWriter where TMessage : a
     /// </summary>
     /// <param name="message">The message to write. Can be null.</param>
     /// <param name="formatterProcessor">Optional formatter processor to apply custom formatting to the message.</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <remarks>
     ///     A writer that emits its own trailing newline must report <see cref="IMessageWriter.WritesLineTerminator" />
     ///     as <see langword="true" />, so that <see cref="IOutput.WriteLine{TMessage}" /> does not add a second one.
     /// </remarks>
-    void Write(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null);
+    void Write(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null);
 }

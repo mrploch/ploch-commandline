@@ -18,8 +18,9 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// </summary>
     /// <param name="message">The message to format. Can be null.</param>
     /// <param name="markupTag">Optional markup tag to apply to the message (e.g., "b" for bold, "i" for italic).</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <returns>A formatted string with applied markup, or an empty string if the input is null.</returns>
-    public FormattableString GetMessageText(FormattableString? message, string? markupTag = null)
+    public FormattableString GetMessageText(FormattableString? message, string? markupTag = null, IFormatProvider? formatProvider = null)
     {
         if (message is null)
         {
@@ -39,7 +40,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
                                                     // Without a formatter the original object is kept rather than stringified here, so that its
                                                     // format specifier still applies when the string is composed: pre-rendering it would leave
                                                     // "{0:N2}" applied to a string, which silently drops the specifier.
-                                                    return formatter is null ? arg : formatter.GetMessage(arg, this);
+                                                    return formatter is null ? arg : formatter.GetMessage(arg, this, formatProvider);
                                                 })
                                         .ToArray();
 
@@ -60,8 +61,9 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// <typeparam name="TMessage">The type of the message to format.</typeparam>
     /// <param name="message">The message to format. Can be null.</param>
     /// <param name="markupTag">Optional markup tag to apply to the message (e.g., "b" for bold, "i" for italic).</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <returns>A formatted string with applied markup, or an empty string if the input is null.</returns>
-    public string? GetMessageText<TMessage>(TMessage? message, string? markupTag = null)
+    public string? GetMessageText<TMessage>(TMessage? message, string? markupTag = null, IFormatProvider? formatProvider = null)
     {
         if (message is null)
         {
@@ -69,7 +71,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
         }
 
         var messageFormatter = GetFormatter(message);
-        var text = messageFormatter is null ? message.ToString() : messageFormatter.GetMessage(message, this);
+        var text = messageFormatter is null ? FormattedText.Render(message, formatProvider) : messageFormatter.GetMessage(message, this, formatProvider);
 
         if (markupTag is null)
         {
@@ -87,6 +89,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write. If null, no action is taken.</param>
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
     /// <returns>
     ///     The registered writer that rendered the message, or <see langword="null" /> if none could handle it.
     /// </returns>
@@ -95,9 +98,10 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     ///     together with this processor so it can format the message itself. Handing the writer the already-formatted
     ///     text instead would defeat the type-based selection: a writer registered for a type a <see cref="string" />
     ///     cannot be cast to — <see cref="Exception" />, for example — would fail the cast in
-    ///     <see cref="TypeMessageWriter{TMessage}.Write(object,IMessageFormatterProcessor)" />.
+    ///     <see cref="TypeMessageWriter{TMessage}.Write(object,IMessageFormatterProcessor,IFormatProvider)" />. The
+    ///     caller's format provider travels alongside, so the writer can honour the culture that was asked for.
     /// </remarks>
-    public IMessageWriter? WriteMessage<TMessage>(TMessage? message)
+    public IMessageWriter? WriteMessage<TMessage>(TMessage? message, IFormatProvider? formatProvider = null)
     {
         if (message is null)
         {
@@ -106,7 +110,7 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
 
         var writer = GetWriter(message);
 
-        writer?.Write(message, this);
+        writer?.Write(message, this, formatProvider);
 
         return writer;
     }

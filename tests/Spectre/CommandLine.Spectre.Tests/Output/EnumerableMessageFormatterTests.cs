@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using Ploch.CommandLine.Spectre.Output;
 using Spectre.Console;
 
@@ -12,13 +13,13 @@ public class EnumerableMessageFormatterTests
     [Fact]
     public void GetMessage_should_return_an_empty_string_for_a_null_collection()
     {
-        new EnumerableMessageFormatter().GetMessage(null).Should().BeEmpty();
+        new EnumerableMessageFormatter().GetMessage(null, formatProvider: CultureInfo.InvariantCulture).Should().BeEmpty();
     }
 
     [Fact]
     public void GetMessage_should_return_an_empty_string_for_an_empty_collection()
     {
-        new EnumerableMessageFormatter().GetMessage(Array.Empty<string>()).Should().BeEmpty();
+        new EnumerableMessageFormatter().GetMessage(Array.Empty<string>(), formatProvider: CultureInfo.InvariantCulture).Should().BeEmpty();
     }
 
     [Fact]
@@ -27,7 +28,7 @@ public class EnumerableMessageFormatterTests
         var formatter = new EnumerableMessageFormatter();
         string[] items = ["first", "second"];
 
-        var result = formatter.GetMessage(items, new MessageFormatterProcessor([], []));
+        var result = formatter.GetMessage(items, new MessageFormatterProcessor([], []), formatProvider: CultureInfo.InvariantCulture);
 
         var lines = result.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
         lines.Should().HaveCount(2);
@@ -42,7 +43,7 @@ public class EnumerableMessageFormatterTests
         var processor = new MessageFormatterProcessor([new BracketingFormatter()], []);
         string[] items = ["item"];
 
-        var result = formatter.GetMessage(items, processor);
+        var result = formatter.GetMessage(items, processor, formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().Contain("<item>", "the processor formats every item rather than the collection being flattened with ToString");
     }
@@ -57,7 +58,7 @@ public class EnumerableMessageFormatterTests
     {
         string[] items = ["item"];
 
-        var result = new EnumerableMessageFormatter().GetMessage(items);
+        var result = new EnumerableMessageFormatter().GetMessage(items, formatProvider: CultureInfo.InvariantCulture);
 
         result.Trim().Should().Be($"{Emoji.Known.BackhandIndexPointingRight} item", "an optional processor must not mean the item is dropped");
     }
@@ -73,7 +74,7 @@ public class EnumerableMessageFormatterTests
         var formatter = new EnumerableMessageFormatter();
         object[] items = [new LoudItem()];
 
-        var result = formatter.GetMessage(items, new MessageFormatterProcessor([new SuppressingFormatter()], []));
+        var result = formatter.GetMessage(items, new MessageFormatterProcessor([new SuppressingFormatter()], []), formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().NotContain(LoudItem.Text, "a formatter that returns null is suppressing the item, not declining to format it");
         result.Trim().Should().Be(Emoji.Known.BackhandIndexPointingRight);
@@ -85,7 +86,7 @@ public class EnumerableMessageFormatterTests
         var formatter = new EnumerableMessageFormatter();
         object[] items = [new LoudItem()];
 
-        var result = formatter.GetMessage(items, new MessageFormatterProcessor([new EmptyingFormatter()], []));
+        var result = formatter.GetMessage(items, new MessageFormatterProcessor([new EmptyingFormatter()], []), formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().NotContain(LoudItem.Text);
         result.Trim().Should().Be(Emoji.Known.BackhandIndexPointingRight);
@@ -96,7 +97,7 @@ public class EnumerableMessageFormatterTests
     {
         string?[] items = [null];
 
-        var result = new EnumerableMessageFormatter().GetMessage(items);
+        var result = new EnumerableMessageFormatter().GetMessage(items, formatProvider: CultureInfo.InvariantCulture);
 
         // Not Trim()ed: that would hide the separating space, so the assertion would pass even if the
         // emoji and the (empty) item text were concatenated without it.
@@ -115,7 +116,7 @@ public class EnumerableMessageFormatterTests
 
     private sealed class BracketingFormatter : TypeMessageFormatter<string>
     {
-        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) => $"<{message}>";
+        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => $"<{message}>";
     }
 
     /// <summary>An item whose ToString is unmistakable, so an unwanted fallback to it is visible in an assertion.</summary>
@@ -129,12 +130,12 @@ public class EnumerableMessageFormatterTests
     /// <summary>A formatter that suppresses the item by returning null.</summary>
     private sealed class SuppressingFormatter : TypeMessageFormatter<LoudItem>
     {
-        public override string GetMessage(LoudItem? message, IMessageFormatterProcessor? formatterProcessor = null) => null!;
+        public override string GetMessage(LoudItem? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => null!;
     }
 
     /// <summary>A formatter that renders the item as an empty string.</summary>
     private sealed class EmptyingFormatter : TypeMessageFormatter<LoudItem>
     {
-        public override string GetMessage(LoudItem? message, IMessageFormatterProcessor? formatterProcessor = null) => string.Empty;
+        public override string GetMessage(LoudItem? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => string.Empty;
     }
 }

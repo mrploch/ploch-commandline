@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ploch.CommandLine.Spectre.Output;
 
 namespace Ploch.CommandLine.Spectre.Tests.Output;
@@ -34,7 +35,7 @@ public class TypedMessageHandlerDefaultsTests
     {
         IMessageFormatter<string> formatter = new DirectFormatter();
 
-        formatter.GetMessage((object?)"text").Should().Be("formatted:text");
+        formatter.GetMessage((object?)"text", formatProvider: CultureInfo.InvariantCulture).Should().Be("formatted:text");
     }
 
     /// <summary>
@@ -49,12 +50,12 @@ public class TypedMessageHandlerDefaultsTests
         /// <summary>Deliberately always false, so a test can tell the two views of the writer apart.</summary>
         bool IMessageHandler.CanHandle(object? message) => false;
 
-        public void Write(object? message, IMessageFormatterProcessor? formatterProcessor = null)
+        public void Write(object? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
         {
             // Not exercised: this test covers the interface defaults, not the writing itself.
         }
 
-        public void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null)
+        public void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
         {
             // Not exercised: this test covers the interface defaults, not the writing itself.
         }
@@ -67,9 +68,9 @@ public class TypedMessageHandlerDefaultsTests
 
         public bool CanHandle(object? message) => message is string;
 
-        string IMessageFormatter.GetMessage(object? message, IMessageFormatterProcessor formatterProcessor) =>
-            GetMessage((string?)message, formatterProcessor);
+        string IMessageFormatter.GetMessage(object? message, IMessageFormatterProcessor formatterProcessor, IFormatProvider? formatProvider) =>
+            GetMessage((string?)message, formatterProcessor, formatProvider);
 
-        public string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) => $"formatted:{message}";
+        public string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => $"formatted:{message}";
     }
 }

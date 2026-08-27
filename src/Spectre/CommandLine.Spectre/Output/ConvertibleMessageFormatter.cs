@@ -12,7 +12,11 @@ public class ConvertibleMessageFormatter : TypeMessageFormatter<IConvertible>
     /// </summary>
     /// <param name="message">The message to format. Can be null.</param>
     /// <param name="formatterProcessor">Optional formatter processor that can be used for additional formatting operations. Can be null.</param>
-    /// <returns>The message converted using the current culture, or an empty string when <paramref name="message" /> is <see langword="null" />.</returns>
-    public override string GetMessage(IConvertible? message, IMessageFormatterProcessor? formatterProcessor = null) =>
-        message?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
+    /// <param name="formatProvider">The format provider to apply, or <see langword="null" /> to use the current culture.</param>
+    /// <returns>
+    ///     The message converted using <paramref name="formatProvider" />, or the current culture when it is
+    ///     <see langword="null" />; an empty string when <paramref name="message" /> is <see langword="null" />.
+    /// </returns>
+    public override string GetMessage(IConvertible? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+        message?.ToString(formatProvider ?? CultureInfo.CurrentCulture) ?? string.Empty;
 }

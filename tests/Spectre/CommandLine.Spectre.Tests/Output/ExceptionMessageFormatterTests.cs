@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System.Globalization;
+using FluentAssertions;
 using Ploch.CommandLine.Spectre.Output;
 
 namespace Ploch.CommandLine.Spectre.Tests.Output;
@@ -13,7 +14,7 @@ public class ExceptionMessageFormatterTests
         var innerException = new InvalidOperationException("Inner exception message");
         var exception = new ArgumentException("Outer exception message", innerException);
 
-        var result = formatter.GetMessage(exception);
+        var result = formatter.GetMessage(exception, formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().ContainAll("<ArgumentException>", "Outer exception message", "<InvalidOperationException>", "Inner exception message");
     }
@@ -24,7 +25,7 @@ public class ExceptionMessageFormatterTests
         var formatter = new BaseExceptionMessageFormatter<Exception>();
         var exception = new Exception("Test exception message");
 
-        var result = formatter.GetMessage(exception);
+        var result = formatter.GetMessage(exception, formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().ContainAll("<Exception>", "Test exception message");
     }
@@ -34,7 +35,7 @@ public class ExceptionMessageFormatterTests
     {
         var formatter = new BaseExceptionMessageFormatter<Exception>();
 
-        Action act = () => formatter.GetMessage(null);
+        Action act = () => formatter.GetMessage(null, formatProvider: CultureInfo.InvariantCulture);
 
         act.Should().Throw<ArgumentNullException>();
     }

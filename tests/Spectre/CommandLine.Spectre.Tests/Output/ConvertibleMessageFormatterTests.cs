@@ -19,7 +19,7 @@ public class ConvertibleMessageFormatterTests
     {
         var formatter = new ConvertibleMessageFormatter();
 
-        var result = formatter.GetMessage(message);
+        var result = formatter.GetMessage(message, formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().Be(expected);
     }
@@ -29,19 +29,34 @@ public class ConvertibleMessageFormatterTests
     {
         var formatter = new ConvertibleMessageFormatter();
 
-        var result = formatter.GetMessage(null);
+        var result = formatter.GetMessage(null, formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().BeEmpty();
     }
 
+    /// <summary>
+    ///     Pins the fallback, so the provider is passed as null on purpose: supplying one here would assert the
+    ///     provider path while claiming to cover the default, and would pass only on a machine whose current culture
+    ///     happens to agree with it.
+    /// </summary>
     [Fact]
-    public void GetMessage_should_use_the_current_culture()
+    public void GetMessage_should_use_the_current_culture_when_no_provider_is_supplied()
     {
         var formatter = new ConvertibleMessageFormatter();
 
-        var result = formatter.GetMessage(1.5);
+        var result = formatter.GetMessage(1.5, formatProvider: null);
 
         result.Should().Be(1.5.ToString(CultureInfo.CurrentCulture));
+    }
+
+    [Fact]
+    public void GetMessage_should_prefer_the_supplied_provider_over_the_current_culture()
+    {
+        var formatter = new ConvertibleMessageFormatter();
+
+        var result = formatter.GetMessage(1234.5, formatProvider: CultureInfo.GetCultureInfo("de-DE"));
+
+        result.Should().Be("1234,5", "the provider the caller supplied must win");
     }
 
     [Fact]

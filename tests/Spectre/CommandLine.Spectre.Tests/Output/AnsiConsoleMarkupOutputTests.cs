@@ -433,6 +433,40 @@ public class AnsiConsoleMarkupOutputTests
         console.Output.Should().BeEmpty();
     }
 
+    /// <summary>
+    ///     The scalar path honoured the caller's provider, but a value claimed by a registered writer did not: the
+    ///     provider stopped at <c>WriteMessage</c>, so the nested ConvertibleMessageFormatter formatted with
+    ///     CurrentCulture and quietly ignored the culture the caller asked for.
+    /// </summary>
+    [Fact]
+    public void Write_should_use_the_supplied_format_provider_for_a_value_a_writer_handles()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console,
+                                                 new MessageFormatterProcessor([new ConvertibleMessageFormatter()],
+                                                                               [new EnumerableMessageWriter(console.Console)]));
+
+        var values = new[] { 1234.5 };
+
+        output.Write(values, CultureInfo.GetCultureInfo("de-DE"));
+
+        console.Output.Should().Contain("1234,5", "the provider must survive the hop through the writer and its nested formatter");
+        console.Output.Should().NotContain("1234.5", "the current culture must not win over the provider the caller supplied");
+    }
+
+    /// <summary>
+    ///     Formatters are reached through the processor rather than the writer. The same provider has to arrive.
+    /// </summary>
+    [Fact]
+    public void GetMessageText_should_pass_the_format_provider_to_the_selected_formatter()
+    {
+        var processor = new MessageFormatterProcessor([new ConvertibleMessageFormatter()], []);
+
+        var text = processor.GetMessageText(1234.5, formatProvider: CultureInfo.GetCultureInfo("de-DE"));
+
+        text.Should().Be("1234,5");
+    }
+
     private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
         new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
 
@@ -454,7 +488,7 @@ public class AnsiConsoleMarkupOutputTests
     /// <summary>A writer that renders inline and therefore leaves the line terminator to <see cref="IOutput.WriteLine{TMessage}" />.</summary>
     private sealed class InlineProbeWriter(IAnsiConsole console) : TypeMessageWriter<ProbeMessage>
     {
-        public override void Write(ProbeMessage? message, IMessageFormatterProcessor? formatterProcessor = null) =>
+        public override void Write(ProbeMessage? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
             console.Write(formatterProcessor?.GetMessageText(message?.Text) ?? message?.Text ?? string.Empty);
     }
 
@@ -470,7 +504,7 @@ public class AnsiConsoleMarkupOutputTests
     {
         public int WriteCount { get; private set; }
 
-        public override void Write(System.Collections.IEnumerable? message, IMessageFormatterProcessor? formatterProcessor = null) => WriteCount++;
+        public override void Write(System.Collections.IEnumerable? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => WriteCount++;
     }
 
     /// <summary>
@@ -483,14 +517,14 @@ public class AnsiConsoleMarkupOutputTests
 
         public List<object?> MessagesOfferedToWriters { get; } = [];
 
-        public FormattableString GetMessageText(FormattableString? message, string? markupTag = null)
+        public FormattableString GetMessageText(FormattableString? message, string? markupTag = null, IFormatProvider? formatProvider = null)
         {
             RequestedTags.Add(markupTag);
 
             return message ?? $"";
         }
 
-        public string? GetMessageText<TMessage>(TMessage? message, string? markupTag = null)
+        public string? GetMessageText<TMessage>(TMessage? message, string? markupTag = null, IFormatProvider? formatProvider = null)
         {
             RequestedTags.Add(markupTag);
 
@@ -498,7 +532,7 @@ public class AnsiConsoleMarkupOutputTests
         }
 
         /// <summary>Records the offer and handles nothing, so callers always fall back to their own rendering.</summary>
-        public IMessageWriter? WriteMessage<TMessage>(TMessage message)
+        public IMessageWriter? WriteMessage<TMessage>(TMessage message, IFormatProvider? formatProvider = null)
         {
             MessagesOfferedToWriters.Add(message);
 

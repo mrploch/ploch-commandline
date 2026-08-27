@@ -1,5 +1,6 @@
 using System.Collections;
 using System.ComponentModel;
+using System.Globalization;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 
@@ -16,7 +17,7 @@ public class EnumerableMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new EnumerableMessageWriter(console.Console).Write(null);
+        new EnumerableMessageWriter(console.Console).Write(null, formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Be("No items to display." + Environment.NewLine);
     }
@@ -28,7 +29,7 @@ public class EnumerableMessageWriterTests
 
         string[] items = ["alpha", "beta"];
 
-        new EnumerableMessageWriter(console.Console).Write(items);
+        new EnumerableMessageWriter(console.Console).Write(items, formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Be($"alpha{Environment.NewLine}beta{Environment.NewLine}");
     }
@@ -41,7 +42,7 @@ public class EnumerableMessageWriterTests
 
         string[] items = ["alpha"];
 
-        new EnumerableMessageWriter(console.Console).Write(items, processor);
+        new EnumerableMessageWriter(console.Console).Write(items, processor, formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Be($"<alpha>{Environment.NewLine}");
     }
@@ -51,7 +52,7 @@ public class EnumerableMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new EnumerableMessageWriter(console.Console).Write(Array.Empty<string>());
+        new EnumerableMessageWriter(console.Console).Write(Array.Empty<string>(), formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().BeEmpty();
     }
@@ -71,7 +72,7 @@ public class EnumerableMessageWriterTests
 
     private sealed class BracketingFormatter : TypeMessageFormatter<string>
     {
-        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) => $"<{message}>";
+        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => $"<{message}>";
     }
 }
 
@@ -87,7 +88,7 @@ public class FormattableStringMessageWriterTests
         using var console = new RecordingConsole();
         var processor = new MessageFormatterProcessor([new BracketingFormatter()], []);
 
-        new FormattableStringMessageWriter(console.Console).Write($"value: {"x"}", processor);
+        new FormattableStringMessageWriter(console.Console).Write($"value: {"x"}", processor, formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Be("value: <x>");
     }
@@ -97,7 +98,7 @@ public class FormattableStringMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new FormattableStringMessageWriter(console.Console).Write($"value: {"x"}");
+        new FormattableStringMessageWriter(console.Console).Write($"value: {"x"}", formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Be("value: x");
     }
@@ -107,9 +108,24 @@ public class FormattableStringMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new FormattableStringMessageWriter(console.Console).Write(null);
+        new FormattableStringMessageWriter(console.Console).Write(null, formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().BeEmpty();
+    }
+
+    /// <summary>
+    ///     Rendering the interpolated string is where its holes are formatted, so a provider that reaches the writer
+    ///     but is not applied at that point is silently discarded - the writer honoured it for nested formatters and
+    ///     then formatted every remaining hole with the ambient culture.
+    /// </summary>
+    [Fact]
+    public void Write_should_format_the_interpolated_holes_with_the_supplied_provider()
+    {
+        using var console = new RecordingConsole();
+
+        new FormattableStringMessageWriter(console.Console).Write($"value: {1234.5}", formatProvider: CultureInfo.GetCultureInfo("de-DE"));
+
+        console.Output.Should().Be("value: 1234,5", "de-DE uses a comma as the decimal separator");
     }
 
     [Fact]
@@ -117,14 +133,14 @@ public class FormattableStringMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new FormattableStringMessageWriter(console.Console).Write($"{"[red]"}");
+        new FormattableStringMessageWriter(console.Console).Write($"{"[red]"}", formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Be("[red]", "an argument value must never be reinterpreted as markup");
     }
 
     private sealed class BracketingFormatter : TypeMessageFormatter<string>
     {
-        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null) => $"<{message}>";
+        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => $"<{message}>";
     }
 }
 
@@ -139,7 +155,7 @@ public class ExceptionMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new ExceptionMessageWriter(console.Console).Write(new InvalidOperationException("the failure detail"));
+        new ExceptionMessageWriter(console.Console).Write(new InvalidOperationException("the failure detail"), formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Contain("the failure detail");
     }
@@ -149,7 +165,7 @@ public class ExceptionMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new ExceptionMessageWriter(console.Console).Write(null);
+        new ExceptionMessageWriter(console.Console).Write(null, formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Contain("No exception to display.");
     }
@@ -165,7 +181,7 @@ public class StringMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new StringMessageWriter(console.Console).Write("[not markup]");
+        new StringMessageWriter(console.Console).Write("[not markup]", formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().Be("[not markup]", "this writer bypasses markup parsing");
     }
@@ -175,7 +191,7 @@ public class StringMessageWriterTests
     {
         using var console = new RecordingConsole();
 
-        new StringMessageWriter(console.Console).Write(null);
+        new StringMessageWriter(console.Console).Write(null, formatProvider: CultureInfo.InvariantCulture);
 
         console.Output.Should().BeEmpty();
     }
@@ -189,13 +205,13 @@ public class StringMessageFormatterTests
     [Fact]
     public void GetMessage_should_return_the_message_unchanged()
     {
-        new StringMessageFormatter().GetMessage("value").Should().Be("value");
+        new StringMessageFormatter().GetMessage("value", formatProvider: CultureInfo.InvariantCulture).Should().Be("value");
     }
 
     [Fact]
     public void GetMessage_should_substitute_an_empty_string_for_a_null_message()
     {
-        new StringMessageFormatter().GetMessage(null).Should().BeEmpty();
+        new StringMessageFormatter().GetMessage(null, formatProvider: CultureInfo.InvariantCulture).Should().BeEmpty();
     }
 }
 
@@ -209,7 +225,7 @@ public class Win32ExceptionMessageFormatterTests
     {
         var formatter = new Win32ExceptionMessageFormatter();
 
-        var result = formatter.GetMessage(new Win32Exception(5));
+        var result = formatter.GetMessage(new Win32Exception(5), formatProvider: CultureInfo.InvariantCulture);
 
         result.Should().Contain("<Error Code: 5>").And.Contain(nameof(Win32Exception));
     }
@@ -219,8 +235,8 @@ public class Win32ExceptionMessageFormatterTests
     {
         var formatter = new Win32ExceptionMessageFormatter();
 
-        formatter.GetMessage(new Win32Exception(2, "no inner")).Should().NotContain("Inner exception");
-        formatter.GetMessage(new Win32Exception("outer", new InvalidOperationException("inner detail")))
+        formatter.GetMessage(new Win32Exception(2, "no inner"), formatProvider: CultureInfo.InvariantCulture).Should().NotContain("Inner exception");
+        formatter.GetMessage(new Win32Exception("outer", new InvalidOperationException("inner detail")), formatProvider: CultureInfo.InvariantCulture)
                  .Should()
                  .Contain("Inner exception")
                  .And.Contain("inner detail");
