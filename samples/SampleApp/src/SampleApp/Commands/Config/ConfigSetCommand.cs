@@ -29,7 +29,13 @@ public class ConfigSetCommand(ICommandSettingsValidator<ConfigSetCommandSettings
             return ExitCode.InvalidInput;
         }
 
-        output.MarkupLineInterpolated($"[green]Would set '{settings.Key}' = '{settings.Value}' in the '{settings.Scope}' scope.[/]");
+        // The value is echoed back, so a secret passed on the command line would land in console output and any
+        // CI log capturing it. `config get` and `config show` already redact on this policy; this path did not.
+        // Only the rendered value is redacted - which key may be *set* is a separate question from what may be
+        // disclosed, so no allow-list is applied here.
+        var renderedValue = ConfigurationDisclosurePolicy.IsSensitive(settings.Key) ? "<redacted>" : settings.Value;
+
+        output.MarkupLineInterpolated($"[green]Would set '{settings.Key}' = '{renderedValue}' in the '{settings.Scope}' scope.[/]");
         output.MarkupLineInterpolated($"[dim]Preview only - this sample has no writable configuration store, so nothing is persisted.[/]");
 
         return ExitCode.Success;

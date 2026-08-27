@@ -41,7 +41,11 @@ public class ExportProjectUseCase(IProjectRepository projectRepository) : IResul
         try
         {
             Directory.CreateDirectory(request.OutputPath);
-            manifestPath = Path.Combine(request.OutputPath, fileName);
+            // Path.GetFileName is a no-op given the guard above, which already rejects any name carrying a
+            // separator. It is kept because this is the one path where a caller-supplied name becomes a file
+            // path: it makes "this argument is a bare file name" a local invariant rather than one the reader
+            // has to go and re-derive, and it removes Path.Combine's rooted-argument footgun outright.
+            manifestPath = Path.Combine(request.OutputPath, Path.GetFileName(fileName));
 
             var manifest = JsonSerializer.Serialize(project, JsonOptions);
             await File.WriteAllTextAsync(manifestPath, manifest, cancellationToken);
