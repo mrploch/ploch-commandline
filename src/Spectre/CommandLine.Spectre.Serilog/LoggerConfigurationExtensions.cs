@@ -168,15 +168,28 @@ public static class LoggerConfigurationExtensions
     /// <returns>A full path to the log file, combining the directory path and file name with appropriate extension.</returns>
     private static string BuildFullLogPath(string? logName, string? logPath, string? suffix = null)
     {
-        logName ??= Process.GetCurrentProcess().ProcessName;
+        var processName = Process.GetCurrentProcess().ProcessName;
+
         logPath ??= AppDomain.CurrentDomain.BaseDirectory;
         suffix = suffix != null ? $"-{suffix}" : null;
 
-        // Path.Join, not Path.Combine: logName is a public parameter of AddSerilog, and Combine discards
-        // everything before a rooted later segment - so logName: "C:\app" silently wrote to C:pp.log and
-        // ignored logPath altogether, violating the documented contract of the very parameter beside it.
-        // Join keeps the file under logPath. For an ordinary name the two produce an identical string.
-        return Path.Join(logPath, $"{logName}{suffix}.log");
+        // logName names a file, not a path, and it is a public parameter of AddSerilog - so it decides where the
+        // sink writes unless this method says otherwise. Two separate ways it could escape logPath:
+        //
+        //   rooted    logName: "C:\app"      Path.Combine discards logPath entirely and writes C:\app.log
+        //   traversal logName: "../outside"  survives Path.Join as logs/../outside.log, which the OS resolves
+        //                                    to a sibling of logPath
+        //
+        // Path.Join alone closes only the first. Stripping the directory portion closes both, and leaves an
+        // ordinary name untouched. A name that is nothing but a directory part ("sub/") leaves nothing behind,
+        // so the process name stands in rather than producing a file called ".log".
+        var fileName = Path.GetFileName(logName ?? processName);
+        if (string.IsNullOrEmpty(fileName))
+        {
+            fileName = processName;
+        }
+
+        return Path.Join(logPath, $"{fileName}{suffix}.log");
     }
 
     /// <summary>

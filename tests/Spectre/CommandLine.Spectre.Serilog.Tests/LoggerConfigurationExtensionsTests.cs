@@ -129,6 +129,40 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
         }
     }
 
+    /// <summary>
+    ///     The sibling test above covers a <em>rooted</em> logName. This covers the other escape, which Path.Join
+    ///     alone does not close: a relative name carrying ".." survives concatenation as "logs/../outside.log" and
+    ///     the operating system resolves it to a sibling of the configured directory.
+    /// </summary>
+    [Theory]
+    [InlineData("/")]
+    [InlineData("\\")]
+    public void ConfigureSerilog_should_not_write_outside_the_log_directory_for_a_traversing_log_name(string separator)
+    {
+        // Both cases resolve to the same sibling file on Windows, where '/' and '\' are equivalent separators,
+        // so the destination is made unique per case - otherwise the two theory rows race for one path and the
+        // result depends on execution order rather than on the code under test.
+        var traversingName = $"..{separator}escaped-{Guid.NewGuid():N}";
+        var siblingPath = Path.GetFullPath(Path.Join(_logDirectory, $"{traversingName}.log"));
+
+        try
+        {
+            using (var logger = new LoggerConfiguration().ConfigureSerilog(logName: traversingName, logPath: _logDirectory).CreateLogger())
+            {
+                logger.Information("an informational message");
+            }
+
+            File.Exists(siblingPath).Should().BeFalse("a logName carrying '..' must not escape the configured logPath");
+        }
+        finally
+        {
+            if (File.Exists(siblingPath))
+            {
+                File.Delete(siblingPath);
+            }
+        }
+    }
+
     private static IConfiguration BuildConfiguration(params (string Key, string Value)[] settings) =>
         new ConfigurationBuilder().AddInMemoryCollection(settings.ToDictionary(setting => setting.Key, setting => (string?)setting.Value)).Build();
 

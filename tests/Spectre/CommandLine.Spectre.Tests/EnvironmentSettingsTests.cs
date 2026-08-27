@@ -1,4 +1,6 @@
-﻿namespace Ploch.CommandLine.Spectre.Tests;
+﻿using Ploch.CommandLine.Spectre.Tests.Testing;
+
+namespace Ploch.CommandLine.Spectre.Tests;
 
 /// <summary>
 ///     Cover for the process-wide <see cref="EnvironmentSettings.Current" /> state: lazy initialisation is
@@ -6,7 +8,10 @@
 ///     materialised (previously it no-opped silently), and <see cref="EnvironmentSettings.Reset" /> restores a
 ///     clean slate.
 /// </summary>
-[Collection(nameof(EnvironmentSettingsTests))]
+// Shares GlobalConsoleState with every other class that touches process-wide state. xUnit runs distinct
+// collections in parallel, so a private collection name here let these tests reset EnvironmentSettings.Current
+// underneath AppBuilderTests, CommandAppExecutorTests and CommandAppConfiguratorTests, which all read it.
+[Collection(GlobalConsoleState.Name)]
 public sealed class EnvironmentSettingsTests : IDisposable
 {
     public void Dispose()
