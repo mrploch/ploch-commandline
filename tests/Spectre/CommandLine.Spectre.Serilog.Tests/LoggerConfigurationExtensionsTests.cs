@@ -17,6 +17,24 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
 
     public LoggerConfigurationExtensionsTests() => Directory.CreateDirectory(_logDirectory);
 
+    /// <summary>
+    ///     The separators that actually delimit directories on the platform running the test. Hard-coding both '/'
+    ///     and '\' fails on Unix, where a backslash is an ordinary file-name character: "..\name" is then a single
+    ///     valid file name that lands inside the directory, so asserting it escaped asserts something untrue.
+    ///     On Unix both properties are '/', so this yields one row there and two on Windows.
+    /// </summary>
+    public static TheoryData<char> DirectorySeparators()
+    {
+        var separators = new TheoryData<char>();
+
+        foreach (var separator in new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }.Distinct())
+        {
+            separators.Add(separator);
+        }
+
+        return separators;
+    }
+
     public void Dispose()
     {
         try
@@ -135,13 +153,11 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
     ///     the operating system resolves it to a sibling of the configured directory.
     /// </summary>
     [Theory]
-    [InlineData("/")]
-    [InlineData("\\")]
-    public void ConfigureSerilog_should_not_write_outside_the_log_directory_for_a_traversing_log_name(string separator)
+    [MemberData(nameof(DirectorySeparators))]
+    public void ConfigureSerilog_should_not_write_outside_the_log_directory_for_a_traversing_log_name(char separator)
     {
-        // Both cases resolve to the same sibling file on Windows, where '/' and '\' are equivalent separators,
-        // so the destination is made unique per case - otherwise the two theory rows race for one path and the
-        // result depends on execution order rather than on the code under test.
+        // The destination is unique per row: on Windows '/' and the backslash are equivalent, so fixed names
+        // would resolve to one file and the rows would race for it rather than testing the code.
         var traversingName = $"..{separator}escaped-{Guid.NewGuid():N}";
         var siblingPath = Path.GetFullPath(Path.Join(_logDirectory, $"{traversingName}.log"));
 
