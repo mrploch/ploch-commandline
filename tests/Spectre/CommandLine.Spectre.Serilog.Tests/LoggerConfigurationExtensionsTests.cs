@@ -108,7 +108,7 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
     [Fact]
     public void ConfigureSerilog_should_not_write_outside_the_log_directory_for_a_rooted_log_name()
     {
-        var rootedName = Path.Combine(Path.GetTempPath(), $"escaped-{Guid.NewGuid():N}");
+        var rootedName = Path.Join(Path.GetTempPath(), $"escaped-{Guid.NewGuid():N}");
         var escapedPath = $"{rootedName}.log";
 
         try
