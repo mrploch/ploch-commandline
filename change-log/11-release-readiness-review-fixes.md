@@ -1,13 +1,3 @@
-### Changed
-
-- **Breaking.** `IFormatProvider` is threaded through the whole output pipeline.
-  `IMessageFormatter.GetMessage`, `IMessageFormatterProcessor.GetMessageText` and
-  `WriteMessage`, and `IMessageWriter.Write` each take a trailing optional
-  `IFormatProvider? formatProvider = null`. Source-compatible for callers, since
-  the parameter is optional; binary-breaking for both callers and implementers,
-  because the signatures changed — consumers must rebuild, and any type
-  implementing or overriding these members must add the parameter (#11).
-
 ### Fixed
 
 - `IOutput.Write` honours the supplied `IFormatProvider` for a value a registered
@@ -74,6 +64,14 @@
   `IEnumerable<ICommandSettingsValidator<T>>` resolved two identical instances (#11).
 
 ### Changed
+
+- **Breaking.** `IFormatProvider` is threaded through the whole output pipeline.
+  `IMessageFormatter.GetMessage`, `IMessageFormatterProcessor.GetMessageText` and
+  `WriteMessage`, and `IMessageWriter.Write` each take a trailing optional
+  `IFormatProvider? formatProvider = null`. Source-compatible for callers, since
+  the parameter is optional; binary-breaking for both callers and implementers,
+  because the signatures changed — consumers must rebuild, and any type
+  implementing or overriding these members must add the parameter (#11).
 
 - **Breaking:** `UseCaseAsyncCommand<...>` no longer echoes the settings before
   running the use case. It printed every public settings property unconditionally,

@@ -114,6 +114,23 @@ public class FormattableStringMessageWriterTests
     }
 
     /// <summary>
+    ///     A null item inside the collection used to throw, because the no-processor branch called
+    ///     <c>item.ToString()!</c> on it. Routing that branch through the shared fallback renders it as empty
+    ///     instead, matching what EnumerableMessageFormatter has always done for the same input.
+    /// </summary>
+    [Fact]
+    public void Write_should_render_a_null_item_as_empty_rather_than_throwing()
+    {
+        using var console = new RecordingConsole();
+        var items = new string?[] { "first", null, "third" };
+
+        var act = () => new EnumerableMessageWriter(console.Console).Write(items, formatProvider: CultureInfo.InvariantCulture);
+
+        act.Should().NotThrow("one unusable item must not take down the whole listing");
+        console.Output.Should().Contain("first").And.Contain("third");
+    }
+
+    /// <summary>
     ///     Rendering the interpolated string is where its holes are formatted, so a provider that reaches the writer
     ///     but is not applied at that point is silently discarded - the writer honoured it for nested formatters and
     ///     then formatted every remaining hole with the ambient culture.
