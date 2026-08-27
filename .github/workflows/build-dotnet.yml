@@ -20,6 +20,7 @@ permissions:
   contents: read         # checkout only - Pages deployment lives in publish-docs.yml
   checks: write          # test reporting
   pull-requests: write   # test reporting annotations on PRs
+  code-quality: write    # upload the coverage report the main ruleset's code_coverage rule reads
 jobs:
   build:
 
@@ -173,6 +174,28 @@ jobs:
       # broken build.
       - name: Build sample application
         run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true
+
+      # The main ruleset has a code_coverage rule, which reads coverage GitHub itself holds -
+      # SonarCloud's and Codacy's copies are invisible to it. actions/upload-code-coverage takes a
+      # single Cobertura file (its script does Path(file).is_file(), so no globbing), while coverlet
+      # writes one report per test project, hence the merge first. Both formats already come out of
+      # the Test step above: Codacy consumes the opencover twin of these same files.
+      - name: Merge coverage reports
+        if: always()
+        run: >
+          dotnet tool run reportgenerator
+          "-reports:**/CoverageResults/coverage*.cobertura.xml"
+          "-targetdir:./CoverageReport"
+          "-reporttypes:Cobertura"
+
+      # Skips itself on fork pull requests, where the token cannot write coverage.
+      - name: Upload coverage to GitHub Code Quality
+        if: always()
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: ./CoverageReport/Cobertura.xml
+          language: C#
+          label: code-coverage/coverlet
 
       - name: Run codacy-coverage-reporter
         if: always()

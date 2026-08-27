@@ -144,6 +144,10 @@ _TeamCity*
 # Coverlet code coverage
 coverage.*.xml
 
+# Merged Cobertura report, produced by the reportgenerator step in build-dotnet.yml
+# so that actions/upload-code-coverage has a single file to upload.
+CoverageReport/
+
 # NCrunch
 _NCrunch_*
 .*crunch*.local.xml
