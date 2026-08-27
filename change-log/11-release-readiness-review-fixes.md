@@ -1,5 +1,22 @@
 ### Fixed
 
+- The sample's `config get` no longer discloses arbitrary configuration. It read
+  `configuration[key]` for any key the user typed, and the host adds an
+  environment-variable provider — so `config get AWS_SECRET_ACCESS_KEY` printed the
+  secret verbatim. `ConfigShowCommand` already applied a section allow-list and a
+  redaction pass; `ConfigGetCommand` applied neither. Both now share one
+  `ConfigurationDisclosurePolicy`, so they cannot drift apart again: a key outside
+  the application's own sections is refused, and a value whose path names a secret
+  renders as `<redacted>` (#11).
+
+- The Qodana workflow pins its action to a commit SHA. It used
+  `JetBrains/qodana-action@v2024.1`, which is a mutable *branch* rather than a tag,
+  in a job holding `contents: write`, `pull-requests: write` and `checks: write`
+  plus the Qodana token — so a push to that branch would have handed unreviewed
+  action code those capabilities. Now pinned to
+  `c5a69b02e6c1adb092153f7a479169a4b9f3a1cf` (`v2024.1.10`), matching how the other
+  third-party actions in this repository are already referenced (#11).
+
 - `IOutput.Write` honours the supplied `IFormatProvider` for a value a registered
   writer handles, not only for a plain scalar. The provider stopped at
   `WriteMessage`, so `Write(new[] { 1234.5 }, germanCulture)` reached
