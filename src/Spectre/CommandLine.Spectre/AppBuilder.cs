@@ -76,31 +76,33 @@ public class AppBuilder : IDisposable
         var cancellationTokenSource = new CancellationTokenSource();
         try
         {
-            // Held as a field so Dispose can unsubscribe this exact delegate instance. Console.CancelKeyPress is a
-            // process-wide event: left subscribed, it pins the source and this closure for the life of the process,
-            // and every further Create call adds another handler on top.
-            ConsoleCancelEventHandler cancelKeyPressHandler = (_, e) =>
-                                                              {
-                                                                  AnsiConsole.WriteLine("Shutting down...");
-
-                                                                  // Ctrl+C is raised on the console's own thread and can land while Dispose
-                                                                  // runs on the main one. The source is then already gone, so there is nothing
-                                                                  // left to cancel - but the press was user-initiated and still gets an answer.
-                                                                  try
-                                                                  {
-                                                                      cancellationTokenSource.Cancel();
-                                                                  }
-                                                                  catch (ObjectDisposedException)
-                                                                  {
-                                                                      AnsiConsole.WriteLine("Shutdown already in progress.");
-                                                                  }
-
-                                                                  e.Cancel = true;
-                                                              };
+            // The delegate is held rather than re-converted so Dispose can unsubscribe this exact instance.
+            // Console.CancelKeyPress is a process-wide event: left subscribed, it pins the source and the
+            // closure for the life of the process, and every further Create call adds another handler on top.
+            ConsoleCancelEventHandler cancelKeyPressHandler = OnCancelKeyPress;
 
             Console.CancelKeyPress += cancelKeyPressHandler;
 
             return new(new(args), cancellationTokenSource, cancelKeyPressHandler, ownsCancellationTokenSource: true);
+
+            void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
+            {
+                AnsiConsole.WriteLine("Shutting down...");
+
+                // Ctrl+C is raised on the console's own thread and can land while Dispose runs on the main
+                // one. The source is then already gone, so there is nothing left to cancel - but the press
+                // was user-initiated and still gets an answer.
+                try
+                {
+                    cancellationTokenSource.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    AnsiConsole.WriteLine("Shutdown already in progress.");
+                }
+
+                e.Cancel = true;
+            }
         }
         catch
         {
