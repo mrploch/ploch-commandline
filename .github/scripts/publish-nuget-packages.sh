@@ -47,7 +47,9 @@ FEED_URL="${1:?Usage: publish-nuget-packages.sh <feed-url>}"
 # GeneratePackageOnBuild=false and IsPackable=false. `-ipath` keeps every path predicate honest
 # if a directory is ever renamed with different casing.
 find_packages() {
-  find . -type f -name "$1" -ipath '*/bin/Release/*' -not -ipath './tests/*' -not -ipath './samples/*' | sort
+  local pattern="$1"
+
+  find . -type f -name "$pattern" -ipath '*/bin/Release/*' -not -ipath './tests/*' -not -ipath './samples/*' | sort
 }
 
 # Captured into a variable rather than piped into `mapfile` through a process substitution:
@@ -55,12 +57,12 @@ find_packages() {
 # after a partial result would publish a subset of the packages and report success.
 # `set -o pipefail` makes the failing `find` fail the whole `find | sort` pipeline.
 if ! packages_found=$(find_packages '*.nupkg'); then
-  echo "::error::Package discovery failed while enumerating .nupkg files."
+  echo "::error::Package discovery failed while enumerating .nupkg files." >&2
   exit 1
 fi
 
-if [ -z "$packages_found" ]; then
-  echo "::error::No Release .nupkg files were found. Refusing to report a successful publish."
+if [[ -z "$packages_found" ]]; then
+  echo "::error::No Release .nupkg files were found. Refusing to report a successful publish." >&2
   exit 1
 fi
 
@@ -78,7 +80,7 @@ if ! symbols_found=$(find_packages '*.snupkg'); then
   symbols_found=''
 fi
 
-if [ -n "$symbols_found" ]; then
+if [[ -n "$symbols_found" ]]; then
   mapfile -t symbols <<< "$symbols_found"
   for sym in "${symbols[@]}"; do
     echo "Publishing $sym"
