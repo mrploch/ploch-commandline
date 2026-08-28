@@ -108,11 +108,11 @@ usual hosting extension points are available:
 - `Dispose` — release the `Console.CancelKeyPress` handler and the `CancellationTokenSource` that
   `Create` installed. A builder constructed directly with your own source owns neither and leaves
   both alone.
+- `AddServicesBundle<TBundle>` — register a `ServicesBundle` from `Ploch.Common.DependencyInjection`.
 
 The token behind that source is handed to Spectre and reaches every command. The first Ctrl+C cancels
 it cooperatively; a second one terminates the process, so a command that ignores its token cannot
 leave the application unkillable from the keyboard.
-- `AddServicesBundle<TBundle>` — register a `ServicesBundle` from `Ploch.Common.DependencyInjection`.
 
 `ConfigureCommandApp` terminates the chain and returns an `ICommandAppExecutor`,
 which exposes `Run` and `RunAsync`.
