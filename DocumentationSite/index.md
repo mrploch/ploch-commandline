@@ -110,6 +110,10 @@ usual hosting extension points are available:
   both alone.
 - `AddServicesBundle<TBundle>` — register a `ServicesBundle` from `Ploch.Common.DependencyInjection`.
 
+The token behind that source is handed to Spectre and reaches every command. The first Ctrl+C cancels
+it cooperatively; a second one terminates the process, so a command that ignores its token cannot
+leave the application unkillable from the keyboard.
+
 `ConfigureCommandApp` terminates the chain and returns an `ICommandAppExecutor`,
 which exposes `Run` and `RunAsync`.
 

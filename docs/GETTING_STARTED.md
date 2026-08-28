@@ -86,11 +86,15 @@ Three things happen here that you do not have to write yourself:
   description, before any command runs.
 - **Hosting.** `Host.CreateDefaultBuilder` supplies configuration, logging and the service
   provider. Anything you register with `ConfigureServices` is injectable into commands.
-- **Ctrl+C.** `AppBuilder.Create` installs a `Console.CancelKeyPress` handler that cancels a
-  `CancellationTokenSource` instead of killing the process, which is what the token your commands
-  receive is linked to (see [Cancellation](#12-cancellation)). The builder owns both: disposing it
-  unsubscribes the handler and releases the source. `Console.CancelKeyPress` is process-wide, so a
-  builder that is never disposed keeps its handler installed for the life of the process.
+- **Ctrl+C.** `AppBuilder.Create` installs a `Console.CancelKeyPress` handler over a
+  `CancellationTokenSource`, and that source's token is the one your commands receive (see
+  [Cancellation](#12-cancellation)). The **first** interrupt cancels it cooperatively instead of
+  killing the process, so a command that honours its token can stop and tidy up; a **second**
+  interrupt takes the default path and terminates, so a command that ignores its token never leaves
+  the application unkillable from the keyboard. The builder owns both the source and the handler:
+  disposing it unsubscribes the handler and releases the source, and the handler also detaches itself
+  once an interrupt has been handled. `Console.CancelKeyPress` is process-wide, so a builder that is
+  neither disposed nor interrupted keeps its handler installed for the life of the process.
 
 `ConfigureServices` has two overloads — one taking just `IServiceCollection`, one taking the
 `HostBuilderContext` as well, which is how you reach `IConfiguration` during registration:
@@ -666,6 +670,26 @@ protected override async Task<ExitCode> DoExecuteAsync(CommandContext context,
 
 The base class treats cancellation as an outcome rather than a fault: an `OperationCanceledException`
 is not passed to `IExceptionHandler`, it becomes `ExitCode.Cancelled` (130).
+
+### Where the token comes from
+
+`AppBuilder.Create` owns the `CancellationTokenSource`, and `ConfigureCommandApp` hands its token to
+Spectre, which passes it to every command. The source is also registered in the container, so a
+command that needs to request shutdown itself can resolve a `CancellationTokenSource` and cancel it.
+
+Interrupting the application from the keyboard follows a two-step contract:
+
+| Interrupt | Effect |
+|---|---|
+| First Ctrl+C | Cancels the token; the command is expected to stop cooperatively. The application prints `Shutting down... press Ctrl+C again to force an exit.` |
+| Second Ctrl+C | Takes the default path and terminates the process, so a command that ignores its token cannot hang the application |
+
+A cancellation callback that throws is reported rather than allowed to escape — an unhandled
+exception on the `Console.CancelKeyPress` thread would terminate the process, which is the opposite
+of the shutdown being requested.
+
+`EnvironmentSettings.PauseBeforeExit` is skipped after cancellation: prompting for Enter on the way
+out of a shutdown the user just asked for would turn it into a hang.
 
 ## 13. Logging with Serilog
 

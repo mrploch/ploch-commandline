@@ -30,8 +30,12 @@ public class AppBuilder : IDisposable
     private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly List<Action<IHostBuilder>> _hostBuilderConfigurators = [];
 
-    /// <summary>Whether <see cref="_cancellationTokenSource" /> was created here and is therefore ours to dispose.</summary>
-    private readonly bool _ownsCancellationTokenSource;
+    /// <summary>
+    ///     Non-<see langword="null" /> exactly when this builder created the cancellation source and is therefore
+    ///     the one to dispose it. Also the gate that keeps that disposal from overlapping the interrupt handler's
+    ///     cancellation.
+    /// </summary>
+    private readonly InterruptGate? _interruptGate;
 
     private readonly List<Action<HostBuilderContext, IServiceCollection>> _serviceCollectionConfigurators = [];
     private readonly HashSet<IServicesBundle> _servicesBundles = new() { new AppServicesBundle() };
@@ -46,18 +50,18 @@ public class AppBuilder : IDisposable
     ///     <see cref="Dispose()" /> leaves it alone. Use <see cref="Create" /> to have the builder own one instead.
     /// </param>
     public AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancellationTokenSource)
-        : this(appInfo, cancellationTokenSource, cancelKeyPressHandler: null, ownsCancellationTokenSource: false)
+        : this(appInfo, cancellationTokenSource, cancelKeyPressHandler: null, interruptGate: null)
     { }
 
     private AppBuilder(ConsoleAppInfo appInfo,
                        CancellationTokenSource cancellationTokenSource,
                        ConsoleCancelEventHandler? cancelKeyPressHandler,
-                       bool ownsCancellationTokenSource)
+                       InterruptGate? interruptGate)
     {
         _appInfo = appInfo;
         _cancellationTokenSource = cancellationTokenSource;
         _cancelKeyPressHandler = cancelKeyPressHandler;
-        _ownsCancellationTokenSource = ownsCancellationTokenSource;
+        _interruptGate = interruptGate;
     }
 
     /// <summary>
@@ -66,47 +70,147 @@ public class AppBuilder : IDisposable
     /// <param name="args">The command-line arguments to initialize the application.</param>
     /// <returns>A new instance of <see cref="AppBuilder" />.</returns>
     /// <remarks>
-    ///     The returned builder owns both the cancellation source it creates and the <c>Console.CancelKeyPress</c>
-    ///     handler it installs, and releases them on <see cref="Dispose()" />. Dispose it once the application has
-    ///     finished running — the cancellation token stays live for the whole run, so an earlier scope exit would
-    ///     tear down the application it is meant to be shutting down.
+    ///     <para>
+    ///         This also installs a <see cref="Console.CancelKeyPress" /> handler and creates the
+    ///         <see cref="CancellationTokenSource" /> the application cancels through. The first Ctrl+C cancels that
+    ///         source cooperatively, so a command honouring its <see cref="CancellationToken" /> can stop and tidy up;
+    ///         a second Ctrl+C takes the default path and terminates the process, so a command that ignores its token
+    ///         never leaves the application unkillable from the keyboard.
+    ///     </para>
+    ///     <para>
+    ///         The source is registered in the container, so a command can resolve it to request shutdown itself.
+    ///     </para>
+    ///     <para>
+    ///         The returned builder owns both the source it creates and the handler it installs, and releases them on
+    ///         <see cref="Dispose()" />. Dispose it once the application has finished running — the cancellation token
+    ///         stays live for the whole run, so an earlier scope exit would tear down the application it is meant to
+    ///         be shutting down. The handler also detaches itself once an interrupt has been handled, so an
+    ///         interrupted application releases the subscription without waiting for disposal.
+    ///     </para>
     /// </remarks>
     public static AppBuilder Create(params IEnumerable<string> args)
     {
         var cancellationTokenSource = new CancellationTokenSource();
+
+        // Declared out here so the catch below can unsubscribe it. Nothing has taken ownership until the
+        // builder is constructed, so a throw after the subscription would otherwise leave a handler on a
+        // process-wide event holding a disposed source - one that answers a later Ctrl+C by suppressing
+        // nothing and cancelling nothing.
+        ConsoleCancelEventHandler? cancelKeyPressHandler = null;
         try
         {
+            var interruptHandled = 0;
+            var interruptGate = new InterruptGate();
+
             // The delegate is held rather than re-converted so Dispose can unsubscribe this exact instance.
             // Console.CancelKeyPress is a process-wide event: left subscribed, it pins the source and the
             // closure for the life of the process, and every further Create call adds another handler on top.
-            ConsoleCancelEventHandler cancelKeyPressHandler = OnCancelKeyPress;
+            cancelKeyPressHandler = OnCancelKeyPress;
 
             Console.CancelKeyPress += cancelKeyPressHandler;
 
-            return new(new(args), cancellationTokenSource, cancelKeyPressHandler, ownsCancellationTokenSource: true);
+            return new(new(args), cancellationTokenSource, cancelKeyPressHandler, interruptGate);
 
+            // The handler also detaches itself, so the first interrupt is handled cooperatively and a second one
+            // takes the default path and terminates the process. Suppressing every interrupt would leave the
+            // application unkillable from the keyboard whenever the running command does not observe its token --
+            // a blocking call, or a third-party library in a tight loop. Detaching here and in Dispose is not a
+            // conflict: removing a handler that is already gone is a no-op, so whichever happens first wins, and
+            // an application that simply runs to completion still releases the subscription.
+            //
+            // Unsubscribing by method group rather than through cancelKeyPressHandler is deliberate: it keeps the
+            // handler independent of when that variable is assigned. Both conversions name the same method and
+            // close over the same locals, and delegate equality is by target and method rather than by reference,
+            // so -= matches the instance that was added.
             void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
             {
-                AnsiConsole.WriteLine("Shutting down...");
+                // Unsubscribing inside the handler stops future raises, but it cannot remove this delegate from an
+                // invocation list a concurrent raise has already captured. Without this one-shot guard two interrupts
+                // dispatched close together could both suppress termination, and the second press promised above
+                // would need a third.
+                //
+                // Returning without touching e.Cancel is deliberate. The event arguments are one instance shared by
+                // every subscriber on this raise and the runtime reads whatever is left after the last handler
+                // returns, so writing false here would override a suppression some other subscriber legitimately
+                // asked for. False is already the default; this handler only ever adds a true of its own.
+                if (Interlocked.Exchange(ref interruptHandled, 1) != 0)
+                {
+                    return;
+                }
 
-                // Ctrl+C is raised on the console's own thread and can land while Dispose runs on the main
-                // one. The source is then already gone, so there is nothing left to cancel - but the press
-                // was user-initiated and still gets an answer.
+                Console.CancelKeyPress -= OnCancelKeyPress;
+
+                lock (interruptGate.Sync)
+                {
+                    if (interruptGate.SourceReleased)
+                    {
+                        // The run this handler exists to interrupt is already over. Leave the press to the default
+                        // path: one that cancels nothing and blocks termination too would do nothing at all.
+                        return;
+                    }
+
+                    interruptGate.CancelInProgress = true;
+                }
+
+                string? callbackFailure = null;
+
+                // Cancel runs OUTSIDE the gate deliberately. It invokes consumer cancellation callbacks
+                // synchronously, and a callback is free to dispose this builder on this very thread. Holding a
+                // re-entrant lock across the call would not stop that: the nested Dispose would simply re-acquire
+                // the lock it already owns and tear the source down inside the Cancel still unwinding - the exact
+                // overlap the gate exists to prevent. Instead the call is flagged as in progress, and a Dispose
+                // arriving during it defers the release to us.
                 try
                 {
                     cancellationTokenSource.Cancel();
                 }
-                catch (ObjectDisposedException)
+                catch (AggregateException exception)
                 {
-                    AnsiConsole.WriteLine("Shutdown already in progress.");
+                    // Cancel() wraps anything the callbacks throw. An unhandled exception on this thread terminates
+                    // the process -- the exact opposite of the graceful shutdown being requested. Reported rather
+                    // than swallowed, but only the message: a stack trace is noise while the application is already
+                    // on its way out. Cancellation was still requested, so the interrupt is still handled.
+                    callbackFailure = exception.Message;
+                }
+                finally
+                {
+                    lock (interruptGate.Sync)
+                    {
+                        interruptGate.CancelInProgress = false;
+
+                        // A Dispose that arrived while Cancel was on the stack left the source for this thread to
+                        // release, now that nothing is running against it.
+                        if (interruptGate.DisposeDeferred && !interruptGate.SourceReleased)
+                        {
+                            interruptGate.SourceReleased = true;
+                            cancellationTokenSource.Dispose();
+                        }
+                    }
                 }
 
+                // Announced only after cancellation has actually been requested, and off the gate: this runs on the
+                // CancelKeyPress thread, where console I/O can block, and nothing should wait behind it.
                 e.Cancel = true;
+
+                if (callbackFailure is not null)
+                {
+                    AnsiConsole.WriteLine($"A cancellation callback failed during shutdown: {callbackFailure}");
+
+                    return;
+                }
+
+                AnsiConsole.WriteLine("Shutting down... press Ctrl+C again to force an exit.");
             }
         }
         catch
         {
-            // Nothing has taken ownership yet, so the source would otherwise leak on a failed construction.
+            // Nothing has taken ownership yet, so both the subscription and the source would otherwise leak
+            // on a failed construction. Removing a handler that was never added is a no-op.
+            if (cancelKeyPressHandler is not null)
+            {
+                Console.CancelKeyPress -= cancelKeyPressHandler;
+            }
+
             cancellationTokenSource.Dispose();
 
             throw;
@@ -173,7 +277,7 @@ public class AppBuilder : IDisposable
 
         app.Configure(configurator);
 
-        return new CommandAppExecutor(app);
+        return new CommandAppExecutor(app, _cancellationTokenSource.Token);
     }
 
     /// <summary>
@@ -378,11 +482,29 @@ public class AppBuilder : IDisposable
                 Console.CancelKeyPress -= _cancelKeyPressHandler;
             }
 
-            // Only a source this builder created. One handed in through the public constructor belongs to the
-            // caller and may still be in use after the builder is gone.
-            if (_ownsCancellationTokenSource)
+            // Only a source this builder created - the gate exists exactly then. One handed in through the public
+            // constructor belongs to the caller and may still be in use after the builder is gone.
+            //
+            // Released under the same gate the interrupt handler cancels through, because Dispose may not overlap
+            // Cancel. Unsubscribing above stops new raises but cannot recall one already in flight.
+            if (_interruptGate is not null)
             {
-                _cancellationTokenSource.Dispose();
+                lock (_interruptGate.Sync)
+                {
+                    if (_interruptGate.CancelInProgress)
+                    {
+                        // Cancel() is on the stack - possibly on this very thread, reached through a cancellation
+                        // callback that disposed the builder. Disposing now would tear the source down inside the
+                        // call still unwinding, so the cancelling thread releases it instead. Deferring rather than
+                        // waiting also keeps Dispose from blocking on a consumer callback that never returns.
+                        _interruptGate.DisposeDeferred = true;
+                    }
+                    else if (!_interruptGate.SourceReleased)
+                    {
+                        _interruptGate.SourceReleased = true;
+                        _cancellationTokenSource.Dispose();
+                    }
+                }
             }
         }
 
@@ -398,5 +520,37 @@ public class AppBuilder : IDisposable
                 services.AddServicesBundle(servicesBundle, context.Configuration);
             }
         }
+    }
+
+    /// <summary>
+    ///     Serialises the interrupt handler's cancellation against disposal of the source it cancels.
+    /// </summary>
+    /// <remarks>
+    ///     <see cref="CancellationTokenSource" /> documents every public member as thread-safe <em>except</em>
+    ///     <see cref="CancellationTokenSource.Dispose()" />, which "must only be used when all other operations have
+    ///     completed". The interrupt handler runs on the console's own thread and can therefore call
+    ///     <see cref="CancellationTokenSource.Cancel()" /> while <see cref="AppBuilder.Dispose()" /> runs on the main
+    ///     one.
+    ///     <para>
+    ///         Rather than hold a lock across <c>Cancel()</c>, the call is flagged as in progress and disposal is
+    ///         deferred to whoever is cancelling. Holding a lock would not work: consumer cancellation callbacks run
+    ///         synchronously and one may dispose the builder on the cancelling thread, where a re-entrant lock is
+    ///         simply re-acquired and the source torn down inside the call still unwinding. Deferring also stops
+    ///         <see cref="AppBuilder.Dispose()" /> blocking behind a consumer callback that never returns.
+    ///     </para>
+    /// </remarks>
+    private sealed class InterruptGate
+    {
+        /// <summary>Gets the gate the state below is read and written under.</summary>
+        public Lock Sync { get; } = new();
+
+        /// <summary>Gets or sets a value indicating whether <c>Cancel()</c> is currently on the stack.</summary>
+        public bool CancelInProgress { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether a disposal arrived during cancellation and still owes a release.</summary>
+        public bool DisposeDeferred { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether the source has been disposed.</summary>
+        public bool SourceReleased { get; set; }
     }
 }

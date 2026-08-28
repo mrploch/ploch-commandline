@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Reflection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.Tests.Testing;
@@ -193,6 +194,32 @@ public sealed class AppBuilderTests : IDisposable
 
         recorder.ExitCode.Should().Be(0);
         recorder.CancellationTokenSource.Should().BeSameAs(cancellationTokenSource, "commands cancel the application through this source");
+    }
+
+    /// <summary>
+    ///     The DI-registration test above passes even if <see cref="AppBuilder.ConfigureCommandApp" /> hands the
+    ///     executor an unrelated token, because it only inspects the container. This one drives the real Spectre
+    ///     pipeline and asserts on the token the command was actually invoked with, so a regression to
+    ///     <c>CancellationToken.None</c> at the executor call site fails here.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_hand_the_running_command_the_token_of_the_source_it_was_built_with()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        var recorder = RunProbeCommand(_ => { }, cancellationTokenSource);
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.ExecutionToken
+                .CanBeCanceled.Should()
+                .BeTrue("CancellationToken.None can never be cancelled, which would make the whole feature inert");
+        recorder.ExecutionToken.IsCancellationRequested.Should().BeFalse();
+
+        cancellationTokenSource.Cancel();
+
+        recorder.ExecutionToken
+                .IsCancellationRequested.Should()
+                .BeTrue("the command must observe the very source the application was built with, not a detached one");
     }
 
     [Fact]
@@ -398,6 +425,105 @@ public sealed class AppBuilderTests : IDisposable
            .Throw<ObjectDisposedException>("building after disposal would publish a released cancellation source to the application's services");
     }
 
+    [Fact]
+    public void CancelKeyPress_should_cancel_the_token_and_suppress_termination_on_the_first_interrupt()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+        var interrupt = NewConsoleCancelEventArgs();
+
+        handler(sender: null, interrupt);
+
+        interrupt.Cancel.Should().BeTrue("the first interrupt is handled cooperatively rather than killing the process");
+        GetOwnedCancellationTokenSource(builder)
+            .IsCancellationRequested.Should()
+            .BeTrue("the interrupt has to reach the token the running command was given");
+    }
+
+    [Fact]
+    public void CancelKeyPress_should_not_suppress_a_second_interrupt()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+
+        var first = NewConsoleCancelEventArgs();
+        handler(sender: null, first);
+
+        var second = NewConsoleCancelEventArgs();
+        handler(sender: null, second);
+
+        first.Cancel.Should().BeTrue();
+        second.Cancel.Should()
+              .BeFalse("the handler is one-shot: a second interrupt takes the default path so a command that ignores "
+                       + "its token cannot leave the application unkillable from the keyboard");
+    }
+
+    [Fact]
+    public void CancelKeyPress_should_report_a_failing_cancellation_callback_rather_than_let_it_escape()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+
+        // Cancel() runs consumer callbacks synchronously and wraps anything they throw in an
+        // AggregateException. Unhandled on the CancelKeyPress thread that terminates the process, which is
+        // the opposite of the graceful shutdown the interrupt asked for.
+        using var registration = GetOwnedCancellationTokenSource(builder)
+                                 .Token.Register(() => throw new InvalidOperationException("callback exploded"));
+        var interrupt = NewConsoleCancelEventArgs();
+
+        var act = () => handler(sender: null, interrupt);
+
+        act.Should().NotThrow("an exception escaping here would kill the process during a requested shutdown");
+        interrupt.Cancel.Should().BeTrue("a consumer's failing callback must not turn a cooperative shutdown into a kill");
+        _console.Output.Should().Contain("callback exploded", "the failure is reported rather than silently swallowed");
+    }
+
+    [Fact]
+    public void CancelKeyPress_should_defer_disposal_a_cancellation_callback_asks_for_until_cancellation_unwinds()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+        var cancellationTokenSource = GetOwnedCancellationTokenSource(builder);
+        var callbackRan = false;
+
+        // The re-entrant case: Cancel() runs this synchronously, so Dispose is reached from inside the very
+        // call that is still unwinding. Holding a re-entrant lock across Cancel would not prevent the overlap -
+        // the nested Dispose would simply re-acquire the lock it already owns.
+        using var registration = cancellationTokenSource.Token.Register(() =>
+                                                                        {
+                                                                            callbackRan = true;
+                                                                            builder.Dispose();
+                                                                        });
+
+        var interrupt = NewConsoleCancelEventArgs();
+
+        var act = () => handler(sender: null, interrupt);
+
+        act.Should().NotThrow("disposing from a cancellation callback must not tear the source down mid-Cancel");
+        callbackRan.Should().BeTrue("the callback has to have run for this to be testing anything");
+        interrupt.Cancel.Should().BeTrue("cancellation was still requested, so the interrupt was handled");
+
+        var useAfterDispose = () => cancellationTokenSource.Token;
+        useAfterDispose.Should()
+                       .Throw<ObjectDisposedException>("the disposal was deferred, not skipped - the cancelling "
+                                                       + "thread releases the source once Cancel has unwound");
+    }
+
+    [Fact]
+    public void CancelKeyPress_should_not_suppress_an_interrupt_that_arrives_after_disposal()
+    {
+        var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+        builder.Dispose();
+
+        var interrupt = NewConsoleCancelEventArgs();
+        handler(sender: null, interrupt);
+
+        interrupt.Cancel.Should()
+                 .BeFalse("the source is gone, so there is nothing to cancel - suppressing the press as well would "
+                          + "leave one that neither stops nor terminates the application");
+    }
+
     /// <summary>
     ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
     ///     The probe reports back through a static slot rather than a registered service, so that the helper's own
@@ -423,6 +549,44 @@ public sealed class AppBuilderTests : IDisposable
         return recorder;
     }
 
+    /// <summary>
+    ///     Returns the <c>Console.CancelKeyPress</c> handler <see cref="AppBuilder.Create" /> installed.
+    /// </summary>
+    /// <remarks>
+    ///     Reached through the field rather than the event because <c>Console.CancelKeyPress</c> cannot be raised from
+    ///     a test and the handler itself is a local function inside <c>Create</c>. The alternative — spawning a child
+    ///     process and sending it a real interrupt — is operating-system specific and flaky under CI, and would test
+    ///     the harness as much as the handler. The behaviour asserted here is genuinely observable; only the route to
+    ///     it is not.
+    /// </remarks>
+    private static ConsoleCancelEventHandler GetInstalledCancelKeyPressHandler(AppBuilder builder)
+    {
+        var field = typeof(AppBuilder).GetField("_cancelKeyPressHandler", BindingFlags.Instance | BindingFlags.NonPublic);
+        field.Should().NotBeNull("the builder keeps the handler so that Dispose can unsubscribe that exact instance");
+
+        return (ConsoleCancelEventHandler)field!.GetValue(builder)!;
+    }
+
+    /// <summary>Returns the cancellation source <see cref="AppBuilder.Create" /> made and owns.</summary>
+    private static CancellationTokenSource GetOwnedCancellationTokenSource(AppBuilder builder)
+    {
+        var field = typeof(AppBuilder).GetField("_cancellationTokenSource", BindingFlags.Instance | BindingFlags.NonPublic);
+        field.Should().NotBeNull();
+
+        return (CancellationTokenSource)field!.GetValue(builder)!;
+    }
+
+    /// <summary>
+    ///     Creates a <see cref="ConsoleCancelEventArgs" />, which has no public constructor — only the runtime raises
+    ///     the event normally.
+    /// </summary>
+    private static ConsoleCancelEventArgs NewConsoleCancelEventArgs() =>
+        (ConsoleCancelEventArgs)Activator.CreateInstance(typeof(ConsoleCancelEventArgs),
+                                                         BindingFlags.Instance | BindingFlags.NonPublic,
+                                                         binder: null,
+                                                         [ConsoleSpecialKey.ControlC],
+                                                         culture: null)!;
+
     private sealed class Marker
     {
         public string Name { get; init; } = "marker";
@@ -443,6 +607,12 @@ public sealed class AppBuilderTests : IDisposable
         public string? SecondConfigurationValue { get; set; }
 
         public CancellationTokenSource? CancellationTokenSource { get; set; }
+
+        /// <summary>
+        ///     The token Spectre handed to <c>Execute</c>. Distinct from <see cref="CancellationTokenSource" />,
+        ///     which only proves the source reached the container: this proves it reached the running command.
+        /// </summary>
+        public CancellationToken ExecutionToken { get; set; }
     }
 
     private sealed class ProbeSettings : CommandSettings
@@ -461,6 +631,7 @@ public sealed class AppBuilderTests : IDisposable
             recorder.ConfigurationValue = configuration["probe:key"];
             recorder.SecondConfigurationValue = configuration["probe:other"];
             recorder.CancellationTokenSource = cancellationTokenSource;
+            recorder.ExecutionToken = cancellationToken;
             recorder.MarkerNames.AddRange(services.GetServices<Marker>().Select(marker => marker.Name));
             recorder.Marker = services.GetService<Marker>();
 

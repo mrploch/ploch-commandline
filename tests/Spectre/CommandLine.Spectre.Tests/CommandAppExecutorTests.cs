@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -27,23 +27,24 @@ public sealed class CommandAppExecutorTests : IDisposable
     public void Run_should_return_the_exit_code_produced_by_the_command_app()
     {
         var commandApp = new Mock<ICommandApp>();
-        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>())).Returns(7);
+        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).Returns(7);
         SetPauseBeforeExit(false);
         string[] expectedArguments = ["build", "--verbose"];
 
-        new CommandAppExecutor(commandApp.Object).Run("build", "--verbose").Should().Be(7);
+        new CommandAppExecutor(commandApp.Object, CancellationToken.None).Run("build", "--verbose").Should().Be(7);
 
-        commandApp.Verify(app => app.Run(It.Is<IEnumerable<string>>(args => args.SequenceEqual(expectedArguments))), Times.Once);
+        commandApp.Verify(app => app.Run(It.Is<IEnumerable<string>>(args => args.SequenceEqual(expectedArguments)), It.IsAny<CancellationToken>()),
+                          Times.Once);
     }
 
     [Fact]
     public async Task RunAsync_should_return_the_exit_code_produced_by_the_command_app()
     {
         var commandApp = new Mock<ICommandApp>();
-        commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(3);
+        commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(3);
         SetPauseBeforeExit(false);
 
-        var result = await new CommandAppExecutor(commandApp.Object).RunAsync("build");
+        var result = await new CommandAppExecutor(commandApp.Object, CancellationToken.None).RunAsync("build");
 
         result.Should().Be(3);
     }
@@ -54,7 +55,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         using var console = UseRecordingConsole();
         SetPauseBeforeExit(false);
 
-        new CommandAppExecutor(Mock.Of<ICommandApp>()).Run("build");
+        new CommandAppExecutor(Mock.Of<ICommandApp>(), CancellationToken.None).Run("build");
 
         console.Output.Should().BeEmpty("an ordinary invocation must not appear to hang waiting for Enter");
     }
@@ -67,7 +68,7 @@ public sealed class CommandAppExecutorTests : IDisposable
         var input = new TrackingReader();
         Console.SetIn(input);
 
-        new CommandAppExecutor(Mock.Of<ICommandApp>()).Run("build");
+        new CommandAppExecutor(Mock.Of<ICommandApp>(), CancellationToken.None).Run("build");
 
         console.Output.Should().Contain("Press Enter to exit...");
         input.ReadLineCount.Should().Be(1);
@@ -81,10 +82,89 @@ public sealed class CommandAppExecutorTests : IDisposable
         var input = new TrackingReader();
         Console.SetIn(input);
 
-        await new CommandAppExecutor(Mock.Of<ICommandApp>()).RunAsync("build");
+        await new CommandAppExecutor(Mock.Of<ICommandApp>(), CancellationToken.None).RunAsync("build");
 
         console.Output.Should().Contain("Press Enter to exit...");
         input.ReadLineCount.Should().Be(1, "Run and RunAsync must honour the setting identically");
+    }
+
+    [Fact]
+    public void Run_should_hand_Spectre_the_token_it_was_built_with()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        CancellationToken received = default;
+        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+                  .Callback<IEnumerable<string>, CancellationToken>((_, token) => received = token)
+                  .Returns(0);
+        SetPauseBeforeExit(false);
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        new CommandAppExecutor(commandApp.Object, cancellationTokenSource.Token).Run("build");
+
+        received.CanBeCanceled.Should().BeTrue("a token that can never be cancelled makes the whole feature inert");
+        received.IsCancellationRequested.Should().BeFalse();
+
+        cancellationTokenSource.Cancel();
+
+        received.IsCancellationRequested
+                .Should()
+                .BeTrue("cancelling the source the application was built with must reach the running command");
+    }
+
+    [Fact]
+    public async Task RunAsync_should_hand_Spectre_the_token_it_was_built_with()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        CancellationToken received = default;
+        commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+                  .Callback<IEnumerable<string>, CancellationToken>((_, token) => received = token)
+                  .ReturnsAsync(0);
+        SetPauseBeforeExit(false);
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        await new CommandAppExecutor(commandApp.Object, cancellationTokenSource.Token).RunAsync("build");
+
+        received.CanBeCanceled.Should().BeTrue();
+
+        await cancellationTokenSource.CancelAsync();
+
+        received.IsCancellationRequested.Should().BeTrue();
+    }
+
+    /// <summary>
+    ///     Wiring the token up made this reachable: a cancelled run that also had PauseBeforeExit set would print
+    ///     "Press Enter to exit..." and block on stdin, turning the shutdown the user just asked for into a hang.
+    /// </summary>
+    [Fact]
+    public void Run_should_not_pause_for_input_when_the_run_was_cancelled()
+    {
+        using var console = UseRecordingConsole();
+        SetPauseBeforeExit(true);
+        var input = new TrackingReader();
+        Console.SetIn(input);
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        new CommandAppExecutor(Mock.Of<ICommandApp>(), cancellationTokenSource.Token).Run("build");
+
+        input.ReadLineCount.Should().Be(0, "the user has already asked the application to stop");
+        console.Output.Should().NotContain("Press Enter to exit...");
+    }
+
+    [Fact]
+    public async Task RunAsync_should_not_pause_for_input_when_the_run_was_cancelled()
+    {
+        using var console = UseRecordingConsole();
+        SetPauseBeforeExit(true);
+        var input = new TrackingReader();
+        Console.SetIn(input);
+        using var cancellationTokenSource = new CancellationTokenSource();
+        await cancellationTokenSource.CancelAsync();
+
+        await new CommandAppExecutor(Mock.Of<ICommandApp>(), cancellationTokenSource.Token).RunAsync("build");
+
+        input.ReadLineCount.Should().Be(0, "Run and RunAsync must honour cancellation identically");
+        console.Output.Should().NotContain("Press Enter to exit...");
     }
 
     private static void SetPauseBeforeExit(bool pauseBeforeExit) =>
