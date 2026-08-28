@@ -479,6 +479,37 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     [Fact]
+    public void CancelKeyPress_should_defer_disposal_a_cancellation_callback_asks_for_until_cancellation_unwinds()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+        var cancellationTokenSource = GetOwnedCancellationTokenSource(builder);
+        var callbackRan = false;
+
+        // The re-entrant case: Cancel() runs this synchronously, so Dispose is reached from inside the very
+        // call that is still unwinding. Holding a re-entrant lock across Cancel would not prevent the overlap -
+        // the nested Dispose would simply re-acquire the lock it already owns.
+        using var registration = cancellationTokenSource.Token.Register(() =>
+                                                                        {
+                                                                            callbackRan = true;
+                                                                            builder.Dispose();
+                                                                        });
+
+        var interrupt = NewConsoleCancelEventArgs();
+
+        var act = () => handler(sender: null, interrupt);
+
+        act.Should().NotThrow("disposing from a cancellation callback must not tear the source down mid-Cancel");
+        callbackRan.Should().BeTrue("the callback has to have run for this to be testing anything");
+        interrupt.Cancel.Should().BeTrue("cancellation was still requested, so the interrupt was handled");
+
+        var useAfterDispose = () => cancellationTokenSource.Token;
+        useAfterDispose.Should()
+                       .Throw<ObjectDisposedException>("the disposal was deferred, not skipped - the cancelling "
+                                                       + "thread releases the source once Cancel has unwound");
+    }
+
+    [Fact]
     public void CancelKeyPress_should_not_suppress_an_interrupt_that_arrives_after_disposal()
     {
         var builder = AppBuilder.Create().WithName("Widget Tool");

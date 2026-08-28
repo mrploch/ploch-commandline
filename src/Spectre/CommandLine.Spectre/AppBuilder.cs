@@ -142,10 +142,6 @@ public class AppBuilder : IDisposable
 
                 lock (interruptGate.Sync)
                 {
-                    // Dispose is the one CancellationTokenSource member that may not run concurrently with the
-                    // others, and this handler runs on the console's own thread while Dispose runs on the main one.
-                    // The check and the Cancel therefore happen under one gate, and Cancel stays inside it because
-                    // it runs consumer callbacks synchronously.
                     if (interruptGate.SourceReleased)
                     {
                         // The run this handler exists to interrupt is already over. Leave the press to the default
@@ -153,27 +149,56 @@ public class AppBuilder : IDisposable
                         return;
                     }
 
-                    try
-                    {
-                        cancellationTokenSource.Cancel();
-                    }
-                    catch (AggregateException exception)
-                    {
-                        // Cancel() invokes consumer cancellation callbacks synchronously and wraps anything they
-                        // throw. An unhandled exception on this thread terminates the process -- the exact opposite
-                        // of the graceful shutdown being requested. Reported rather than swallowed, but only the
-                        // message: a stack trace is noise while the application is already on its way out.
-                        // Cancellation was still requested, so the interrupt is still handled cooperatively.
-                        e.Cancel = true;
-                        AnsiConsole.WriteLine($"A cancellation callback failed during shutdown: {exception.Message}");
+                    interruptGate.CancelInProgress = true;
+                }
 
-                        return;
+                string? callbackFailure = null;
+
+                // Cancel runs OUTSIDE the gate deliberately. It invokes consumer cancellation callbacks
+                // synchronously, and a callback is free to dispose this builder on this very thread. Holding a
+                // re-entrant lock across the call would not stop that: the nested Dispose would simply re-acquire
+                // the lock it already owns and tear the source down inside the Cancel still unwinding - the exact
+                // overlap the gate exists to prevent. Instead the call is flagged as in progress, and a Dispose
+                // arriving during it defers the release to us.
+                try
+                {
+                    cancellationTokenSource.Cancel();
+                }
+                catch (AggregateException exception)
+                {
+                    // Cancel() wraps anything the callbacks throw. An unhandled exception on this thread terminates
+                    // the process -- the exact opposite of the graceful shutdown being requested. Reported rather
+                    // than swallowed, but only the message: a stack trace is noise while the application is already
+                    // on its way out. Cancellation was still requested, so the interrupt is still handled.
+                    callbackFailure = exception.Message;
+                }
+                finally
+                {
+                    lock (interruptGate.Sync)
+                    {
+                        interruptGate.CancelInProgress = false;
+
+                        // A Dispose that arrived while Cancel was on the stack left the source for this thread to
+                        // release, now that nothing is running against it.
+                        if (interruptGate.DisposeDeferred && !interruptGate.SourceReleased)
+                        {
+                            interruptGate.SourceReleased = true;
+                            cancellationTokenSource.Dispose();
+                        }
                     }
                 }
 
-                // Announced only after cancellation has actually been requested, and outside the gate: this runs on
-                // the CancelKeyPress thread, where console I/O can block, and nothing else should wait behind it.
+                // Announced only after cancellation has actually been requested, and off the gate: this runs on the
+                // CancelKeyPress thread, where console I/O can block, and nothing should wait behind it.
                 e.Cancel = true;
+
+                if (callbackFailure is not null)
+                {
+                    AnsiConsole.WriteLine($"A cancellation callback failed during shutdown: {callbackFailure}");
+
+                    return;
+                }
+
                 AnsiConsole.WriteLine("Shutting down... press Ctrl+C again to force an exit.");
             }
         }
@@ -466,8 +491,19 @@ public class AppBuilder : IDisposable
             {
                 lock (_interruptGate.Sync)
                 {
-                    _interruptGate.SourceReleased = true;
-                    _cancellationTokenSource.Dispose();
+                    if (_interruptGate.CancelInProgress)
+                    {
+                        // Cancel() is on the stack - possibly on this very thread, reached through a cancellation
+                        // callback that disposed the builder. Disposing now would tear the source down inside the
+                        // call still unwinding, so the cancelling thread releases it instead. Deferring rather than
+                        // waiting also keeps Dispose from blocking on a consumer callback that never returns.
+                        _interruptGate.DisposeDeferred = true;
+                    }
+                    else if (!_interruptGate.SourceReleased)
+                    {
+                        _interruptGate.SourceReleased = true;
+                        _cancellationTokenSource.Dispose();
+                    }
                 }
             }
         }
@@ -494,19 +530,27 @@ public class AppBuilder : IDisposable
     ///     <see cref="CancellationTokenSource.Dispose()" />, which "must only be used when all other operations have
     ///     completed". The interrupt handler runs on the console's own thread and can therefore call
     ///     <see cref="CancellationTokenSource.Cancel()" /> while <see cref="AppBuilder.Dispose()" /> runs on the main
-    ///     one. Both take this gate so the two never overlap.
+    ///     one.
     ///     <para>
-    ///         <see cref="System.Threading.Lock" /> is re-entrant, so a cancellation callback that disposes the
-    ///         builder on the callback thread does not deadlock. A callback that blocks waiting on another thread to
-    ///         dispose it still would, which is inherent to running consumer callbacks under a lifetime gate.
+    ///         Rather than hold a lock across <c>Cancel()</c>, the call is flagged as in progress and disposal is
+    ///         deferred to whoever is cancelling. Holding a lock would not work: consumer cancellation callbacks run
+    ///         synchronously and one may dispose the builder on the cancelling thread, where a re-entrant lock is
+    ///         simply re-acquired and the source torn down inside the call still unwinding. Deferring also stops
+    ///         <see cref="AppBuilder.Dispose()" /> blocking behind a consumer callback that never returns.
     ///     </para>
     /// </remarks>
     private sealed class InterruptGate
     {
-        /// <summary>Gets the gate both cancellation and disposal of the owned source are taken under.</summary>
+        /// <summary>Gets the gate the state below is read and written under.</summary>
         public Lock Sync { get; } = new();
 
-        /// <summary>Gets or sets a value indicating whether disposal has claimed the source. Guarded by <see cref="Sync" />.</summary>
+        /// <summary>Gets or sets a value indicating whether <c>Cancel()</c> is currently on the stack.</summary>
+        public bool CancelInProgress { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether a disposal arrived during cancellation and still owes a release.</summary>
+        public bool DisposeDeferred { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether the source has been disposed.</summary>
         public bool SourceReleased { get; set; }
     }
 }

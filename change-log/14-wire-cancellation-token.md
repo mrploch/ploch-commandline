@@ -47,11 +47,13 @@
 - An interrupt that arrives after the builder has been disposed no longer
   suppresses itself. `AppBuilder` became `IDisposable` on `main` and releases the
   cancellation source it owns, so `Cancel()` on the `CancelKeyPress` thread can
-  race disposal and throw `ObjectDisposedException`. The handler now hands that
-  interrupt back to the default path — `e.Cancel = false` — instead of
-  suppressing a press that cancels nothing: the run it exists to interrupt is
-  already over, and a suppressed press that does nothing is the unkillable
-  behaviour this change set exists to remove (#32).
+  race disposal. The handler now returns without touching the event arguments
+  instead of suppressing a press that cancels nothing: the run it exists to
+  interrupt is already over, and a suppressed press that does nothing is the
+  unkillable behaviour this change set exists to remove. It leaves the
+  arguments alone rather than writing `false` because they are shared by every
+  subscriber on the raise — the interrupt is left unsuppressed only where no
+  other handler has suppressed it (#32).
 
 ### Changed
 
