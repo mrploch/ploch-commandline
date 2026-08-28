@@ -39,8 +39,10 @@
   process down. `CancellationTokenSource.Cancel` runs those callbacks
   synchronously and wraps anything they throw in an `AggregateException`, which
   surfaced on the `CancelKeyPress` thread where it was unhandled. It is now
-  caught and reported, so a failing callback cannot turn a graceful shutdown
-  into a crash (#32).
+  caught and reported, so the callback's own exception no longer escapes the
+  handler (#32). Reporting it writes to the console, which on that thread is
+  itself best-effort — the guarantee is that the callback cannot take the
+  process down, not that no console failure ever could.
 
 - An interrupt that arrives after the builder has been disposed no longer
   suppresses itself. `AppBuilder` became `IDisposable` on `main` and releases the

@@ -87,6 +87,12 @@ public class AppBuilder : IDisposable
     public static AppBuilder Create(params IEnumerable<string> args)
     {
         var cancellationTokenSource = new CancellationTokenSource();
+
+        // Declared out here so the catch below can unsubscribe it. Nothing has taken ownership until the
+        // builder is constructed, so a throw after the subscription would otherwise leave a handler on a
+        // process-wide event holding a disposed source - one that answers a later Ctrl+C by suppressing
+        // nothing and cancelling nothing.
+        ConsoleCancelEventHandler? cancelKeyPressHandler = null;
         try
         {
             var interruptHandled = 0;
@@ -94,7 +100,7 @@ public class AppBuilder : IDisposable
             // The delegate is held rather than re-converted so Dispose can unsubscribe this exact instance.
             // Console.CancelKeyPress is a process-wide event: left subscribed, it pins the source and the
             // closure for the life of the process, and every further Create call adds another handler on top.
-            ConsoleCancelEventHandler cancelKeyPressHandler = OnCancelKeyPress;
+            cancelKeyPressHandler = OnCancelKeyPress;
 
             Console.CancelKeyPress += cancelKeyPressHandler;
 
@@ -107,9 +113,10 @@ public class AppBuilder : IDisposable
             // conflict: removing a handler that is already gone is a no-op, so whichever happens first wins, and
             // an application that simply runs to completion still releases the subscription.
             //
-            // Unsubscribing by method group rather than through cancelKeyPressHandler is deliberate: the variable
-            // is not definitely assigned at the point this local function is converted to a delegate, so capturing
-            // it would not compile. Both conversions close over the same locals, so -= matches and removes it.
+            // Unsubscribing by method group rather than through cancelKeyPressHandler is deliberate: it keeps the
+            // handler independent of when that variable is assigned. Both conversions name the same method and
+            // close over the same locals, and delegate equality is by target and method rather than by reference,
+            // so -= matches the instance that was added.
             void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
             {
                 // Unsubscribing inside the handler stops future raises, but it cannot remove this delegate from an
@@ -157,7 +164,13 @@ public class AppBuilder : IDisposable
         }
         catch
         {
-            // Nothing has taken ownership yet, so the source would otherwise leak on a failed construction.
+            // Nothing has taken ownership yet, so both the subscription and the source would otherwise leak
+            // on a failed construction. Removing a handler that was never added is a no-op.
+            if (cancelKeyPressHandler is not null)
+            {
+                Console.CancelKeyPress -= cancelKeyPressHandler;
+            }
+
             cancellationTokenSource.Dispose();
 
             throw;
