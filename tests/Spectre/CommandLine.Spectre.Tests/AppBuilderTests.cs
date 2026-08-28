@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Reflection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.Tests.Testing;
@@ -424,6 +425,54 @@ public sealed class AppBuilderTests : IDisposable
            .Throw<ObjectDisposedException>("building after disposal would publish a released cancellation source to the application's services");
     }
 
+    [Fact]
+    public void CancelKeyPress_should_cancel_the_token_and_suppress_termination_on_the_first_interrupt()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+        var interrupt = NewConsoleCancelEventArgs();
+
+        handler(sender: null, interrupt);
+
+        interrupt.Cancel.Should().BeTrue("the first interrupt is handled cooperatively rather than killing the process");
+        GetOwnedCancellationTokenSource(builder)
+            .IsCancellationRequested.Should()
+            .BeTrue("the interrupt has to reach the token the running command was given");
+    }
+
+    [Fact]
+    public void CancelKeyPress_should_not_suppress_a_second_interrupt()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+
+        var first = NewConsoleCancelEventArgs();
+        handler(sender: null, first);
+
+        var second = NewConsoleCancelEventArgs();
+        handler(sender: null, second);
+
+        first.Cancel.Should().BeTrue();
+        second.Cancel.Should()
+              .BeFalse("the handler is one-shot: a second interrupt takes the default path so a command that ignores "
+                       + "its token cannot leave the application unkillable from the keyboard");
+    }
+
+    [Fact]
+    public void CancelKeyPress_should_not_suppress_an_interrupt_that_arrives_after_disposal()
+    {
+        var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+        builder.Dispose();
+
+        var interrupt = NewConsoleCancelEventArgs();
+        handler(sender: null, interrupt);
+
+        interrupt.Cancel.Should()
+                 .BeFalse("the source is gone, so there is nothing to cancel - suppressing the press as well would "
+                          + "leave one that neither stops nor terminates the application");
+    }
+
     /// <summary>
     ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
     ///     The probe reports back through a static slot rather than a registered service, so that the helper's own
@@ -448,6 +497,44 @@ public sealed class AppBuilderTests : IDisposable
 
         return recorder;
     }
+
+    /// <summary>
+    ///     Returns the <c>Console.CancelKeyPress</c> handler <see cref="AppBuilder.Create" /> installed.
+    /// </summary>
+    /// <remarks>
+    ///     Reached through the field rather than the event because <c>Console.CancelKeyPress</c> cannot be raised from
+    ///     a test and the handler itself is a local function inside <c>Create</c>. The alternative — spawning a child
+    ///     process and sending it a real interrupt — is operating-system specific and flaky under CI, and would test
+    ///     the harness as much as the handler. The behaviour asserted here is genuinely observable; only the route to
+    ///     it is not.
+    /// </remarks>
+    private static ConsoleCancelEventHandler GetInstalledCancelKeyPressHandler(AppBuilder builder)
+    {
+        var field = typeof(AppBuilder).GetField("_cancelKeyPressHandler", BindingFlags.Instance | BindingFlags.NonPublic);
+        field.Should().NotBeNull("the builder keeps the handler so that Dispose can unsubscribe that exact instance");
+
+        return (ConsoleCancelEventHandler)field!.GetValue(builder)!;
+    }
+
+    /// <summary>Returns the cancellation source <see cref="AppBuilder.Create" /> made and owns.</summary>
+    private static CancellationTokenSource GetOwnedCancellationTokenSource(AppBuilder builder)
+    {
+        var field = typeof(AppBuilder).GetField("_cancellationTokenSource", BindingFlags.Instance | BindingFlags.NonPublic);
+        field.Should().NotBeNull();
+
+        return (CancellationTokenSource)field!.GetValue(builder)!;
+    }
+
+    /// <summary>
+    ///     Creates a <see cref="ConsoleCancelEventArgs" />, which has no public constructor — only the runtime raises
+    ///     the event normally.
+    /// </summary>
+    private static ConsoleCancelEventArgs NewConsoleCancelEventArgs() =>
+        (ConsoleCancelEventArgs)Activator.CreateInstance(typeof(ConsoleCancelEventArgs),
+                                                         BindingFlags.Instance | BindingFlags.NonPublic,
+                                                         binder: null,
+                                                         [ConsoleSpecialKey.ControlC],
+                                                         culture: null)!;
 
     private sealed class Marker
     {
