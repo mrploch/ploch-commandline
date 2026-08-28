@@ -258,9 +258,7 @@ jobs:
       # available package sources". `nuget push` accepts a URL, so no source is needed.
       - name: Publish NuGet packages to GitHub Packages
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
-          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+        run: bash .github/scripts/publish-nuget-packages.sh https://nuget.pkg.github.com/mrploch/index.json
 
       # Publish PR packages to GitHub Packages for testing/validation.
       # PR packages include the PR number and branch name in the prerelease tag
@@ -277,5 +275,4 @@ jobs:
             echo "::warning::GH_PACKAGES_TOKEN not available, skipping PR package publish"
             exit 0
           fi
-          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
-          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+          bash .github/scripts/publish-nuget-packages.sh https://nuget.pkg.github.com/mrploch/index.json

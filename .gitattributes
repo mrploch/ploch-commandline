@@ -3,6 +3,11 @@
 ###############################################################################
 * text=auto
 
+# Shell scripts must keep LF in the working tree on every platform: bash does not
+# tolerate CRLF, and a script checked out with CRLF fails on the Linux CI runner with
+# `bad interpreter: /usr/bin/env bash^M`.
+*.sh    text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
