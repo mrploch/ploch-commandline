@@ -1,72 +1,105 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project>
-    <PropertyGroup>
-        <Authors>Kris Ploch</Authors>
-        <Company>Ploch</Company>
-        <Product>Ploch.CommandLine</Product>
-        <PackageProjectUrl>https://github.com/mrploch/ploch-commandline</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/mrploch/ploch-commandline.git</RepositoryUrl>
-        <Description>Build advanced console apps with ease.</Description>
-        <Copyright>Kris Ploch $([System.DateTime]::Now.Year)</Copyright>
-        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
-        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-        <EnableNETAnalyzers>true</EnableNETAnalyzers>
-        <AnalysisLevel>latest-Recommended</AnalysisLevel>
-        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-        <VersionPrefix>0.0.1</VersionPrefix>
-        <VersionSuffix>-prerelease</VersionSuffix>
-        <BuildNumber>$([System.DateTime]::UtcNow.ToString("yyMMddHH"))</BuildNumber>
+  <PropertyGroup>
+    <Authors>Kris Ploch</Authors>
+    <Company>Ploch</Company>
+    <Product>Ploch.CommandLine</Product>
+    <PackageProjectUrl>https://github.com/mrploch/ploch-commandline</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mrploch/ploch-commandline.git</RepositoryUrl>
+    <Description>Build advanced console apps with ease.</Description>
+    <Copyright>Kris Ploch $([System.DateTime]::Now.Year)</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <!--
+      The repository builds clean, so the zero-warning bar is enforced rather than merely met:
+      without this a new warning lands silently and the bar erodes one commit at a time.
+      Low and moderate NuGet audit advisories (NU1901, NU1902) are exempt. They fire when an
+      advisory is published against a dependency that has not changed, so without the exemption
+      a minor advisory turns into a red build on an untouched branch. High and critical
+      advisories (NU1903, NU1904) stay fatal on purpose: those should stop a release rather
+      than wait for somebody to notice warning output.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>NU1901;NU1902</WarningsNotAsErrors>
+    <!-- Versioning is handled by Nerdbank.GitVersioning (version.json). -->
+    <!-- SourceLink: lets consumers step into this repository's sources when debugging. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- Deterministic builds for CI. -->
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <IsTestProject>$(MSBuildProjectName.EndsWith('Tests'))</IsTestProject>
+  </PropertyGroup>
 
-        <!-- Development versions -->
-        <VersionSuffix Condition="'$(RELEASEVERSION)' != 'true'">-prerelease</VersionSuffix>
-        <FullVersionSuffix Condition="'$(RELEASEVERSION)' != 'true'">$(VersionSuffix)-$(BuildNumber)</FullVersionSuffix>
-        <Version Condition="'$(RELEASEVERSION)' != 'true'">$(VersionPrefix)$(FullVersionSuffix)</Version>
-        <!-- Release versions -->
-        <Version Condition="'$(RELEASEVERSION)' == 'true'">$(VersionPrefix)</Version>
+  <PropertyGroup Label="ProjectType">
+    <IsReleaseBuild>false</IsReleaseBuild>
+    <IsReleaseBuild Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">true</IsReleaseBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <!--
+      Portable rather than embedded: an embedded PDB cannot be lifted into a
+      standalone .snupkg symbol package, so embedding would silently produce
+      empty symbol packages for the published NuGet packages.
+    -->
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
 
-        <FileVersion>$(InformationalVersion)</FileVersion>
-        <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
-        <IsTestProject>$(MSBuildProjectName.EndsWith('Tests'))</IsTestProject>
-    </PropertyGroup>
+  <PropertyGroup Condition="$(IsTestProject)">
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <PropertyGroup Condition="!$(IsTestProject)">
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
 
-    <PropertyGroup Label="ProjectType">
-        <IsReleaseBuild>false</IsReleaseBuild>
-        <IsReleaseBuild Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">true</IsReleaseBuild>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-        <DebugType>embedded</DebugType>
-        <DebugSymbols>true</DebugSymbols>
-        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    </PropertyGroup>
+  <Target Name="PrintSettings" BeforeTargets="Build">
+    <Message Text="Building $(MSBuildProjectName) with settings:" Importance="high" />
+    <Message Text="MSBuildProjectName -> '$(MSBuildProjectName)'" Importance="high" />
+    <Message Text="Configuration -> '$(Configuration)' " Importance="high" />
+    <Message Text="DebugType -> '$(DebugType)' " Importance="high" />
+    <Message Text="DebugSymbols -> '$(DebugSymbols)' " Importance="high" />
+    <Message Text="AssemblyName -> '$(AssemblyName)' " Importance="high" />
+    <Message Text="IsTestProject -> '$(IsTestProject)' " Importance="high" />
+    <Message Text="GeneratePackageOnBuild -> '$(GeneratePackageOnBuild)' " Importance="high" />
+    <Message Text="GenerateDocumentationFile -> '$(GenerateDocumentationFile)' " Importance="high" />
+    <Message Text="IsPackable -> '$(IsPackable)' " Importance="high" />
+  </Target>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <LangVersion>default</LangVersion>
+  </PropertyGroup>
 
-    <PropertyGroup Condition="$(IsTestProject)">
-        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-        <GenerateDocumentationFile>false</GenerateDocumentationFile>
-        <IsPackable>false</IsPackable>
-        <IsTestProject>true</IsTestProject>
-        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    </PropertyGroup>
-    <PropertyGroup Condition="!$(IsTestProject)">
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <IsTestProject>false</IsTestProject>
-    </PropertyGroup>
+  <!-- Nerdbank.GitVersioning and SourceLink for all projects. -->
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+  </ItemGroup>
 
-    <Target Name="PrintSettings" BeforeTargets="Build">
-        <Message Text="Building $(MSBuildProjectName) with settings:" Importance="high" />
-        <Message Text="MSBuildProjectName -> '$(MSBuildProjectName)'" Importance="high" />
-        <Message Text="Configuration -> '$(Configuration)' " Importance="high" />
-        <Message Text="DebugType -> '$(DebugType)' " Importance="high" />
-        <Message Text="DebugSymbols -> '$(DebugSymbols)' " Importance="high" />
-        <Message Text="AssemblyName -> '$(AssemblyName)' " Importance="high" />
-        <Message Text="IsTestProject -> '$(IsTestProject)' " Importance="high" />
-        <Message Text="GeneratePackageOnBuild -> '$(GeneratePackageOnBuild)' " Importance="high" />
-        <Message Text="GenerateDocumentationFile -> '$(GenerateDocumentationFile)' " Importance="high" />
-        <Message Text="IsPackable -> '$(IsPackable)' " Importance="high" />
-    </Target>
-    <PropertyGroup>
-        <Nullable>enable</Nullable>
-        <LangVersion>default</LangVersion>
-    </PropertyGroup>
+  <!--
+    Inject Coverlet's MSBuild instrumentation into every test project so
+    `dotnet test -p:CollectCoverage=true` produces cobertura + opencover reports.
+    Without this the CI coverage flag is a silent no-op and the Codacy coverage
+    step in build-dotnet.yml finds no report to upload. See issue #13.
+  -->
+  <PropertyGroup Condition="$(IsTestProject)">
+    <!--
+      Measure only this repository's assemblies. Without this the report is
+      dominated by referenced sibling repos (Ploch.Common et al.) and the
+      resulting percentage describes someone else's code.
+    -->
+    <Include>[Ploch.CommandLine.*]*</Include>
+    <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+  </PropertyGroup>
+  <ItemGroup Condition="$(IsTestProject)">
+    <PackageReference Include="coverlet.msbuild" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

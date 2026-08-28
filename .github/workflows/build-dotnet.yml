@@ -1,0 +1,281 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: Build
+on:
+  push:
+    # Only main - publishing is gated on this ref, so no other branch push should build.
+    branches: [ "main" ]
+  # No branches filter: on.pull_request.branches matches the pull request's BASE branch,
+  # so filtering it to main would leave every stacked PR (one based on another feature
+  # branch) with no build, no tests and no SonarCloud analysis at all. Every pull request
+  # gets a full build regardless of what it targets; the publishing steps stay gated below.
+  pull_request:
+  workflow_dispatch:
+env:
+  SONAR_PROJECT_KEY: mrploch_ploch-commandline
+  SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+  SOLUTION_PATH: ./Ploch.CommandLine.Spectre.slnx
+permissions:
+  contents: read         # checkout only - Pages deployment lives in publish-docs.yml
+  checks: write          # test reporting
+  pull-requests: write   # test reporting annotations on PRs
+  code-quality: write    # upload the coverage report the main ruleset's code_coverage rule reads
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    env:
+      # Consumed by nuget.config's packageSourceCredentials entry for the
+      # MrPloch GitHub Packages feed, so restore can resolve Ploch.* packages.
+      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+    steps:
+      - run: echo "The branch name is ${{ github.repository }}"
+      # fetch-depth: 0 is required twice over - Nerdbank.GitVersioning computes the version
+      # height from the full commit history, and SonarCloud needs the blame data for new-code
+      # attribution. A shallow clone breaks both.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The solution references sibling repositories by relative path (../ploch-common and
+      # ../mrploch-development) - the workspace layout where every mrploch repo is cloned next
+      # to the others. Reproduce that layout beside the workspace, otherwise restore fails with
+      # MSB3202 for every ../ploch-common project. Cloning the siblings (rather than checking
+      # this repository out into a named sub-directory) keeps this repository at the workspace
+      # root, which is what the Codacy reporter and SonarScanner both expect.
+      #
+      # ploch-common is cloned in full because it uses Nerdbank.GitVersioning too, and NBGV
+      # cannot compute a version height from a shallow clone.
+      - name: Clone ploch-common (referenced projects)
+        run: git clone https://github.com/mrploch/ploch-common.git --branch master ../ploch-common
+      - name: Clone mrploch-development (shared build config)
+        run: git clone --depth 1 https://github.com/mrploch/mrploch-development.git ../mrploch-development
+
+      # Setup Java (required for SonarScanner)
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      # For PR builds, embed the PR number and branch name in the prerelease tag
+      # so packages are clearly identifiable (e.g. 1.0.3-pr.42.fix-validation)
+      - name: Configure PR package version
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          # Sanitize branch name for NuGet SemVer2 prerelease identifiers [a-zA-Z0-9-]
+          SANITIZED=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-20 | sed 's/-$//')
+          # Guard against empty or purely-numeric identifiers (invalid in SemVer2)
+          if [ -z "$SANITIZED" ]; then
+            SANITIZED="branch"
+          fi
+          if echo "$SANITIZED" | grep -Eq '^[0-9]+$'; then
+            SANITIZED="b-${SANITIZED}"
+          fi
+          # Read current major.minor from NBGV
+          CURRENT_VERSION=$(dotnet nbgv get-version --variable SimpleVersion)
+          BASE=$(echo "$CURRENT_VERSION" | cut -d. -f1-2)
+          # Override the prerelease tag to include PR number and branch name
+          dotnet nbgv set-version "${BASE}-pr.${PR_NUMBER}.${SANITIZED}"
+          # NBGV reads version.json from the committed git state, so we must
+          # commit the change for it to take effect. This ephemeral commit is
+          # never pushed - it only exists on the CI runner.
+          git add version.json
+          git -c user.name="ci" -c user.email="ci@ci" commit -m "ci: PR version" --no-verify
+          COMPUTED=$(dotnet nbgv get-version --variable NuGetPackageVersion)
+          echo "PR NuGet package version: $COMPUTED"
+
+      # Restore
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      # Capture the NBGV-computed package version so SonarScanner can pass it
+      # as sonar.projectVersion. Without this, the "Previous version" new-code
+      # definition has no version history to diff against and treats the
+      # entire baseline as new code on every analysis.
+      - name: Get NBGV version for SonarCloud
+        id: nbgv-version
+        run: |
+          NUGET_VERSION=$(dotnet nbgv get-version --variable NuGetPackageVersion)
+          echo "nuget_version=$NUGET_VERSION" >> $GITHUB_OUTPUT
+          echo "SonarCloud project version: $NUGET_VERSION"
+
+      # SonarCloud setup.
+      # Deliberate deviation from ploch-common: the Sonar steps here are BLOCKING
+      # (no continue-on-error). SonarCloud is a required quality gate on this
+      # repository - do not "align" these steps with ploch-common's non-blocking
+      # variant. See PR for issue #7.
+      #
+      # No tool install step: dotnet-sonarscanner is pinned in .config/dotnet-tools.json
+      # and restored by the "Restore .NET tools" step above. An unpinned
+      # `dotnet tool install --global` silently picks up new scanner majors, which changes
+      # analysis results between runs for reasons unrelated to this repository.
+      #
+      # Invoked as `dotnet tool run dotnet-sonarscanner` - the tool's command name is
+      # `dotnet-sonarscanner`, so the `dotnet sonarscanner` shorthand that works for a
+      # GLOBAL install is not the documented form for a local tool. (dotnet-coverage was
+      # installed here too and never invoked - coverage comes from Coverlet MSBuild.)
+      #
+      # Skipped for pull requests opened from a fork. GitHub withholds repository secrets from those
+      # runs, so SONAR_TOKEN arrives empty and the scanner fails to authenticate - and because this
+      # step precedes Build and Test, an external contributor's pull request would fail before a
+      # single line was compiled, with an error about a token they cannot be given. Skipping keeps
+      # the step blocking where it can actually run: every branch in this repository.
+      - name: SonarScanner Begin
+        id: sonar-begin
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          dotnet tool run dotnet-sonarscanner begin
+          /k:"${{ env.SONAR_PROJECT_KEY }}"
+          /o:"${{ env.SONAR_ORGANIZATION }}"
+          /v:"${{ steps.nbgv-version.outputs.nuget_version }}"
+          /d:sonar.token="$SONAR_TOKEN"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /d:sonar.projectBaseDir="${{ github.workspace }}"
+          /d:sonar.scm.provider=git
+          /d:sonar.cs.opencover.reportsPaths=**/CoverageResults/coverage*.opencover.xml
+          /d:sonar.coverage.exclusions="**/*.ps1,**/*.Tests/**,**/*.Tests.csproj,samples/**,DocumentationSite/**"
+          /d:sonar.dotnet.excludeTestProjects=true
+          /d:sonar.qualitygate.wait=true
+
+      # Build and Test
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_PATH }} --no-restore -c Release
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION_PATH }} --verbosity normal --no-build -c Release --logger "trx;LogFileName=TestOutputResults.trx" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"
+
+      # SonarCloud end (runs even after test failures, only if begin succeeded).
+      # Blocking, as above - and now doubly so: `begin` sets sonar.qualitygate.wait=true,
+      # so this step polls SonarCloud until the gate is computed and exits non-zero if it
+      # fails. Without it the job goes green whatever the gate says and enforcement rests
+      # entirely on the branch-protection status check. See issue #26.
+      - name: SonarScanner End
+        if: always() && steps.sonar-begin.outcome == 'success'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet tool run dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+      # The sample application is a standalone solution outside SOLUTION_PATH: by design it consumes
+      # the libraries as NuGet packages, so the main build never compiles it. Build it against the
+      # library sources on every run - otherwise a change to a command base class breaks the sample
+      # silently and nobody finds out until someone opens it. -p:UsePlochProjectReferences=true
+      # swaps its PackageReferences for ProjectReferences (see samples/SampleApp/README.md).
+      #
+      # Placed after "SonarScanner End" on purpose: the scanner captures every MSBuild project built
+      # between begin and end, and the sample is deliberately excluded from analysis (it also
+      # already sits in sonar.coverage.exclusions). Not continue-on-error - a broken sample is a
+      # broken build.
+      - name: Build sample application
+        run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true
+
+      # The main ruleset has a code_coverage rule, which reads coverage GitHub itself holds -
+      # SonarCloud's and Codacy's copies are invisible to it. actions/upload-code-coverage takes a
+      # single Cobertura file (its script does Path(file).is_file(), so no globbing), while coverlet
+      # writes one report per test project, hence the merge first. Both formats already come out of
+      # the Test step above: Codacy consumes the opencover twin of these same files.
+      - name: Merge coverage reports
+        if: always()
+        run: >
+          dotnet tool run reportgenerator
+          "-reports:**/CoverageResults/coverage*.cobertura.xml"
+          "-targetdir:./CoverageReport"
+          "-reporttypes:Cobertura"
+
+      # Skips itself on fork pull requests, where the token cannot write coverage.
+      - name: Upload coverage to GitHub Code Quality
+        if: always()
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: ./CoverageReport/Cobertura.xml
+          language: C#
+          label: code-coverage/coverlet
+
+      - name: Run codacy-coverage-reporter
+        if: always()
+        continue-on-error: true
+        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: '**/CoverageResults/coverage*.opencover.xml'
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/TestResults/*.xml
+            **/TestResults/*.trx
+      - name: Test Report
+        uses: phoenix-actions/test-reporting@1e9b578818d03d6df50ce8e60d024a000bf3ab63 # v8
+        id: test-report
+        if: always()
+        continue-on-error: true
+        with:
+          name: Test Results
+          path: '**/*.trx'
+          reporter: dotnet-trx
+      - name: Upload Coverage Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: |
+            **/CoverageResults/*.xml
+
+      # Smoke-test the docs build (non-blocking). This workflow deliberately does NOT
+      # deploy GitHub Pages and does NOT overwrite DocumentationSite/index.md: the docs
+      # site has a purpose-written home page and a dedicated publish-docs.yml workflow
+      # that owns Pages deployment (issue #6). Two workflows racing to publish the same
+      # Pages site, or a `cp README.md index.md` reverting the home page on every build,
+      # would both be regressions.
+      - name: Build documentation (smoke test)
+        id: docfx
+        if: always()
+        continue-on-error: true
+        run: dotnet docfx DocumentationSite/docfx.json
+
+      # Publish prerelease NuGet packages to GitHub Packages.
+      # Only ever from a push to main - never from an arbitrary branch.
+      #
+      # Pushed to the feed URL directly rather than to a registered source name.
+      # `dotnet nuget add source` rejects a duplicate URL as well as a duplicate name,
+      # and NuGet.Config already registers this exact URL as "github", so adding it
+      # again fails with "The source specified has already been added to the list of
+      # available package sources". `nuget push` accepts a URL, so no source is needed.
+      - name: Publish NuGet packages to GitHub Packages
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
+          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true
+
+      # Publish PR packages to GitHub Packages for testing/validation.
+      # PR packages include the PR number and branch name in the prerelease tag
+      # (configured by the "Configure PR package version" step above).
+      #
+      # Restricted to pull requests that actually target main. Now that the
+      # pull_request trigger has no base-branch filter, every stacked PR builds -
+      # but a PR onto another feature branch is an intermediate step, and publishing
+      # a validation package for each one would just fill the feed with noise.
+      - name: Publish PR packages to GitHub Packages
+        if: success() && github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: |
+          if [ -z "$GH_PACKAGES_TOKEN" ]; then
+            echo "::warning::GH_PACKAGES_TOKEN not available, skipping PR package publish"
+            exit 0
+          fi
+          dotnet nuget push ./**/*.nupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN"
+          dotnet nuget push ./**/*.snupkg --source https://nuget.pkg.github.com/mrploch/index.json --skip-duplicate -k "$GH_PACKAGES_TOKEN" || true

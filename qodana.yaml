@@ -4,3 +4,9 @@ profile:
   name: qodana.recommended
 include:
   - name: CheckDependencyLicenses
+dotnet:
+  solution: Ploch.CommandLine.Spectre.slnx
+exclude:
+  - name: All
+    paths:
+      - tests/**

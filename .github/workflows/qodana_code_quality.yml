@@ -1,4 +1,4 @@
-name: Qodana
+﻿name: Qodana
 on:
   workflow_dispatch:
   pull_request:
@@ -15,12 +15,51 @@ jobs:
       pull-requests: write
       checks: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}  # to check out the actual pull request commit, not the merge commit
           fetch-depth: 0  # a full history is required for pull request analysis
+          path: ploch-commandline
+
+      # Same sibling layout as the Build workflow: without these the analyser cannot resolve any
+      # ../ploch-common project reference and reports the solution as unresolved.
+      - uses: actions/checkout@v4
+        with:
+          repository: mrploch/ploch-common
+          ref: master
+          path: ploch-common
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: mrploch/mrploch-development
+          ref: main
+          path: mrploch-development
+          fetch-depth: 0
+      # Qodana mounts only the analysis root into its container, so the analysis root has to be the
+      # workspace - otherwise ../ploch-common and ../mrploch-development sit outside /data and every
+      # project reference is unresolvable. The repository's own qodana.yaml stays authoritative for
+      # profile and inspection settings; only the paths are rebased onto the workspace layout.
+      - name: Compose the workspace-level Qodana configuration
+        run: |
+          cat > qodana.yaml <<'QODANA'
+          version: "1.0"
+          linter: jetbrains/qodana-cdnet:latest
+          profile:
+            name: qodana.recommended
+          include:
+            - name: CheckDependencyLicenses
+          dotnet:
+            solution: ploch-commandline/Ploch.CommandLine.Spectre.slnx
+          exclude:
+            - name: All
+              paths:
+                - ploch-commandline/tests
+                - ploch-common
+                - mrploch-development
+          QODANA
+
       - name: 'Qodana Scan'
-        uses: JetBrains/qodana-action@v2024.1
+        uses: JetBrains/qodana-action@c5a69b02e6c1adb092153f7a479169a4b9f3a1cf # v2024.1.10
         with:
           pr-mode: false
         env:

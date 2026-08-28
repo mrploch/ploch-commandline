@@ -1,0 +1,11 @@
+- name: Home
+  href: index.md
+- name: Getting Started
+  href: ../docs/GETTING_STARTED.md
+- name: Articles
+  href: articles/
+- name: API Documentation
+  href: api/
+  homepage: api/index.md
+- name: GitHub
+  href: https://github.com/mrploch/ploch-commandline/

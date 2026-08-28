@@ -1,0 +1,18 @@
+{
+  "workspace_id": "57db5f34-e7f0-42c0-86c4-bb981f96c880",
+  "workspace_name": "MrPloch",
+  "associated_at": "2026-02-18T22:24:33.507Z",
+  "version": "0.4.62",
+  "configured_editors": [
+    "codex",
+    "claude",
+    "cursor",
+    "antigravity"
+  ],
+  "context_pack": false,
+  "api_url": "https://api.contextstream.io",
+  "updated_at": "2026-02-18T22:25:17.262Z",
+  "indexing_enabled": true,
+  "project_id": "fd9105f3-448d-4ab2-bac6-231c82c47a69",
+  "project_name": "ploch-commandline"
+}

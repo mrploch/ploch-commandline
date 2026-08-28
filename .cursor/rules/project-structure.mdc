@@ -1,0 +1,156 @@
+---
+description: Repository & Project Structure Standards
+---
+
+# Repository & Project Structure Standards
+
+Rules for organising .NET repositories in the MrPloch workspace.
+
+## Repository Root Layout
+
+Every repository follows this structure:
+
+```
+<repo-root>/
+  src/                          # All source projects
+  tests/                        # All test projects
+  docs/                         # Documentation (design docs, plans, specs)
+  scripts/                      # Build, migration, and utility scripts
+  .github/
+    workflows/                  # GitHub Actions CI/CD
+    pull_request_template.md    # PR template
+  .claude/                      # Claude Code rules and skills
+  Directory.Build.props         # Centralised MSBuild settings
+  Directory.Packages.props      # Central Package Management
+  NuGet.Config                  # NuGet package sources (optional, workspace-level exists)
+  .editorconfig                 # Code style enforcement
+  .gitignore                    # Git ignore rules
+  .gitattributes                # Git attribute rules
+  README.md                     # Repository documentation
+  RELEASE_NOTES.md              # Release notes (library repos)
+  CLAUDE.md                     # Claude Code project instructions
+  *.slnx / *.sln                # Solution file(s) at repository root
+  LICENSE                       # MIT licence
+```
+
+### Key Directories
+
+| Directory | Purpose | Required |
+|-----------|---------|----------|
+| `src/` | Source projects — one subdirectory per project | Yes |
+| `tests/` | Test projects — one subdirectory per test project | Yes |
+| `docs/` | Design documents, plans, specs, API references | Optional |
+| `scripts/` | PowerShell/shell scripts for build, migration, repo maintenance | Optional |
+| `DocumentationSite/` | DocFx-generated API documentation site | Some repos |
+| `change-log/` | Per-issue/per-PR change log markdown files | Some repos |
+| `samples/` | Sample/example projects demonstrating usage | Some repos |
+
+## Source Project Layout
+
+Source projects live in `src/` with a directory name that is the short project name (without the `Ploch.` prefix):
+
+```
+src/
+  {ShortName}/
+    Ploch.{Product}.{ShortName}.csproj
+    *.cs
+```
+
+### Naming Convention
+
+- **Directory name:** The short name without the `Ploch.` prefix, using dots for namespacing.
+  - Example: `src/Common.Serialization/` contains `Ploch.Common.Serialization.csproj`
+  - Example: `src/Data.EFCore/` contains `Ploch.Data.EFCore.csproj`
+  - Example: `src/Data/` contains `Ploch.Lists.Data.csproj`
+  - Example: `src/Model/` contains `Ploch.Lists.Model.csproj`
+- **Project file:** Always prefixed with `Ploch.` — e.g. `Ploch.Common.Serialization.csproj`.
+- **Namespace:** Matches the project name — e.g. `Ploch.Common.Serialization`.
+
+### Common Source Project Types
+
+For application repos (e.g. `ploch-lists`, `ploch-groupmatters`), the `src/` directory typically contains:
+
+| Directory | Project Name | Purpose |
+|-----------|-------------|---------|
+| `Model/` | `Ploch.{Product}.Model` | Domain entity POCOs |
+| `Data/` | `Ploch.{Product}.Data` | DbContext, entity configurations |
+| `Data.SQLite/` | `Ploch.{Product}.Data.SQLite` | SQLite provider, migrations, design-time factory |
+| `Data.SqlServer/` | `Ploch.{Product}.Data.SqlServer` | SQL Server provider, migrations, design-time factory |
+| `Api/` | `Ploch.{Product}.Api` | Web API host / endpoints |
+| `UI/` | Various | UI application (MAUI, WinUI, etc.) |
+
+## Test Project Layout
+
+Test projects live in `tests/` mirroring the source project they test, with a `.Tests` suffix:
+
+```
+tests/
+  {ShortName}.Tests/
+    Ploch.{Product}.{ShortName}.Tests.csproj
+    *Tests.cs
+```
+
+### Naming Convention
+
+- **Directory name:** Source project short name + `.Tests` suffix.
+  - Example: `tests/Common.Serialization.Tests/` for `src/Common.Serialization/`
+  - Example: `tests/Data.EFCore.Tests/` for `src/Data.EFCore/`
+- **Project file:** Source project name + `.Tests` — e.g. `Ploch.Common.Serialization.Tests.csproj`.
+- **Integration tests** use `.IntegrationTests` suffix instead of `.Tests`.
+  - Example: `Ploch.Data.EFCore.IntegrationTesting.csproj`
+
+### Test Class Naming
+
+- Unit tests: `{TestedTypeName}Tests` — e.g. `StringExtensionsTests`.
+- Integration tests: `{TestedFeature}Tests` — e.g. `AuthenticationTests`.
+
+## Solution Files
+
+- Solution files (`.slnx` or `.sln`) are placed at the **repository root**.
+- Prefer `.slnx` (XML-based) format for new or updated solutions. Many repos maintain both `.sln` and `.slnx`.
+- Name: `Ploch.{Product}.slnx` — e.g. `Ploch.Common.slnx`, `Ploch.Data.slnx`.
+- Some repos have multiple solutions for different subsets (e.g. `Ploch.Common.Endpoints.slnx`, `Ploch.Common.LocalDev.slnx`).
+
+## Build Configuration Files
+
+All of these live at the **repository root**:
+
+| File | Purpose |
+|------|---------|
+| `Directory.Build.props` | Centralised MSBuild properties (nullable, lang version, analysers, test project detection, packaging) |
+| `Directory.Packages.props` | Central Package Management (`ManagePackageVersionsCentrally=true`), imports shared versions from `mrploch-development/dependencies/` |
+| `NuGet.Config` | Package sources (nuget.org + GitHub Packages). Workspace-level config exists at `C:\DevNet\my\mrploch\NuGet.Config` |
+| `.editorconfig` | Code style and analyser severity rules |
+| `stylecop.json` | StyleCop analyser configuration (some repos) |
+
+## Cross-Repository References
+
+During local development, repos reference each other via **relative `ProjectReference` paths** — all repos must be cloned as siblings under the same parent directory (`C:\DevNet\my\mrploch\`):
+
+```xml
+<!-- Example: ploch-lists referencing ploch-data -->
+<ProjectReference Include="..\..\..\ploch-data\src\Data.EFCore\Ploch.Data.EFCore.csproj" />
+
+<!-- Example: any repo referencing ploch-common -->
+<ProjectReference Include="..\..\..\ploch-common\src\Common\Ploch.Common.csproj" />
+```
+
+Shared build configuration is imported from the `mrploch-development` sibling directory:
+
+```xml
+<Import Project="../mrploch-development/dependencies/Testing.Packages.props" />
+```
+
+In CI, repos consume each other as **NuGet packages** from GitHub Packages instead of `ProjectReference`.
+
+## GitHub Configuration
+
+- `.github/workflows/` — CI/CD workflows (typically `build-dotnet.yml`).
+- `.github/pull_request_template.md` — PR template with description, issue link, and review checklist.
+- `.github/dependabot.yml` — Dependabot configuration (some repos).
+
+## Files That Do NOT Belong
+
+- No module-level `README.md` files inside `src/` subdirectories (library projects may have package READMEs for NuGet, but no standalone module docs).
+- No `CLAUDE.md` inside `src/` or `tests/` — only at the repository root.
+- No test projects inside `src/` — all tests go in `tests/`.

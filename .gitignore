@@ -144,6 +144,10 @@ _TeamCity*
 # Coverlet code coverage
 coverage.*.xml
 
+# Merged Cobertura report, produced by the reportgenerator step in build-dotnet.yml
+# so that actions/upload-code-coverage has a single file to upload.
+CoverageReport/
+
 # NCrunch
 _NCrunch_*
 .*crunch*.local.xml
@@ -394,3 +398,23 @@ codestream.xml
 /.idea/.idea.Ploch.Data/.idea/git_*.xml
 **/.idea/codestream.xml
 /codacy-test-reporter.jar
+/.idea/.idea.Ploch.CommandLine/.idea/indexLayout.xml
+.idea/**
+
+# My custom files
+/notes.md
+
+# Machine-specific MCP server config (Rider allocates its MCP port per IDE instance)
+/.mcp.json
+
+# Generated Qodana analysis output (see .github/workflows/qodana_code_quality.yml)
+qodana.sarif.json
+
+# JetBrains Rider per-solution debug argument scratch files
+*.ddargs.json
+
+# JetBrains IDE metadata in any folder (the root-only .idea/** rule misses nested ones)
+**/.idea/
+
+# Agent-written summary reports (see .claude/rules/summaries.md)
+/temp/

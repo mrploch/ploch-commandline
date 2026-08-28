@@ -1,0 +1,39 @@
+<Solution>
+  <Folder Name="/ploch-common/">
+    <Project Path="..\ploch-common\src\Common.DependencyInjection\Ploch.Common.DependencyInjection.csproj" Type="Classic C#" />
+    <Project Path="..\ploch-common\src\Common.Net9\Ploch.Common.Net9.csproj" Type="Classic C#" />
+    <Project Path="..\ploch-common\src\Common\Ploch.Common.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/ploch-common/tests/">
+    <Project Path="..\ploch-common\tests\Common.DependencyInjection.Tests\Ploch.Common.DependencyInjection.Tests.csproj" Type="Classic C#" />
+    <Project Path="..\ploch-common\tests\Common.Net9.Tests\Ploch.Common.Net9.Tests.csproj" Type="Classic C#" />
+    <Project Path="..\ploch-common\tests\Common.Tests\Ploch.Common.Tests.csproj" Type="Classic C#" />
+    <Project Path="..\ploch-common\tests\TestAssemblies\Common.Tests.TestAssembly1\Ploch.Common.Tests.TestAssembly1.csproj" Type="Classic C#" />
+    <Project Path="..\ploch-common\tests\TestAssemblies\Common.Tests.TestAssembly2\Ploch.Common.Tests.TestAssembly2.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/repository/">
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/repository/config/">
+    <File Path=".codacy.yml" />
+    <File Path=".dockerignore" />
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="directory.build.targets" />
+    <File Path="Directory.Packages.props" />
+    <File Path="NuGet.Config" />
+    <File Path="qodana.yaml" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\Spectre\CommandLine.Spectre.FluentValidation.Tests\Ploch.CommandLine.Spectre.FluentValidation.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Spectre\CommandLine.Spectre.Serilog.Tests\Ploch.CommandLine.Spectre.Serilog.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Spectre\CommandLine.Spectre.Tests\Ploch.CommandLine.Spectre.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Spectre\CommandLine.UseCases.Tests\Ploch.CommandLine.UseCases.Tests.csproj" Type="Classic C#" />
+  </Folder>
+  <Project Path="src\Spectre\CommandLine.Spectre.FluentValidation\Ploch.CommandLine.Spectre.FluentValidation.csproj" Type="Classic C#" />
+  <Project Path="src\Spectre\CommandLine.Spectre.Serilog\Ploch.CommandLine.Spectre.Serilog.csproj" Type="Classic C#" />
+  <Project Path="src\Spectre\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" Type="Classic C#" />
+  <Project Path="src\Spectre\CommandLine.UseCases\Ploch.CommandLine.UseCases.csproj" Type="Classic C#" />
+</Solution>

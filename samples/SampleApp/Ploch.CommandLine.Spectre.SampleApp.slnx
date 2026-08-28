@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SampleApp/Ploch.CommandLine.Spectre.SampleApp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SampleApp.Tests/Ploch.CommandLine.Spectre.SampleApp.Tests.csproj" />
+  </Folder>
+</Solution>

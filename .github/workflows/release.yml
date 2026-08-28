@@ -1,0 +1,291 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Version to release (e.g. 1.0, 1.1). The patch version is computed automatically by NBGV.'
+        required: true
+        type: string
+      next_version:
+        description: 'Next development version after release (e.g. 1.1). Leave empty to auto-increment the minor version.'
+        required: false
+        type: string
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    # Pass workflow inputs via env vars to avoid script injection (githubactions:S7635)
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version }}
+      NEXT_VERSION_INPUT: ${{ inputs.next_version }}
+    # Every `run` step operates inside the checked-out repository. Sibling repositories are
+    # checked out next to it, reproducing the workspace layout the solution expects.
+    defaults:
+      run:
+        working-directory: ploch-commandline
+
+    steps:
+      - name: Validate inputs
+        working-directory: .
+        run: |
+          if [[ ! "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::release_version must be in major.minor format (e.g. 1.0) without leading zeros"
+            exit 1
+          fi
+          if [ -n "$NEXT_VERSION_INPUT" ]; then
+            if [[ ! "$NEXT_VERSION_INPUT" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::next_version must be in major.minor format (e.g. 1.1) without leading zeros"
+              exit 1
+            fi
+          fi
+
+      # Validate GH_TOKEN early - it is needed later for pushing commits and tags.
+      # The default GITHUB_TOKEN cannot trigger subsequent workflows, so a PAT is required.
+      - name: Validate GH_TOKEN secret
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::GH_TOKEN secret is not set. A Personal Access Token with 'repo' and 'workflow' scopes is required."
+            exit 1
+          fi
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token $GH_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }})
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::GH_TOKEN is invalid or expired (HTTP $HTTP_STATUS). Please regenerate the PAT and update the repository secret."
+            exit 1
+          fi
+          echo "GH_TOKEN is valid"
+
+      # Use the default GITHUB_TOKEN for checkout - it always works and has read access.
+      # GH_TOKEN (PAT) is configured separately before push steps, because it is the
+      # only token that can trigger subsequent workflows when pushing commits.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ploch-commandline
+          fetch-depth: 0
+
+      - name: Checkout ploch-common (sibling project references)
+        uses: actions/checkout@v4
+        with:
+          repository: mrploch/ploch-common
+          ref: master
+          path: ploch-common
+          fetch-depth: 0
+
+      - name: Checkout mrploch-development (shared build config)
+        uses: actions/checkout@v4
+        with:
+          repository: mrploch/mrploch-development
+          ref: main
+          path: mrploch-development
+          fetch-depth: 0
+
+      # Projects resolve $(TargetFrameworkVersion) to net10.0 from mrploch-development/dependencies.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore .NET tools (nbgv, docfx)
+        run: dotnet tool restore
+
+      - name: Configure git
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
+
+      - name: Set release version
+        run: |
+          dotnet nbgv set-version "$RELEASE_VERSION"
+          echo "Release version set to $RELEASE_VERSION"
+
+      # Use the current HEAD commit timestamp so reruns recreate the same
+      # release commit SHA until the release branch state changes.
+      - name: Commit release version
+        run: |
+          RELEASE_COMMIT_TIMESTAMP=$(git show -s --format=%cI HEAD)
+          export GIT_AUTHOR_DATE="$RELEASE_COMMIT_TIMESTAMP"
+          export GIT_COMMITTER_DATE="$RELEASE_COMMIT_TIMESTAMP"
+          git add version.json
+          git diff --cached --quiet && echo "version.json unchanged, skipping commit" || \
+            git commit -m "chore(release): Set version to $RELEASE_VERSION"
+
+      - name: Get computed NuGet version
+        id: version
+        run: |
+          NUGET_VERSION=$(dotnet nbgv get-version --variable NuGetPackageVersion)
+          echo "nuget_version=$NUGET_VERSION" >> $GITHUB_OUTPUT
+          echo "NuGet package version: $NUGET_VERSION"
+
+      - name: Restore dependencies
+        run: dotnet restore ./Ploch.CommandLine.Spectre.slnx
+
+      - name: Build (Release)
+        run: dotnet build ./Ploch.CommandLine.Spectre.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test ./Ploch.CommandLine.Spectre.slnx --no-build -c Release --verbosity normal --logger "trx;LogFileName=TestOutputResults.trx" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-test-results
+          path: |
+            ploch-commandline/**/TestResults/*.xml
+            ploch-commandline/**/TestResults/*.trx
+
+      # Tag is created BEFORE publishing packages intentionally.
+      # Rationale: orphaned packages on NuGet.org cannot be deleted (only unlisted),
+      # while tags can be deleted and re-created easily. Tag-first is the safer default.
+      # Retry-safe: re-uses an existing tag if it already points at HEAD.
+      - name: Create and push tag
+        id: tag
+        if: success()
+        run: |
+          NUGET_VERSION="${{ steps.version.outputs.nuget_version }}"
+          TAG="v${NUGET_VERSION}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, verifying it points to HEAD"
+            EXISTING=$(git rev-parse "$TAG^{}")
+            CURRENT=$(git rev-parse HEAD)
+            if [ "$EXISTING" != "$CURRENT" ]; then
+              echo "::error::Tag $TAG exists but points to a different commit. Delete it manually to retry."
+              exit 1
+            fi
+            echo "Tag $TAG already points to HEAD, reusing it"
+          else
+            git tag -a "$TAG" -m "Release ${NUGET_VERSION}"
+            git push origin "$TAG"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      # Exclude ./tests/ and ./samples/ structurally rather than by matching the name "Test":
+      # `find -path` matches the whole path and `*` spans `/`, so a name-based filter silently
+      # drops legitimate packages (ploch-common hit exactly this in its issue #278).
+      - name: Publish NuGet packages to NuGet.org
+        if: success()
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          PKGS=$(find . -name '*.nupkg' -not -path './tests/*' -not -path './samples/*')
+          if [ -z "$PKGS" ]; then
+            echo "::error::No .nupkg files were produced by the build."
+            exit 1
+          fi
+          echo "$PKGS" | while IFS= read -r pkg; do
+            echo "Publishing $pkg"
+            dotnet nuget push "$pkg" --source https://api.nuget.org/v3/index.json --skip-duplicate -k "$NUGET_API_KEY"
+          done
+
+      - name: Publish symbol packages to NuGet.org
+        if: success()
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          find . -name '*.snupkg' -not -path './tests/*' -not -path './samples/*' | while IFS= read -r pkg; do
+            echo "Publishing symbols $pkg"
+            dotnet nuget push "$pkg" --source https://api.nuget.org/v3/index.json --skip-duplicate -k "$NUGET_API_KEY"
+          done
+
+      # Generate release notes BEFORE archiving change-log entries,
+      # so only the current release's entries are included.
+      - name: Generate release notes
+        id: release-notes
+        if: success()
+        env:
+          NUGET_VERSION: ${{ steps.version.outputs.nuget_version }}
+        run: |
+          # README.md documents the change-log folder itself and is deliberately excluded:
+          # a plain *.md glob would concatenate its worked examples into every release's notes.
+          NOTES=""
+          if [ -d "change-log" ]; then
+            NOTES=$(find change-log -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print0                     | sort -z | xargs -0 -r cat)
+          fi
+          if [ -z "$NOTES" ]; then
+            NOTES="Release ${NUGET_VERSION}"
+          fi
+          {
+            echo "$NOTES"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## NuGet Packages"
+            echo ""
+            echo "All packages are available on [NuGet.org](https://www.nuget.org/profiles/mrploch) with version \`${NUGET_VERSION}\`."
+            echo ""
+            echo "Install via:"
+            echo '```bash'
+            echo "dotnet add package Ploch.CommandLine.Spectre --version ${NUGET_VERSION}"
+            echo '```'
+          } > /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        if: success()
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Release ${{ steps.version.outputs.nuget_version }}"
+          body_path: /tmp/release-notes.md
+          draft: false
+          prerelease: false
+
+      - name: Compute next development version
+        id: next
+        if: success()
+        run: |
+          NEXT="$NEXT_VERSION_INPUT"
+          if [ -z "$NEXT" ]; then
+            MAJOR=$(echo "$RELEASE_VERSION" | cut -d. -f1)
+            MINOR=$(echo "$RELEASE_VERSION" | cut -d. -f2)
+            NEXT="$MAJOR.$((MINOR + 1))"
+          fi
+          echo "next_version=$NEXT" >> $GITHUB_OUTPUT
+          echo "Next development version: $NEXT-prerelease"
+
+      - name: Set next development version
+        if: success()
+        env:
+          NEXT_DEV_VERSION: ${{ steps.next.outputs.next_version }}
+        run: dotnet nbgv set-version "${NEXT_DEV_VERSION}-prerelease"
+
+      - name: Archive consumed change-log entries
+        if: success()
+        run: |
+          # Same exclusion as the notes step: archiving README.md would delete the folder's
+          # own documentation on the first release.
+          if [ -d "change-log" ]; then
+            ENTRIES=$(find change-log -maxdepth 1 -type f -name '*.md' ! -name 'README.md')
+            if [ -n "$ENTRIES" ]; then
+              mkdir -p change-log/archive
+              find change-log -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print0                 | xargs -0 -r -I{} mv {} change-log/archive/
+            fi
+          fi
+
+      # Idempotent commit: only commit if there are staged changes
+      - name: Commit and push next development version
+        if: success()
+        env:
+          NEXT_DEV_VERSION: ${{ steps.next.outputs.next_version }}
+        run: |
+          git add version.json
+          git add change-log/ || true
+          git diff --cached --quiet && echo "No changes to commit" || \
+            git commit -m "chore(release): Bump version to ${NEXT_DEV_VERSION}-prerelease for development"
+          git push origin main

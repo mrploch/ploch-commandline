@@ -1,0 +1,87 @@
+<Project>
+  <!-- This SampleApp is a standalone project that demonstrates how external consumers
+       use the Ploch.CommandLine.Spectre libraries. It must NOT import parent Directory.Packages.props.
+       All package versions are defined here, exactly as an external consumer would. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
+    <!-- Transitive pinning lets the Microsoft.Bcl.AsyncInterfaces entry below resolve the
+         assembly-version conflict between xunit.v3.common (6.0.0) and the .NET 10 extension
+         libraries (10.0.5) without adding a direct reference nobody in the sample uses. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- The published version of the Ploch.CommandLine.* packages, used in standalone mode
+         (PackageReference). When UsePlochProjectReferences=true, ProjectReferences.props removes
+         these PackageReferences and replaces them with ProjectReferences.
+
+         Pinned, not floating. A fixed 0.0.1-prerelease did not exist, so NuGet silently substituted
+         the OLDEST published build (NU1603) and the sample compiled against a months-old package
+         while appearing to pin one. A floating 1.0.*-* fixed that but replaced it with a different
+         problem: this sample is copied by consumers, and floating makes its restore time-dependent,
+         lets the four Ploch packages resolve to different builds, and does not settle onto the
+         stable release once v1 ships. Bump this deliberately as part of the release commit. -->
+    <PlochPackagesVersion>1.0.26-pr.11.3-spectre-console-in.g45b21c88cb</PlochPackagesVersion>
+  </PropertyGroup>
+
+  <ItemGroup Label="Ploch packages">
+    <PackageVersion Include="Ploch.CommandLine.Spectre" Version="$(PlochPackagesVersion)" />
+    <PackageVersion Include="Ploch.CommandLine.Spectre.FluentValidation" Version="$(PlochPackagesVersion)" />
+    <PackageVersion Include="Ploch.CommandLine.Spectre.Serilog" Version="$(PlochPackagesVersion)" />
+    <PackageVersion Include="Ploch.CommandLine.UseCases" Version="$(PlochPackagesVersion)" />
+    <!-- Must be at least 4.0.20-prerelease: that is what the Ploch.CommandLine.Spectre package
+         depends on, and 2.0.1 made the standalone restore fail with NU1109 (package downgrade)
+         followed by CS7069, because AssemblyListBuilder does not exist in the 2.x assembly. -->
+    <PackageVersion Include="Ploch.Common" Version="4.0.21-prerelease" />
+    <PackageVersion Include="Ploch.Common.DependencyInjection" Version="4.0.21-prerelease" />
+  </ItemGroup>
+
+  <ItemGroup Label="Spectre.Console">
+    <PackageVersion Include="Spectre.Console" Version="0.54.0" />
+    <PackageVersion Include="Spectre.Console.Cli" Version="0.53.1" />
+    <PackageVersion Include="Spectre.Console.Analyzer" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Validation &amp; Architecture">
+    <PackageVersion Include="FluentValidation" Version="12.1.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.0" />
+    <PackageVersion Include="Ardalis.Result" Version="10.1.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Microsoft Extensions &amp; Logging">
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.5" />
+    <PackageVersion Include="Serilog" Version="4.3.0" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Settings.Configuration" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageVersion Include="Serilog.Sinks.SpectreConsole" Version="0.3.3" />
+  </ItemGroup>
+
+  <ItemGroup Label="Transitive pins">
+    <!-- xunit.v3.common pulls 6.0.0; everything else unifies on 10.0.5. Pinned so the test
+         project does not build with an unresolved binding conflict (MSB3277). -->
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="AutoFixture" Version="4.18.1" />
+    <PackageVersion Include="AutoFixture.AutoMoq" Version="4.18.1" />
+    <PackageVersion Include="AutoFixture.Xunit3" Version="4.19.0" />
+    <PackageVersion Include="FluentAssertions" Version="8.10.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+  </ItemGroup>
+</Project>

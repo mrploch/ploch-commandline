@@ -1,0 +1,70 @@
+# CodeQL analysis.
+#
+# Required by the "main" repository ruleset, whose code_scanning rule names CodeQL with
+# alerts_threshold: errors and security_alerts_threshold: high_or_higher. Without this
+# workflow the required result never arrives and every pull request into main stays
+# blocked on a check that cannot appear.
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ "main" ]
+  # Deliberately unfiltered, for the same reason as build-dotnet.yml: on.pull_request.branches
+  # matches the PR's BASE branch, so filtering to main would leave every stacked pull request
+  # (one based on another feature branch) with no analysis at all.
+  pull_request:
+  # Re-runs unchanged code against updated CodeQL queries, which is where a scheduled scan
+  # earns its keep - a new query can find a flaw in code nobody has touched for months.
+  schedule:
+    - cron: '31 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write   # upload the SARIF results that satisfy the ruleset
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            build-mode: none
+          - language: actions
+            build-mode: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # build-mode: none analyses the source directly, with no compilation.
+      #
+      # This is the deciding constraint for this repository: the solution reaches sibling
+      # repositories through relative ProjectReference paths (../ploch-common and
+      # ../mrploch-development), so any build-based mode would have to reproduce that whole
+      # workspace layout - clone both siblings, restore .NET tools for Nerdbank.GitVersioning,
+      # and supply GH_PACKAGES_TOKEN for the private feed - exactly as build-dotnet.yml does.
+      # Carrying that setup a second time buys nothing here: buildless extraction is supported
+      # for C# and needs none of it, so the scan cannot break when the sibling layout changes.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # Pinned to the v3 major rather than a commit SHA, unlike the third-party actions in this
+      # repository. github/codeql-action is published by GitHub itself, and the action ships the
+      # CodeQL bundle: pinning it to a SHA freezes the query set, so the scanner would quietly
+      # stop learning about new vulnerability classes. Staying current is the point of the tool.
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

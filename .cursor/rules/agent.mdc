@@ -1,0 +1,58 @@
+---
+description: AI agent behaviour specification and pre-code workflows
+alwaysApply: true
+---
+
+# Agent Behaviour Specification
+
+## Pre-Code Workflow
+
+Before analysing, investigating, or modifying any code:
+
+1. Fetch relevant rules (repo/package + patterns). In Cursor, use `fetch_rules` tool.
+2. Read the README and locate linked spec files and relevant documentation.
+3. Review all relevant specs and docs.
+4. Create a complete TODO list that includes:
+   - Implementation tasks
+   - Automated testing (unit, visual regression, e2e as appropriate)
+   - Manual verification step (e.g. "Manually verify changes in browser", "Test CLI command", "send request via curl")
+   - Updating any snapshots if they exist (e.g. visual regressions will have baseline images)
+
+## When to Stop and Confirm
+
+Stop and ask the user before implementing changes that may violate or need more information to stay compliant around:
+
+- **Legal or regulatory rules:** SCA, PCI-DSS, GDPR.
+- **Security:** Authentication, session handling, encryption, sensitive data.
+- **Business logic:** Permissions, account access, financial limits, payment flows.
+- **Data access:** Queries that could expose PII or sensitive data.
+- **Specification conflicts:** When the request conflicts with linked spec files.
+
+If unsure whether a change falls into these categories, stop and ask.
+
+## Post-Code Workflow
+
+After implementing changes, **before reporting completion**, you MUST complete BOTH:
+
+1. **Automated testing** — Run relevant tests (unit, integration, visual, e2e). Check project-specific rules, `package.json` scripts, or infer from context. Code compilation alone is insufficient. When working with visual regressions, make sure to update snapshots after you're happy with your changes.
+2. **Manual verification** — Verify like a developer or user would. e.g. For web code, use browser MCP tools to navigate to the app, sign in if needed, and visually confirm the change works. For CLI tools, run commands. For APIs, send requests.
+
+**CRITICAL**: Never report completion until BOTH automated AND manual verification pass. If either cannot be performed:
+
+- Explicitly state which verification is blocked and why
+- Ask the user how to proceed
+- Do NOT mark tasks as complete — leave them as "pending verification"
+
+## Pull Requests
+
+- **Complete testing before creating PR:** Finish ALL automated and manual verification BEFORE creating a pull request. A PR signals the work is ready for review.
+- **PR body must follow template:** When creating a PR, read `.github/pull_request_template.md` first (if it exists) and structure the body accordingly. Include ticket links, remove inapplicable sections (e.g. incident links for non-incidents), and add developer testing notes.
+- **Never create a placeholder PR:** Only create a PR when implementation and all verification steps are complete.
+
+## Standards
+
+- Use British English.
+- Run commands yourself.
+- Clean up after modifications.
+- Use browser MCPs if available when testing web code.
+- **Never amend commits** unless the user explicitly asks. Always create new commits.

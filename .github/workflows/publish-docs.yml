@@ -1,0 +1,77 @@
+name: Publish Docs
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest
+# queued. In-progress runs are NOT cancelled, so a production deployment always completes.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  publish-docs:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      # The solution references sibling repositories by relative path - the workspace layout where
+      # every mrploch repo is cloned next to the others. Reproduce that layout here, otherwise the
+      # docfx metadata pass fails with MSB3202 for every ../ploch-common project.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ploch-commandline
+          fetch-depth: 0 # NBGV needs full history to compute version height
+
+      - name: Checkout ploch-common (sibling project references)
+        uses: actions/checkout@v4
+        with:
+          repository: mrploch/ploch-common
+          ref: master
+          path: ploch-common
+          fetch-depth: 0
+
+      - name: Checkout mrploch-development (shared build config)
+        uses: actions/checkout@v4
+        with:
+          repository: mrploch/mrploch-development
+          ref: main
+          path: mrploch-development
+          fetch-depth: 0
+
+      # Projects resolve $(TargetFrameworkVersion) to net10.0 from
+      # mrploch-development/dependencies. Install the SDK explicitly rather than relying on
+      # whichever SDKs the runner image happens to ship.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore .NET tools (docfx is pinned in .config/dotnet-tools.json)
+        working-directory: ploch-commandline
+        run: dotnet tool restore
+
+      - name: Build documentation site
+        working-directory: ploch-commandline
+        run: dotnet docfx DocumentationSite/docfx.json
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ploch-commandline/DocumentationSite/_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,37 @@
+# Branch Naming Standards
+
+## Pattern
+
+```
+<change-type>/<issue-number>-<brief-description>
+```
+
+## Change Types
+
+| Type | When |
+|------|------|
+| `feature` | New feature or capability |
+| `fix` | Bug fix |
+| `chore` | Maintenance, config, housekeeping |
+| `refactor` | Code restructuring without behaviour change |
+| `docs` | Documentation only |
+| `test` | Adding or updating tests only |
+| `perf` | Performance improvement |
+| `ci` | CI/CD pipeline changes |
+| `build` | Build system changes |
+
+## Rules
+
+- `<issue-number>` is the GitHub issue number (digits only, no `#` prefix).
+- `<brief-description>` is lowercase, hyphen-separated, max 5 words. Summarise the change, not the issue title verbatim.
+- Always derive the change type from the nature of the work, not the issue label alone.
+- If the issue has no clear type from labels, infer from the title and description.
+
+## Examples
+
+- `feature/72-dbcontext-creation-lifecycle-plugins`
+- `fix/187-duplicate-entity-concurrent-upsert`
+- `chore/210-nbgv-versioning-fetch-depth`
+- `refactor/205-extract-shared-audit-logic`
+- `docs/215-update-serialization-readme`
+- `test/220-add-repository-edge-case-tests`

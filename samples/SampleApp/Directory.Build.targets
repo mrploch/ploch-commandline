@@ -1,0 +1,12 @@
+<Project>
+  <!-- When building as part of the main Ploch.CommandLine solution, switch from PackageReference to
+       ProjectReference for the Ploch libraries.
+       Usage: dotnet build -p:UsePlochProjectReferences=true
+
+       This import lives in Directory.Build.targets, not Directory.Build.props, on purpose:
+       Directory.Build.props is evaluated BEFORE the project body, so the <PackageReference Remove="..." />
+       items in ProjectReferences.props would have nothing to remove and both reference kinds would
+       survive. Directory.Build.targets is evaluated AFTER the project body, so the removal works. -->
+  <Import Project="ProjectReferences.props"
+          Condition="'$(UsePlochProjectReferences)' == 'true'" />
+</Project>

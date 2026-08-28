@@ -1,0 +1,26 @@
+# Work Traceability — Issue + Notion Task + Daily Note (Mandatory)
+
+**Scope:** every substantive unit of work in any repository under `C:\DevNet\my\mrploch` (workspace root included). "Substantive" = anything that will produce commits, a PR, a design decision, or multi-step investigation — the same bar as the Personal Dev Daily Notes auto-log rule.
+
+## The chain
+
+Before starting implementation work, ensure this three-way chain exists and is linked:
+
+1. **GitHub issue** in the repository being changed. Create one if none exists (`gh issue create`). Branches (`<type>/<issue>-<slug>`), commits (`Refs: #<issue>`) and PRs (`Closes #<issue>`) all reference it per the existing branch/commit/PR rules.
+2. **Notion task** in **☑️ Personal Dev Tasks** (`collection://215a5394-d58b-81b5-b167-000b544334f4`):
+   - `Name` — imperative task title; `Type` = `Issue` (GitHub-backed) or `TODO`;
+   - `GitHub Issue` (url property) — the full issue URL — **always set for repo work**;
+   - `Main Project` — the matching page in Personal Projects (`collection://31fa5394-d58b-801d-8431-000b7e8fc1b1`);
+   - `Status` = `In progress`, `Active State` = `Current`, `Priority Level` as appropriate;
+   - Page body: links to the issue, the daily-notes entry, and any proposal/spec docs.
+3. **Personal Dev Daily Notes entry** (per the auto-log rule in `mrploch/CLAUDE.md`) linked to the task via its **`Tasks`** relation.
+
+## Lifecycle
+
+- **On completion** (PR merged / task done): set the Notion task `Status` = `Done`; the daily-notes entry gets its Outcome section per the auto-log rule; the GitHub issue closes via the PR's `Closes #<issue>`.
+- **On scope change / follow-ups:** file follow-up GitHub issues (never "track it later") and create Notion sub-tasks (`Parent Task` relation) when they represent real planned work.
+- **Ordering:** create the chain **before** the implementation starts — an unlinked PR or an untracked task is a traceability defect, same severity as a missing `Refs:` footer.
+
+## Why
+
+The user requires full traceability of all work: any artefact (commit, PR, Notion page, note) must lead to the others. GitHub is the source of truth for code state; the Notion task DB is the source of truth for planned/active work; daily notes are the session audit trail.
