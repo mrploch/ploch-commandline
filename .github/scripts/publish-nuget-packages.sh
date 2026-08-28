@@ -28,12 +28,26 @@ FEED_URL="${1:?Usage: publish-nuget-packages.sh <feed-url>}"
 # produced four levels down. An unmatched glob is then passed through literally and
 # `dotnet nuget push` exits 0 on it - the step reports success having published nothing.
 #
-# tests/ and samples/ are excluded defensively rather than because they would otherwise
-# pack: test projects set IsPackable=false, and samples/SampleApp/Directory.Build.props
-# sets GeneratePackageOnBuild=false and IsPackable=false. `-ipath` keeps the exclusion
-# honest if either directory is ever renamed with different casing.
+# Restricted to bin/Release: Directory.Build.props sets GeneratePackageOnBuild=true for every
+# non-test project, so a library packs on EVERY build, not only the Release one. The workflow
+# builds these projects more than once, and a Debug pack therefore sits beside the Release pack
+# carrying the identical version. Unfiltered, `sort` orders 'bin/Debug' before 'bin/Release', so
+# the Debug artefact claims the version on the feed and --skip-duplicate silently swallows the
+# Release one that follows. That is not hypothetical: run 33169218883 on this very branch pushed
+# the Debug build of all four packages and reported success --
+#
+#   Publishing ./src/Spectre/CommandLine.Spectre/bin/Debug/...nupkg   -> Your package was pushed.
+#   Publishing ./src/Spectre/CommandLine.Spectre/bin/Release/...nupkg -> already exists at feed
+#
+# which is the same shape of failure this script exists to remove: a green step shipping the
+# wrong thing.
+#
+# tests/ and samples/ are excluded defensively rather than because they would otherwise pack:
+# test projects set IsPackable=false, and samples/SampleApp/Directory.Build.props sets
+# GeneratePackageOnBuild=false and IsPackable=false. `-ipath` keeps every path predicate honest
+# if a directory is ever renamed with different casing.
 find_packages() {
-  find . -type f -name "$1" -not -ipath './tests/*' -not -ipath './samples/*' | sort
+  find . -type f -name "$1" -ipath '*/bin/Release/*' -not -ipath './tests/*' -not -ipath './samples/*' | sort
 }
 
 # Captured into a variable rather than piped into `mapfile` through a process substitution:
@@ -46,7 +60,7 @@ if ! packages_found=$(find_packages '*.nupkg'); then
 fi
 
 if [ -z "$packages_found" ]; then
-  echo "::error::No .nupkg files were found. Refusing to report a successful publish."
+  echo "::error::No Release .nupkg files were found. Refusing to report a successful publish."
   exit 1
 fi
 
