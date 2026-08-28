@@ -459,6 +459,26 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     [Fact]
+    public void CancelKeyPress_should_report_a_failing_cancellation_callback_rather_than_let_it_escape()
+    {
+        using var builder = AppBuilder.Create().WithName("Widget Tool");
+        var handler = GetInstalledCancelKeyPressHandler(builder);
+
+        // Cancel() runs consumer callbacks synchronously and wraps anything they throw in an
+        // AggregateException. Unhandled on the CancelKeyPress thread that terminates the process, which is
+        // the opposite of the graceful shutdown the interrupt asked for.
+        using var registration = GetOwnedCancellationTokenSource(builder)
+                                 .Token.Register(() => throw new InvalidOperationException("callback exploded"));
+        var interrupt = NewConsoleCancelEventArgs();
+
+        var act = () => handler(sender: null, interrupt);
+
+        act.Should().NotThrow("an exception escaping here would kill the process during a requested shutdown");
+        interrupt.Cancel.Should().BeTrue("a consumer's failing callback must not turn a cooperative shutdown into a kill");
+        _console.Output.Should().Contain("callback exploded", "the failure is reported rather than silently swallowed");
+    }
+
+    [Fact]
     public void CancelKeyPress_should_not_suppress_an_interrupt_that_arrives_after_disposal()
     {
         var builder = AppBuilder.Create().WithName("Widget Tool");
