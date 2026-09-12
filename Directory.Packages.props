@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
@@ -10,7 +10,23 @@
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.7.115" />
-    <PackageVersion Include="Ploch.Common" Version="2.0.1" />
+  </ItemGroup>
+  <!--
+    Ploch package versions (ploch-common, ploch-data) come from the shared file so every
+    repository in the workspace resolves the same builds. This replaces a local
+    `Ploch.Common 2.0.1` pin that was four major versions behind the packages this
+    repository's own published package depends on (issues #46, #47).
+  -->
+  <Import Project="../mrploch-development/dependencies/Ploch.Packages.props" />
+  <ItemGroup>
+    <!--
+      Ploch.Common.Apps.Shared is published (4.0.47) but is not listed in the shared
+      Ploch.Packages.props, so it cannot be centrally versioned from there yet. Pinned here
+      to the same version the rest of the ploch-common family resolves to; remove this entry
+      once mrploch/mrploch-development adds it upstream.
+      Tracked by: mrploch/mrploch-development#21
+    -->
+    <PackageVersion Include="Ploch.Common.Apps.Shared" Version="4.0.47" />
   </ItemGroup>
   <Import Project="../mrploch-development/dependencies/Common.Packages.props" />
   <Import Project="../mrploch-development/dependencies/Serilog.Logging.Packages.props" />

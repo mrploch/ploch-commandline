@@ -37,10 +37,19 @@
     <PackageReference Include="Serilog.Sinks.SpectreConsole" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Ploch sibling dependencies. See UsePlochProjectReferences in Directory.Build.props. -->
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' != 'true'">
+    <PackageReference Include="Ploch.Common.Apps.Shared" />
+    <PackageReference Include="Ploch.Common.DependencyInjection" />
+    <PackageReference Include="Ploch.Common" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' == 'true'">
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common.Apps\Shared\Ploch.Common.Apps.Shared.csproj" />
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common.DependencyInjection\Ploch.Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common\Ploch.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CommandLine.Spectre.Serilog\Ploch.CommandLine.Spectre.Serilog.csproj" />
   </ItemGroup>
 

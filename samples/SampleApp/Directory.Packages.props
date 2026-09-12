@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <!-- This SampleApp is a standalone project that demonstrates how external consumers
        use the Ploch.CommandLine.Spectre libraries. It must NOT import parent Directory.Packages.props.
        All package versions are defined here, exactly as an external consumer would. -->
@@ -30,11 +30,18 @@
     <PackageVersion Include="Ploch.CommandLine.Spectre.FluentValidation" Version="$(PlochPackagesVersion)" />
     <PackageVersion Include="Ploch.CommandLine.Spectre.Serilog" Version="$(PlochPackagesVersion)" />
     <PackageVersion Include="Ploch.CommandLine.UseCases" Version="$(PlochPackagesVersion)" />
-    <!-- Must be at least 4.0.20-prerelease: that is what the Ploch.CommandLine.Spectre package
-         depends on, and 2.0.1 made the standalone restore fail with NU1109 (package downgrade)
-         followed by CS7069, because AssemblyListBuilder does not exist in the 2.x assembly. -->
-    <PackageVersion Include="Ploch.Common" Version="4.0.21-prerelease" />
-    <PackageVersion Include="Ploch.Common.DependencyInjection" Version="4.0.21-prerelease" />
+    <!-- The stable ploch-common 4.x release (4.0.47). Must be at least 4.0.20: that is what the
+         Ploch.CommandLine.Spectre package depends on, and 2.0.1 made the standalone restore fail
+         with NU1109 (package downgrade) followed by CS7069, because AssemblyListBuilder does not
+         exist in the 2.x assembly (issue #46).
+
+         Stable, not prerelease. A sample is copied by consumers, so it must not instruct them to
+         depend on a prerelease; and a stable Ploch.CommandLine.Spectre cannot depend on one
+         either without NU5104 (issue #47). Kept as an explicit version rather than a reference to
+         the workspace's shared Ploch.Packages.props on purpose - this file is deliberately
+         standalone so the sample restores outside the workspace. -->
+    <PackageVersion Include="Ploch.Common" Version="4.0.47" />
+    <PackageVersion Include="Ploch.Common.DependencyInjection" Version="4.0.47" />
   </ItemGroup>
 
   <ItemGroup Label="Spectre.Console">

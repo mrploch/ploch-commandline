@@ -1,16 +1,4 @@
 <Solution>
-  <Folder Name="/ploch-common/">
-    <Project Path="..\ploch-common\src\Common.DependencyInjection\Ploch.Common.DependencyInjection.csproj" Type="Classic C#" />
-    <Project Path="..\ploch-common\src\Common.Net9\Ploch.Common.Net9.csproj" Type="Classic C#" />
-    <Project Path="..\ploch-common\src\Common\Ploch.Common.csproj" Type="Classic C#" />
-  </Folder>
-  <Folder Name="/ploch-common/tests/">
-    <Project Path="..\ploch-common\tests\Common.DependencyInjection.Tests\Ploch.Common.DependencyInjection.Tests.csproj" Type="Classic C#" />
-    <Project Path="..\ploch-common\tests\Common.Net9.Tests\Ploch.Common.Net9.Tests.csproj" Type="Classic C#" />
-    <Project Path="..\ploch-common\tests\Common.Tests\Ploch.Common.Tests.csproj" Type="Classic C#" />
-    <Project Path="..\ploch-common\tests\TestAssemblies\Common.Tests.TestAssembly1\Ploch.Common.Tests.TestAssembly1.csproj" Type="Classic C#" />
-    <Project Path="..\ploch-common\tests\TestAssemblies\Common.Tests.TestAssembly2\Ploch.Common.Tests.TestAssembly2.csproj" Type="Classic C#" />
-  </Folder>
   <Folder Name="/repository/">
     <File Path="README.md" />
   </Folder>

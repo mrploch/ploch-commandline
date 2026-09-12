@@ -21,7 +21,12 @@
     <PackageReference Include="Spectre.Console" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Ploch sibling dependencies. See UsePlochProjectReferences in Directory.Build.props. -->
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' != 'true'">
+    <PackageReference Include="Ploch.Common.DependencyInjection" />
+    <PackageReference Include="Ploch.Common" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' == 'true'">
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common.DependencyInjection\Ploch.Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common\Ploch.Common.csproj" />
   </ItemGroup>
