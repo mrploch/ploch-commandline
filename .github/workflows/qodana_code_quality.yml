@@ -9,11 +9,6 @@ on:
 
 jobs:
   qodana:
-    # Same reason as publish-docs.yml: the scan restores the solution, which resolves Ploch.*
-    # from the authenticated GitHub Packages feed. See the note in release.yml. Raised by the
-    # Codex reviewer on PR #52.
-    env:
-      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -68,5 +63,9 @@ jobs:
         with:
           pr-mode: false
         env:
+          # Scoped to this step, not the job (least privilege, raised by the CodeRabbit reviewer
+          # on PR #52). The scan restores the solution inside its container, which resolves
+          # Ploch.* from the authenticated GitHub Packages feed. Full reasoning in release.yml.
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_657107159 }}
           QODANA_ENDPOINT: 'https://qodana.cloud'

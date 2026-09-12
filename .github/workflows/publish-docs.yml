@@ -21,13 +21,6 @@ concurrency:
 
 jobs:
   publish-docs:
-    # Restoring the solution resolves Ploch.* from nuget.org and the authenticated GitHub
-    # Packages feed. Without the token that feed 401s on every Ploch package; restore usually
-    # still falls back to nuget.org, but the fallback is a race and a prerelease version would
-    # not be on nuget.org at all. See the longer note in release.yml. Raised by the Codex
-    # reviewer on PR #52.
-    env:
-      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -75,6 +68,13 @@ jobs:
 
       - name: Build documentation site
         working-directory: ploch-commandline
+        # Scoped to this step, not the job, so the package credential is not exposed to
+        # checkout, upload or deployment actions (least privilege, raised by the CodeRabbit
+        # reviewer on PR #52). nuget.config maps Ploch.* to both nuget.org and the
+        # authenticated GitHub Packages feed; without the token that feed 401s on every Ploch
+        # package and the nuget.org fallback is a race. Full reasoning in release.yml.
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: dotnet docfx DocumentationSite/docfx.json
 
       - name: Upload artifact
