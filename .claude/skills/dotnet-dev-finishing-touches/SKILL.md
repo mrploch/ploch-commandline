@@ -1,6 +1,6 @@
 ---
 name: dotnet-dev-finishing-touches
-description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, runs a mandatory triple external AI review of the whole branch (Codex, Antigravity AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via Codex MCP, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
+description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, runs a mandatory triple external AI review of the whole branch (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via Codex MCP, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
 ---
 
 # Finishing Touches — .NET Branch Quality Pass
@@ -27,7 +27,7 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 
 - **Non-trivial fixes require Codex validation** — any change beyond mechanical edits is reviewed by the Codex MCP (`mcp__codex-cli__codex`) **before the commit**, not after. Applies equally to warning fixes, CI-failure fixes, and PR-comment-driven fixes. See [Codex Validation Gate](#codex-validation-gate).
 
-- **Triple external AI review is mandatory** — before commit/push, the **entire branch context** (PR description, linked issue, full diff, full contents of modified files, repo conventions, verification already performed) is handed to **Codex, Antigravity and GitHub Copilot CLI (Grok 4.6)**, which each perform an independent high-effort whole-branch review. Three model families means three sets of blind spots. This is distinct from the per-fix Codex gate: the gate validates one staged diff, this reviews the whole branch. Every finding is triaged into the master TODO. See [Phase 8.5](#phase-85-external-ai-review--codex--antigravity--copilot-mandatory) and [`rules/external-ai-review.md`](../../rules/external-ai-review.md).
+- **Triple external AI review is mandatory** — before commit/push, the **entire branch context** (PR description, linked issue, full diff, full contents of modified files, repo conventions, verification already performed) is handed to **Codex, Gemini and GitHub Copilot CLI (Grok 4.6)**, which each perform an independent high-effort whole-branch review. Three model families means three sets of blind spots. This is distinct from the per-fix Codex gate: the gate validates one staged diff, this reviews the whole branch. Every finding is triaged into the master TODO. See [Phase 8.5](#phase-85-external-ai-review--codex--gemini--copilot-mandatory) and [`rules/external-ai-review.md`](../../rules/external-ai-review.md).
 
 - **Zero unaddressed PR comments** — every unresolved review thread must be triaged and closed out before the skill reports complete. Valid issues are fixed in code; false positives get a reply that cites specific evidence (what the code actually does, which test/spec proves it, why the analyser or reviewer was wrong). A thread is never left silent, and a bot-flagged thread is never closed without a reply. See [Phase 11](#phase-11-address-pr-comments-skip-if---no-push).
 
@@ -61,7 +61,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | `Agent` tool (for Phase 1.5 sub-agent)             | Phase 1.5 only             | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report.                                                                                               |
 | `TaskCreate` / `TaskUpdate` / `TaskList` tools     | Phase 2.5 master TODO list | Fall back to `mcp__contextstream__memory(action="create_todo")` if ContextStream is active, otherwise an in-memory list tracked in the main transcript. Never proceed without *some* tracked list. |
 | `mcp__codex-cli__codex` / `mcp__codex-cli__review` | Phase 8.5 + Codex Validation Gate | Retry once via `ToolSearch`; if still missing, **pause and ask the user** whether to proceed without the gate (and record the decision in the final report). Never silently skip.                  |
-| `mcp__antigravity__ask_antigravity` (fallback `mcp__gemini__gemini-analyze-code`) | Phase 8.5                  | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                              |
+| `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code`) | Phase 8.5                  | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                              |
 | `copilot` CLI on `PATH`, authenticated (GitHub Copilot CLI) | Phase 8.5                  | Shell-out reviewer — **not** an MCP tool. Run the preflight in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Preflight; on failure follow its fallback ladder (retry with token env stripped → Kimi K3 → ask the user). Never silently skip. |
 | `superpowers:verification-before-completion` skill | Phase 12                   | If unavailable, invoke the verification checklist inline (re-run build, re-run tests, re-check CI, re-enumerate PR threads) — do not skip the verification itself.                                 |
 
@@ -98,7 +98,7 @@ digraph finishing_touches {
     more_warnings [shape=diamond, label="More warnings\nremaining?"];
     grand_review [label="8. Grand Review\n(all changes, suggestions)"];
     review_ok [shape=diamond, label="Changes\nready?"];
-    ai_review [label="8.5 External AI Review\nCodex + Antigravity + Copilot\n(parallel, full context, high effort)"];
+    ai_review [label="8.5 External AI Review\nCodex + Gemini + Copilot\n(parallel, full context, high effort)"];
     apply [label="8b. Apply Suggestions"];
     commit [label="9. Commit\n(/commit skill)"];
     push_check [shape=diamond, label="--no-push?"];
@@ -368,14 +368,14 @@ Build the complete picture of all changes on the branch.
 - Coverage gaps identified in Phase 4 — one TODO per file under 80%.
 - Grand-review findings from Phase 8 — one TODO per actionable suggestion.
 - New items surfaced by Codex validation in the [Codex Validation Gate](#codex-validation-gate) — one TODO per Codex finding rated "must fix" or "should fix".
-- External AI review findings from [Phase 8.5](#phase-85-external-ai-review--codex--antigravity--copilot-mandatory) — one TODO per Codex, Antigravity and Copilot finding rated `must-fix` or `should-fix`. Deduplicate findings more than one reviewer raises and credit every attribution; agreement across independent model families is higher-confidence and should be noted.
+- External AI review findings from [Phase 8.5](#phase-85-external-ai-review--codex--gemini--copilot-mandatory) — one TODO per Codex, Gemini and Copilot finding rated `must-fix` or `should-fix`. Deduplicate findings more than one reviewer raises and credit every attribution; agreement across independent model families is higher-confidence and should be noted.
 
 **TODO item format:**
 
 | Field     | Content                                                                                            |
 | --------- | -------------------------------------------------------------------------------------------------- |
 | Title     | Short imperative (e.g. "Fix SA1600 missing XML docs in `Foo.cs`")                                  |
-| Source    | One of: `local-warning`, `ci-check`, `pr-comment`, `xml-docs`, `coverage`, `grand-review`, `codex`, `antigravity`, `copilot` |
+| Source    | One of: `local-warning`, `ci-check`, `pr-comment`, `xml-docs`, `coverage`, `grand-review`, `codex`, `gemini`, `copilot` |
 | Reference | File + line / check name + run link / comment URL                                                  |
 | Trivial?  | `yes` or `no` — drives the Codex Validation Gate decision                                          |
 | Status    | `pending` → `in_progress` → `completed`                                                            |
@@ -619,7 +619,7 @@ Review all changes made during the finishing-touches pass holistically.
 
 ---
 
-### Phase 8.5: External AI Review — Codex + Antigravity + Copilot (MANDATORY)
+### Phase 8.5: External AI Review — Codex + Gemini + Copilot (MANDATORY)
 
 **Purpose:** An independent, whole-branch review by three external models from three different providers **before** commit/push. This is distinct from the [Codex Validation Gate](#codex-validation-gate) (which validates one staged fix at a time): here every reviewer sees the **entire branch** and hunts for what the pass missed — correctness bugs, API-contract breaks, async and thread-safety hazards, suppressions that hide real defects, test gaps, better approaches.
 
@@ -649,7 +649,7 @@ Reviewers receive the **entire context first**, then the review request. Build a
 #### Step 2 — Dispatch all three reviews in parallel
 
 - **Codex:** `mcp__codex-cli__review` (purpose-built review action) or `mcp__codex-cli__codex`, passing the full context package at the highest reasoning effort the tool exposes.
-- **Antigravity:** `mcp__antigravity__ask_antigravity` with `model="gemini-3.1-pro-high"` and `paths` set to every file in scope, same package. **Capture `git status --porcelain` before the call and diff it after** — the bridge runs with `--dangerously-skip-permissions` (ploch-ai-configuration#47), so this check is the only thing keeping the reviewer read-only.
+- **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), same package, highest-capability model/thinking configuration.
 - **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Use the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a scratch file and pass it via shell substitution rather than inlining it in the command line.
 
 Send all three requests in the same tool-call block so they run concurrently. If the package exceeds a transport's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the brief only after the final part — the requirement is *entire context first, then the review*.
@@ -657,7 +657,7 @@ Send all three requests in the same tool-call block so they run concurrently. If
 #### Step 3 — Triage the findings
 
 1. Merge the three findings lists; deduplicate (same file/line/concern → one TODO crediting every reviewer that raised it). A finding raised independently by two or more model families is higher-confidence — note the agreement on the TODO.
-2. One master-TODO per `must-fix` and `should-fix` finding (`Source: codex` / `antigravity` / `copilot`). `nit`s are batched into a single TODO and applied where cheap, or explicitly declined in the report.
+2. One master-TODO per `must-fix` and `should-fix` finding (`Source: codex` / `gemini` / `copilot`). `nit`s are batched into a single TODO and applied where cheap, or explicitly declined in the report.
 3. Triage each finding like a PR comment, using the seven-category model in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md): valid → fix (backups, ask-gates for API/semantic changes, **Codex Validation Gate for non-trivial fixes**, then loop to Phase 5); disagree → record the finding **and** the evidence-based reason for declining in the report. A declined external finding is never silently dropped.
 4. **Verdict handling:** if any reviewer returns `REQUEST_CHANGES`, the skill cannot proceed to Phase 9 until every `must-fix` from that reviewer is fixed or explicitly declined with evidence the user can audit. Re-run that reviewer on the updated diff and obtain `APPROVE`/`APPROVE_WITH_NOTES` (or user override).
 5. **A finding that would change the public API or semantic behaviour still hits the existing ask-gates** — an external reviewer's recommendation does not bypass the user's sign-off on breaking changes.
@@ -963,13 +963,13 @@ Provide a summary with evidence:
 - **Test Coverage:** ~<percentage>% on modified code (<count> tests added)
 - **Warnings Resolved:** <count> fixed, <count> suppressed (with justification), <count> disabled globally
 - **Code Review Fixes:** <count> improvements applied
-- **External-review fixes:** <count> from Codex, <count> from Antigravity, <count> from Copilot, <count> declined with reasons
+- **External-review fixes:** <count> from Codex, <count> from Gemini, <count> from Copilot, <count> declined with reasons
 
 ### External AI Review
 | Reviewer | Model | Verdict | must-fix | should-fix | nit | Fixed | Declined (with evidence) |
 |----------|-------|---------|----------|------------|-----|-------|--------------------------|
 | Codex    | ...   | ...     | n        | n          | n   | n     | n                        |
-| Antigravity | ...   | ...     | n        | n          | n   | n     | n                        |
+| Gemini   | ...   | ...     | n        | n          | n   | n     | n                        |
 | Copilot  | `grok-4.6` | ... | n   | n          | n   | n     | n                        |
 
 ### Warning Resolution Summary
@@ -1040,7 +1040,7 @@ find . -name "*.bak" -not -path "*/bin/*" -not -path "*/obj/*" -delete
 
 ## Codex Validation Gate
 
-**Purpose:** Non-trivial fixes (anything beyond a mechanical edit) must pass a second-opinion review by the Codex MCP (`mcp__codex-cli__codex`) **before the change is committed**, not after. This gate is **distinct from [Phase 8.5](#phase-85-external-ai-review--codex--antigravity--copilot-mandatory)**: the gate validates one specific staged diff, Phase 8.5 reviews the entire branch. A fix that came *out of* Phase 8.5 still goes through this gate if it is non-trivial. This is a cross-cutting gate that applies to Phases 6 (warning fixes), 10 (CI-failure fixes), and 11 (PR-comment fixes), as well as any test additions in Phase 4b.
+**Purpose:** Non-trivial fixes (anything beyond a mechanical edit) must pass a second-opinion review by the Codex MCP (`mcp__codex-cli__codex`) **before the change is committed**, not after. This gate is **distinct from [Phase 8.5](#phase-85-external-ai-review--codex--gemini--copilot-mandatory)**: the gate validates one specific staged diff, Phase 8.5 reviews the entire branch. A fix that came *out of* Phase 8.5 still goes through this gate if it is non-trivial. This is a cross-cutting gate that applies to Phases 6 (warning fixes), 10 (CI-failure fixes), and 11 (PR-comment fixes), as well as any test additions in Phase 4b.
 
 **Timing rule:** Codex runs on the *uncommitted* diff. The correct sequence is: stage files → invoke Codex on the staged diff → act on the verdict → commit. If you are already mid-commit when you realise the gate was skipped, reset the staging, run Codex, then re-stage and commit as a single commit. Do **not** commit first and retroactively "validate" — that defeats the gate.
 
@@ -1213,7 +1213,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 | 6. Warnings | Each warning classified and addressed | Resolution documented per warning |
 | 7. Verify | Warning resolved after each fix | Rebuild output confirms |
 | 8. Grand Review | All changes reviewed holistically | No outstanding concerns |
-| 8.5 External AI Review | Codex, Antigravity AND Copilot reviewed with full context at high effort; verdicts recorded; `git status --porcelain` unchanged after the Copilot run | Verdicts + findings table |
+| 8.5 External AI Review | Codex, Gemini AND Copilot reviewed with full context at high effort; verdicts recorded; `git status --porcelain` unchanged after the Copilot run | Verdicts + findings table |
 | 9. Commit | Conventional format with `Refs` footer | Commit message |
 | 10. CI | All checks green (including non-required) | `gh pr checks` output |
 | 11. PR Comments | Every thread triaged, fixed-or-replied, and (for bots + clear-cut cases) resolved | Zero `isResolved=false` threads whose latest comment is not ours; category breakdown recorded |
@@ -1255,7 +1255,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__detect_antipatterns` — Anti-pattern detection
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__find_dead_code` — Unused code detection
 - **`mcp__codex-cli__codex` / `mcp__codex-cli__review`** — **Required** second-opinion review for every non-trivial fix (see [Codex Validation Gate](#codex-validation-gate)) and one third of the Phase 8.5 panel. Use `ToolSearch` to load the schema if not already available.
-- **`mcp__antigravity__ask_antigravity`** (fallback `mcp__gemini__gemini-analyze-code`) — Phase 8.5 whole-branch review (load via `ToolSearch`); pin `model="gemini-3.1-pro-high"` and run the pre/post `git status --porcelain` write check
+- **`mcp__gemini-cli__gemini`** (fallback `mcp__gemini__gemini-analyze-code`) — Phase 8.5 whole-branch review (load via `ToolSearch`)
 - **`copilot` CLI (Grok 4.6)** — Phase 8.5 whole-branch review, invoked through `Bash`; flags, preflight and fallbacks in [`rules/external-ai-review.md`](../../rules/external-ai-review.md)
 - GitHub CLI (`gh`) — PR management, CI monitoring, comment handling
 

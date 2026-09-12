@@ -35,7 +35,7 @@ The following are the bots routinely seen in this workspace's PRs. The list is i
 **SonarCloud findings are not all on GitHub.** Unlike Codacy or CodeRabbit, SonarCloud usually posts only a single summary PR comment — not one thread per finding. The individual bugs, code smells, vulnerabilities, and security hotspots live in the SonarCloud platform and **must** be fetched via the `sonarqube-cloud` MCP server (configured at workspace scope — see `mrploch/CLAUDE.md` § "SonarQube MCP Servers"):
 
 - **Project key:** `.sonarlint/connectedMode.json` → `projectKey`; else `sonar.projectKey` in `sonar-project.properties` or `.github/workflows/*.yml`; else `mcp__sonarqube-cloud__search_my_sonarqube_projects(q="<repo>")`.
-- **Issues:** `mcp__sonarqube-cloud__search_sonar_issues_in_projects(projectKeys=["<key>"], pullRequest="<PR#>", issueStatuses=["OPEN","CONFIRMED"])`.
+- **Issues:** `mcp__sonarqube-cloud__search_sonar_issues_in_projects(projects=["<key>"], pullRequestId="<PR#>", issueStatuses=["OPEN","CONFIRMED"])`.
 - **Security hotspots:** `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<PR#>", status=["TO_REVIEW"])`.
 - **Quality gate:** `mcp__sonarqube-cloud__get_project_quality_gate_status(projectKey="<key>", pullRequest="<PR#>")`.
 
@@ -119,7 +119,7 @@ done
 
 **Step 7 — SonarCloud platform is clean (MCP, not shell).** The bash steps above only see GitHub-surfaced data. Separately confirm via the `sonarqube-cloud` MCP server that the PR has zero open findings:
 
-- `mcp__sonarqube-cloud__search_sonar_issues_in_projects(projectKeys=["<key>"], pullRequest="<PR#>", issueStatuses=["OPEN","CONFIRMED"])` → expected: empty.
+- `mcp__sonarqube-cloud__search_sonar_issues_in_projects(projects=["<key>"], pullRequestId="<PR#>", issueStatuses=["OPEN","CONFIRMED"])` → expected: empty.
 - `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<PR#>", status=["TO_REVIEW"])` → expected: empty.
 - `mcp__sonarqube-cloud__get_project_quality_gate_status(projectKey="<key>", pullRequest="<PR#>")` → expected: `OK`.
 
