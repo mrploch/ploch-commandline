@@ -1,6 +1,6 @@
 ---
 name: dev-finishing-touches
-description: Last-mile quality pass for ploch-ai-site branches (Astro static site, bilingual PL/EN) — reviews all changes (committed + uncommitted), verifies content parity and SEO surfaces (hreflang, JSON-LD, meta, sitemaps), builds with zero astro-check errors/warnings/hints, runs a mandatory triple external AI review of the whole PR (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local check output + failing CI checks + every unresolved PR review thread + every external-AI-review finding, triages each item into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, and only completes when every CI check is green, every TODO is resolved, zero PR review threads remain unaddressed, and manual browser verification of both language versions has passed. Use when the user says "/dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
+description: Last-mile quality pass for ploch-ai-site branches (Astro static site, bilingual PL/EN) — reviews all changes (committed + uncommitted), verifies content parity and SEO surfaces (hreflang, JSON-LD, meta, sitemaps), builds with zero astro-check errors/warnings/hints, runs a mandatory triple external AI review of the whole PR (Codex, Antigravity AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local check output + failing CI checks + every unresolved PR review thread + every external-AI-review finding, triages each item into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, and only completes when every CI check is green, every TODO is resolved, zero PR review threads remain unaddressed, and manual browser verification of both language versions has passed. Use when the user says "/dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
 ---
 
 # Finishing Touches — Branch Quality Pass (ploch-ai-site)
@@ -29,7 +29,7 @@ This is the web-site adaptation of the workspace's `.NET` finishing-touches skil
 
 - **CI state is known up front, not after push** — a sub-agent inspects existing CI run status before any local work begins. See [Phase 1.5](#phase-15-ci-status-pre-check-sub-agent).
 
-- **Triple external AI review is mandatory** — before commit/push, the **entire PR context** (description, linked issue, full diff, full contents of modified files, repo conventions) is handed to **Codex, Gemini and GitHub Copilot CLI (Grok 4.6)**, which each perform an independent high-effort review of the branch. Three different model families means three different blind spots. Every finding they raise is triaged into the master TODO. See [Phase 8.5](#phase-85-external-ai-review--codex--gemini--copilot-mandatory) and [`rules/external-ai-review.md`](../../rules/external-ai-review.md).
+- **Triple external AI review is mandatory** — before commit/push, the **entire PR context** (description, linked issue, full diff, full contents of modified files, repo conventions) is handed to **Codex, Antigravity and GitHub Copilot CLI (Grok 4.6)**, which each perform an independent high-effort review of the branch. Three different model families means three different blind spots. Every finding they raise is triaged into the master TODO. See [Phase 8.5](#phase-85-external-ai-review--codex--antigravity--copilot-mandatory) and [`rules/external-ai-review.md`](../../rules/external-ai-review.md).
 
 - **Non-trivial fixes require Codex validation** — any change beyond mechanical edits is additionally reviewed by the Codex MCP **before the commit**, not after. Applies equally to check fixes, CI-failure fixes, PR-comment-driven fixes, and external-review-driven fixes. See [Codex Validation Gate](#codex-validation-gate).
 
@@ -65,7 +65,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | `Agent` tool (for Phase 1.5 sub-agent)             | Phase 1.5 only                  | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report.                                                                                                |
 | `TaskCreate` / `TaskUpdate` / `TaskList` tools     | Phase 2.5 master TODO list      | Fall back to `mcp__contextstream__memory(action="create_todo")` if ContextStream is active, otherwise an in-memory list tracked in the main transcript. Never proceed without *some* tracked list.  |
 | `mcp__codex-cli__codex` / `mcp__codex-cli__review` | Phase 8.5 + Codex Validation Gate | Load via `ToolSearch` ("select:mcp__codex-cli__codex,mcp__codex-cli__review"); retry once; if still missing, **pause and ask the user** whether to proceed without Codex (record the decision). Never silently skip. |
-| `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code`) | Phase 8.5                       | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                               |
+| `mcp__antigravity__ask_antigravity` (fallback `mcp__gemini__gemini-analyze-code`) | Phase 8.5                       | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                               |
 | `copilot` CLI on `PATH`, authenticated (GitHub Copilot CLI) | Phase 8.5                       | Shell-out reviewer — **not** an MCP tool. Run the preflight in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Preflight; on failure follow its fallback ladder (retry with token env stripped → Kimi K3 → ask the user). Never silently skip. |
 | Browser tooling (`claude-in-chrome` MCP, Playwright MCP, or `curl` fallback) | Phase 9.5 manual verification | Prefer a real browser MCP. If none is available, use `astro preview` + `curl` + dist HTML inspection and state in the report that visual verification was curl-level only.                          |
 | `superpowers:verification-before-completion` skill | Phase 12                        | If unavailable, invoke the verification checklist inline (re-run build + check, re-check CI, re-enumerate PR threads) — do not skip the verification itself.                                        |
@@ -93,7 +93,7 @@ digraph finishing_touches {
     verify [label="6. Rebuild & Verify"];
     more [shape=diamond, label="More findings?"];
     grand [label="7. Grand Review\n(diff + docs sync)"];
-    ai_review [label="8.5 External AI Review\nCodex + Gemini + Copilot (parallel,\nfull context, high effort)"];
+    ai_review [label="8.5 External AI Review\nCodex + Antigravity + Copilot (parallel,\nfull context, high effort)"];
     ai_findings [shape=diamond, label="Findings\nraised?"];
     triage_ai [label="Triage findings into TODO;\nfix valid ones"];
     commit [label="9. Commit\n(/commit + Refs footer)"];
@@ -272,7 +272,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 
    One TODO per unresolved, non-outdated thread + one per actionable issue-level comment. Bot threads (Copilot, Codex connector, Sourcery, CodeRabbit) are included and triaged exactly like human threads. Record each thread's GraphQL `id` and root `databaseId` in the TODO body.
 
-4. **External AI review findings** — from Phase 8.5. One TODO per Codex, Gemini and Copilot finding rated must-fix or should-fix (deduplicate findings more than one reviewer raises; note every attribution on the merged TODO — agreement across independent model families raises confidence and should be recorded).
+4. **External AI review findings** — from Phase 8.5. One TODO per Codex, Antigravity and Copilot finding rated must-fix or should-fix (deduplicate findings more than one reviewer raises; note every attribution on the merged TODO — agreement across independent model families raises confidence and should be recorded).
 
 **Additional sources folded in as the pass progresses:** content-parity gaps from Phase 3 (one TODO per page pair), grand-review findings from Phase 7, Codex Validation Gate findings.
 
@@ -281,7 +281,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 | Field     | Content                                                                                              |
 | --------- | ---------------------------------------------------------------------------------------------------- |
 | Title     | Short imperative (e.g. "Fix missing EN mirror of new PL services section")                            |
-| Source    | One of: `local-check`, `ci-check`, `pr-comment`, `content-parity`, `grand-review`, `codex`, `gemini`, `copilot` |
+| Source    | One of: `local-check`, `ci-check`, `pr-comment`, `content-parity`, `grand-review`, `codex`, `antigravity`, `copilot` |
 | Reference | File + line / check name + run link / comment URL / reviewer finding ID                               |
 | Trivial?  | `yes` or `no` — drives the Codex Validation Gate decision                                             |
 | Status    | `pending` → `in_progress` → `completed`                                                               |
@@ -423,7 +423,7 @@ Review all changes holistically.
 
 ---
 
-### Phase 8.5: External AI Review — Codex + Gemini + Copilot (MANDATORY)
+### Phase 8.5: External AI Review — Codex + Antigravity + Copilot (MANDATORY)
 
 **Purpose:** An independent, whole-branch review by three external models from three different providers **before** commit/push. This is distinct from the [Codex Validation Gate](#codex-validation-gate) (which validates individual fixes): here every reviewer sees the **entire PR** and hunts for anything the pass missed — bugs, SEO regressions, bilingual drift, security issues, better approaches.
 
@@ -453,7 +453,7 @@ The reviewers must receive the **entire context first**, then the review request
 #### Step 2 — Dispatch all three reviews in parallel
 
 - **Codex:** `mcp__codex-cli__review` (purpose-built review action) or `mcp__codex-cli__codex`, passing the full context package. Request the highest reasoning effort the tool exposes (e.g. `model`/`effort` config set to high) — the brief's "maximum depth" instruction applies regardless.
-- **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), passing the same package. Use the highest-capability model/thinking configuration the tool exposes.
+- **Antigravity:** `mcp__antigravity__ask_antigravity` with `model="gemini-3.1-pro-high"` and `paths` set to every file in scope, passing the same package. **Capture `git status --porcelain` before the call and diff it after** — the bridge runs with `--dangerously-skip-permissions` (ploch-ai-configuration#47), so this check is the only thing keeping the reviewer read-only.
 - **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool. Write the context package plus brief to a scratch file and pass it as the prompt, using the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a file and pass it via shell substitution rather than inlining it in the command line.
 
 Send all three requests in the same tool-call block so they run concurrently. If the context package exceeds a tool's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the review brief only after the final part — the requirement is *entire context first, then the review*.
@@ -461,7 +461,7 @@ Send all three requests in the same tool-call block so they run concurrently. If
 #### Step 3 — Triage the findings
 
 1. Merge the three findings lists; deduplicate (same file/line/concern → one TODO crediting every reviewer that raised it). A finding raised independently by two or more model families is higher-confidence — note the agreement on the TODO.
-2. One master-TODO per `must-fix` and `should-fix` finding (`Source: codex` / `gemini` / `copilot`). `nit`s are batched into a single TODO and applied where cheap, or explicitly declined in the report.
+2. One master-TODO per `must-fix` and `should-fix` finding (`Source: codex` / `antigravity` / `copilot`). `nit`s are batched into a single TODO and applied where cheap, or explicitly declined in the report.
 3. Triage each finding like a PR comment: valid → fix (backups, safety gate, Codex Validation Gate for non-trivial fixes, then loop to Phase 4); disagree → record the finding **and** the evidence-based reason for declining in the report — a declined external finding is never silently dropped.
 4. **Verdict handling:** if any reviewer returns `REQUEST_CHANGES`, the skill cannot proceed to Phase 9 until every `must-fix` from that reviewer is fixed or explicitly declined with evidence the user can audit. Re-run that reviewer on the updated diff and obtain `APPROVE`/`APPROVE_WITH_NOTES` (or user override).
 
@@ -609,7 +609,7 @@ Re-run the enumeration + comment fetches. Any new thread/comment (including revi
 ### Changes Applied
 - **Content/SEO integrity:** <PL/EN parity fixes, hreflang/meta/JSON-LD corrections>
 - **Check findings resolved:** <count> fixed, <count> suppressed (each with documented justification)
-- **External-review fixes:** <count> from Codex, <count> from Gemini, <count> from Copilot, <count> declined with reasons
+- **External-review fixes:** <count> from Codex, <count> from Antigravity, <count> from Copilot, <count> declined with reasons
 - **Docs updated:** <files>
 
 ### Build & Check Status
@@ -619,7 +619,7 @@ Re-run the enumeration + comment fetches. Any new thread/comment (including revi
 | Reviewer | Verdict | must-fix | should-fix | nit | Fixed | Declined (with evidence) |
 |----------|---------|----------|------------|-----|-------|--------------------------|
 | Codex    | ...     | n        | n          | n   | n     | n                        |
-| Gemini   | ...     | n        | n          | n   | n     | n                        |
+| Antigravity | ...     | n        | n          | n   | n     | n                        |
 | Copilot (`grok-4.6`) | ... | n   | n          | n   | n     | n                        |
 
 ### Manual Verification
@@ -693,7 +693,7 @@ Each iteration is a **new commit**. After all fixes, update the PR description t
 2. **PL/EN parity requires a content decision** — e.g. new PL copy with no obvious EN rendering, or a translation judgement call.
 3. **A change touches deploy-sensitive files** (`.htaccess`, `_headers`, workflows, `wrangler.jsonc`) beyond the branch's scope.
 4. **No GitHub issue can be found** for the `Refs` footer — follow `rules/commits.md` lookup order and ask if none found.
-5. **Codex or Gemini MCP is unavailable** after a retry — ask whether to proceed with a reduced review.
+5. **Codex or Antigravity MCP is unavailable** after a retry — ask whether to proceed with a reduced review.
 6. **An external reviewer's `REQUEST_CHANGES` must-fix** conflicts with the user's explicit prior direction — surface the conflict, don't pick silently.
 
 ---
@@ -707,7 +707,7 @@ Each iteration is a **new commit**. After all fixes, update the PR description t
 | PL/EN wording mismatch | Polish wins; mirror the meaning into EN |
 | CI check failure | Read logs (`gh run view --log-failed`), identify root cause, fix |
 | PR comment you disagree with | Reply with evidence-based reasoning |
-| Codex and Gemini disagree with each other | Judge on the evidence; if genuinely ambiguous and impactful, surface both positions to the user |
+| Codex and Antigravity disagree with each other | Judge on the evidence; if genuinely ambiguous and impactful, surface both positions to the user |
 | Link-check failure on an external URL | Internal links must be fixed; external ones verified manually (CI is offline-only, so external failures are local-run-only signals) |
 
 ---
@@ -749,7 +749,7 @@ Each iteration is a **new commit**. After all fixes, update the PR description t
 | 4. Build/Check | 0 errors / 0 warnings / 0 hints; links + JSON-LD valid | Command output |
 | 5–6. Findings | Each finding classified, addressed, verified | Resolution documented per finding |
 | 7. Grand Review | Holistic review + docs sync done | No outstanding concerns |
-| 8.5 AI Review | Codex, Gemini AND Copilot reviewed with full context at high effort; verdicts recorded; `git status --porcelain` unchanged after the Copilot run | Verdicts + findings table |
+| 8.5 AI Review | Codex, Antigravity AND Copilot reviewed with full context at high effort; verdicts recorded; `git status --porcelain` unchanged after the Copilot run | Verdicts + findings table |
 | 9. Commit | Conventional format with `Refs` footer, no `.bak` staged | Commit message + staged-index check |
 | 9.5 Manual Verify | Both languages browser-verified | Pages + method recorded |
 | 10. CI | All checks green (incl. non-required) | `gh pr checks` output |
@@ -776,7 +776,7 @@ Each iteration is a **new commit**. After all fixes, update the PR description t
 
 **Uses these MCP tools:**
 - **`mcp__codex-cli__review` / `mcp__codex-cli__codex`** — Phase 8.5 whole-branch review + the per-fix Codex Validation Gate (load via `ToolSearch`)
-- **`mcp__gemini-cli__gemini`** (fallback `mcp__gemini__gemini-analyze-code`) — Phase 8.5 whole-branch review (load via `ToolSearch`)
+- **`mcp__antigravity__ask_antigravity`** (fallback `mcp__gemini__gemini-analyze-code`) — Phase 8.5 whole-branch review (load via `ToolSearch`); pin `model="gemini-3.1-pro-high"` and run the pre/post `git status --porcelain` write check
 - **`copilot` CLI (Grok 4.6)** — Phase 8.5 whole-branch review, invoked through `Bash`; flags, preflight and fallbacks in [`rules/external-ai-review.md`](../../rules/external-ai-review.md)
 - `claude-in-chrome` / Playwright MCP — Phase 9.5 browser verification
 - Context7 MCP — Astro documentation lookups

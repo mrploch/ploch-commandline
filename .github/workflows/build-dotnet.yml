@@ -50,7 +50,7 @@ jobs:
       # ploch-common is cloned in full because it uses Nerdbank.GitVersioning too, and NBGV
       # cannot compute a version height from a shallow clone.
       - name: Clone ploch-common (referenced projects)
-        run: git clone https://github.com/mrploch/ploch-common.git --branch master ../ploch-common
+        run: git clone https://github.com/mrploch/ploch-common.git --branch main ../ploch-common
       - name: Clone mrploch-development (shared build config)
         run: git clone --depth 1 https://github.com/mrploch/mrploch-development.git ../mrploch-development
 

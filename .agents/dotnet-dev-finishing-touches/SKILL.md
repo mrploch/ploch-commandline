@@ -1,6 +1,6 @@
 ---
 name: dotnet-dev-finishing-touches
-description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via Codex MCP, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
+description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, runs a mandatory triple external AI review of the whole branch (Codex, Antigravity AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via Codex MCP, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
 ---
 
 # Finishing Touches — .NET Branch Quality Pass
@@ -12,20 +12,32 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 **Core principles:**
 
 - **Fix, don't suppress** — suppressions are a last resort, never a shortcut. When suppression is genuinely needed, use `/dotnet-dev-practical` for the correct technique.
+
 - **Verify every fix** — rebuild after every change. Never assume a fix worked.
+
 - **Zero warnings before push** — every warning pushed costs a full CI round-trip (5-15 minutes). Fix locally in seconds.
+
 - **Evidence before claims** — never report completion without build output, test counts, and CI status.
+
 - **Backup before modify** — before editing any file, save a `.bak` copy so the user can review exactly what changed. See [Backup Before Modify](#backup-before-modify).
+
 - **One unified TODO list drives the pass** — local warnings, failing CI checks, and PR comments/conversations all live in a single tracked list. The skill is not complete until every item on that list is resolved. See [Master TODO List](#phase-25-build-master-todo-list).
+
 - **CI state is known up front, not after push** — a sub-agent inspects existing CI run status before any local work begins so failing checks are visible and planned from the start. See [Phase 1.5](#phase-15-ci-status-pre-check-sub-agent).
+
 - **Non-trivial fixes require Codex validation** — any change beyond mechanical edits is reviewed by the Codex MCP (`mcp__codex-cli__codex`) **before the commit**, not after. Applies equally to warning fixes, CI-failure fixes, and PR-comment-driven fixes. See [Codex Validation Gate](#codex-validation-gate).
+
+- **Triple external AI review is mandatory** — before commit/push, the **entire branch context** (PR description, linked issue, full diff, full contents of modified files, repo conventions, verification already performed) is handed to **Codex, Antigravity and GitHub Copilot CLI (Grok 4.6)**, which each perform an independent high-effort whole-branch review. Three model families means three sets of blind spots. This is distinct from the per-fix Codex gate: the gate validates one staged diff, this reviews the whole branch. Every finding is triaged into the master TODO. See [Phase 8.5](#phase-85-external-ai-review--codex--antigravity--copilot-mandatory) and [`rules/external-ai-review.md`](../../rules/external-ai-review.md).
+
 - **Zero unaddressed PR comments** — every unresolved review thread must be triaged and closed out before the skill reports complete. Valid issues are fixed in code; false positives get a reply that cites specific evidence (what the code actually does, which test/spec proves it, why the analyser or reviewer was wrong). A thread is never left silent, and a bot-flagged thread is never closed without a reply. See [Phase 11](#phase-11-address-pr-comments-skip-if---no-push).
+
 - **All-green completion gate — non-negotiable.** The hard gate for this skill is defined in **`../../../.claude/rules/pr-checks-completion-gate.md`** (workspace-level). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
+  
   1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
   2. Every static-analysis bot has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s).
   3. Every PR review thread is either resolved or has us as the latest contributor with an active reply. Bot-authored threads (CodeRabbit, Codacy comments, Bito) follow the same rules as human-authored.
   4. Re-polling produces no new threads, comments, or check runs.
-
+  
   **Stale checks are still failures.** "Codacy is stale, expected to go green" is **not** an acceptable completion claim. Wait for the rescan or push a follow-up to retrigger.
 
 **Announce at start:** "I'm using the dotnet-dev-finishing-touches skill to perform a quality pass on the current branch."
@@ -41,15 +53,17 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 
 Before running any phase, check these prerequisites. If one is missing, **stop and tell the user** — do not silently work around the gap.
 
-| Requirement | Required for | Fallback if missing |
-|-------------|-------------|---------------------|
-| `dotnet` CLI (.NET 9+ SDK) | Phases 4, 5, 7 | Stop — the skill cannot run without it. |
-| `gh` CLI, authenticated (`gh auth status`) | Phases 1, 1.5, 10, 11 | Stop if Phase 10/11 is in scope. For Phase 1/1.5 the skill can continue without PR context but must flag the gap in the report. |
-| `git` CLI, working tree clean of unrelated changes | All phases | Stop and ask the user to commit/stash unrelated work. |
-| `Agent` tool (for Phase 1.5 sub-agent) | Phase 1.5 only | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report. |
-| `TaskCreate` / `TaskUpdate` / `TaskList` tools | Phase 2.5 master TODO list | Fall back to `mcp__contextstream__memory(action="create_todo")` if ContextStream is active, otherwise an in-memory list tracked in the main transcript. Never proceed without *some* tracked list. |
-| `mcp__codex-cli__codex` | Codex Validation Gate | Retry once via `ToolSearch`; if still missing, **pause and ask the user** whether to proceed without the gate (and record the decision in the final report). Never silently skip. |
-| `superpowers:verification-before-completion` skill | Phase 12 | If unavailable, invoke the verification checklist inline (re-run build, re-run tests, re-check CI, re-enumerate PR threads) — do not skip the verification itself. |
+| Requirement                                        | Required for               | Fallback if missing                                                                                                                                                                                |
+| -------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dotnet` CLI (.NET 9+ SDK)                         | Phases 4, 5, 7             | Stop — the skill cannot run without it.                                                                                                                                                            |
+| `gh` CLI, authenticated (`gh auth status`)         | Phases 1, 1.5, 10, 11      | Stop if Phase 10/11 is in scope. For Phase 1/1.5 the skill can continue without PR context but must flag the gap in the report.                                                                    |
+| `git` CLI, working tree clean of unrelated changes | All phases                 | Stop and ask the user to commit/stash unrelated work.                                                                                                                                              |
+| `Agent` tool (for Phase 1.5 sub-agent)             | Phase 1.5 only             | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report.                                                                                               |
+| `TaskCreate` / `TaskUpdate` / `TaskList` tools     | Phase 2.5 master TODO list | Fall back to `mcp__contextstream__memory(action="create_todo")` if ContextStream is active, otherwise an in-memory list tracked in the main transcript. Never proceed without *some* tracked list. |
+| `mcp__codex-cli__codex` / `mcp__codex-cli__review` | Phase 8.5 + Codex Validation Gate | Retry once via `ToolSearch`; if still missing, **pause and ask the user** whether to proceed without the gate (and record the decision in the final report). Never silently skip.                  |
+| `mcp__antigravity__ask_antigravity` (fallback `mcp__gemini__gemini-analyze-code`) | Phase 8.5                  | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                              |
+| `copilot` CLI on `PATH`, authenticated (GitHub Copilot CLI) | Phase 8.5                  | Shell-out reviewer — **not** an MCP tool. Run the preflight in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Preflight; on failure follow its fallback ladder (retry with token env stripped → Kimi K3 → ask the user). Never silently skip. |
+| `superpowers:verification-before-completion` skill | Phase 12                   | If unavailable, invoke the verification checklist inline (re-run build, re-run tests, re-check CI, re-enumerate PR threads) — do not skip the verification itself.                                 |
 
 ## The Process
 
@@ -84,6 +98,7 @@ digraph finishing_touches {
     more_warnings [shape=diamond, label="More warnings\nremaining?"];
     grand_review [label="8. Grand Review\n(all changes, suggestions)"];
     review_ok [shape=diamond, label="Changes\nready?"];
+    ai_review [label="8.5 External AI Review\nCodex + Antigravity + Copilot\n(parallel, full context, high effort)"];
     apply [label="8b. Apply Suggestions"];
     commit [label="9. Commit\n(/commit skill)"];
     push_check [shape=diamond, label="--no-push?"];
@@ -129,7 +144,9 @@ digraph finishing_touches {
     more_warnings -> classify [label="yes"];
     more_warnings -> grand_review [label="no"];
     grand_review -> review_ok;
-    review_ok -> commit [label="yes"];
+    review_ok -> ai_review [label="yes"];
+    ai_review -> commit [label="no must-fix outstanding"];
+    ai_review -> apply [label="must-fix findings"];
     review_ok -> apply [label="no"];
     apply -> build;
     commit -> push_check;
@@ -172,25 +189,30 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
 ### Phase 0: Detect Repository & Solution
 
 1. **Find the repo root:**
+   
    ```bash
    REPO_ROOT=$(git rev-parse --show-toplevel)
    REPO_NAME=$(basename "$REPO_ROOT")
    ```
 
 2. **Locate the solution file.** Prefer `.slnx` over `.sln`. Prefer the file matching the repo name pattern (e.g. `Ploch.Common.slnx` in `ploch-common`):
+   
    ```bash
    find "$REPO_ROOT" -maxdepth 2 -name "*.slnx" -not -path "*/.history/*" -not -path "*/samples/*" | sort
    find "$REPO_ROOT" -maxdepth 2 -name "*.sln" -not -path "*/.history/*" -not -path "*/samples/*" | sort
    ```
+   
    If multiple solution files exist and the correct one is ambiguous, present the list and ask the user.
 
 3. **Detect the base branch:**
+   
    ```bash
    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
    if [ -z "$BASE_BRANCH" ]; then
      BASE_BRANCH=$(git branch -r | grep -oP 'origin/(main|master)' | head -1 | sed 's@origin/@@')
    fi
    ```
+   
    Convention: `ploch-common` uses `master`; newer repos use `main`.
 
 4. Store `REPO_ROOT`, `REPO_NAME`, `SOLUTION_FILE`, and `BASE_BRANCH` for all subsequent phases.
@@ -202,6 +224,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
 Gather full context about the branch's purpose.
 
 1. **Check for an associated PR:**
+   
    ```bash
    gh pr view --json number,url,title,body,labels,state 2>/dev/null || echo "NO_PR"
    ```
@@ -209,9 +232,11 @@ Gather full context about the branch's purpose.
 2. **If a PR exists**, extract linked issue numbers from the PR body (look for `Closes #N`, `Refs #N`, `Fixes #N`, `Resolves #N`).
 
 3. **If a linked issue is found:**
+   
    ```bash
    gh issue view <number> --json number,title,body,labels,comments
    ```
+   
    Understand the issue requirements, acceptance criteria, and any discussion context.
 
 4. **Understand the branch purpose** from all gathered context — PR description, issue body, branch name, commit messages. This context drives decisions in later phases (e.g. whether a warning fix would change the branch's intended behaviour).
@@ -229,21 +254,27 @@ Gather full context about the branch's purpose.
 **Invocation:** Use the `Agent` tool with `subagent_type="general-purpose"` and brief it to:
 
 1. Detect whether a PR exists for the current branch and whether any CI runs have started:
+   
    ```bash
    gh pr view --json number,url,statusCheckRollup 2>/dev/null
    gh run list --branch "$(git branch --show-current)" --limit 20 --json databaseId,name,status,conclusion,workflowName,headBranch,event,createdAt
    ```
+
 2. For every check with `conclusion` other than `success`/`skipped`/`neutral` (i.e. `failure`, `cancelled`, `timed_out`, `action_required`, or still `in_progress`), fetch the failure logs:
+   
    ```bash
    gh pr checks <pr-number> --json name,state,link,description
    gh run view <run-id> --log-failed
    ```
+
 3. For each non-green check, extract and return a structured entry:
+   
    - Check name (e.g. `build-test-sonar / build`, `SonarCloud Code Analysis`)
    - Status / conclusion
    - Run ID and link
    - Root-cause excerpt (3–15 lines of the actual failing output — not the whole log)
    - Suggested TODO title (e.g. `Fix SonarCloud quality gate failure: duplicated blocks in Foo.cs`)
+
 4. Report back as a bullet list grouped by workflow. Under 300 words. **No fixes. No file edits.**
 
 **Brief template to pass to the sub-agent:**
@@ -259,17 +290,20 @@ Gather full context about the branch's purpose.
 Build the complete picture of all changes on the branch.
 
 1. **All committed changes vs base branch:**
+   
    ```bash
    git diff "$BASE_BRANCH"...HEAD --name-only
    ```
 
 2. **Uncommitted changes (staged + unstaged):**
+   
    ```bash
    git diff --name-only          # unstaged
    git diff --staged --name-only # staged
    ```
 
 3. **Untracked files:**
+   
    ```bash
    git ls-files --others --exclude-standard
    ```
@@ -277,6 +311,7 @@ Build the complete picture of all changes on the branch.
 4. **Merge** all lists into a deduplicated set of modified files. Filter to `.cs` files for code analysis phases.
 
 5. **Read the full diffs** for context:
+   
    ```bash
    git diff "$BASE_BRANCH"...HEAD  # committed changes
    git diff                         # unstaged
@@ -296,8 +331,11 @@ Build the complete picture of all changes on the branch.
 **Required TODO sources — all three must be harvested, not just local issues:**
 
 1. **Local build warnings** — from Phase 5. Initially seeded as a single placeholder TODO ("Run initial build and enumerate warnings on modified files"); once the build runs, the placeholder is expanded into one TODO per warning-on-modified-file.
+
 2. **Failing CI checks** — from the Phase 1.5 sub-agent's `CI_ISSUES` list. One TODO per non-green check, with the check name, run link, and root-cause excerpt referenced in the TODO body.
+
 3. **PR review threads, conversations, and reviews** — fetched here (not just in Phase 11). REST endpoints do not expose thread resolution state, so the primary source is the GraphQL `reviewThreads` connection:
+   
    ```bash
    # Thread IDs + resolution state (primary source for TODO creation)
    gh api graphql -f query='
@@ -315,12 +353,13 @@ Build the complete picture of all changes on the branch.
        }
      }
    }' -F owner=<owner> -F repo=<repo> -F pr=<pr-number>
-
+   
    # Issue-level conversation comments (PR discussion, not inline review)
    gh api repos/<owner>/<repo>/issues/<pr-number>/comments --paginate
    # Full review objects (for body-only reviews without inline comments)
    gh api repos/<owner>/<repo>/pulls/<pr-number>/reviews --paginate
    ```
+   
    **One TODO per unresolved, non-outdated review thread + one TODO per issue-comment that raises an actionable concern.** Resolved or outdated threads are excluded. Automated-bot threads (SonarCloud, Codacy, Dependabot, codeant-ai) are included — they must be triaged and replied-to the same as human reviewer threads. Record each thread's GraphQL `id` (e.g. `PRRT_...`) and the root comment's `databaseId` in the TODO body so Phase 11 can reply + resolve without re-fetching.
 
 **Additional sources folded in as the pass progresses:**
@@ -329,16 +368,17 @@ Build the complete picture of all changes on the branch.
 - Coverage gaps identified in Phase 4 — one TODO per file under 80%.
 - Grand-review findings from Phase 8 — one TODO per actionable suggestion.
 - New items surfaced by Codex validation in the [Codex Validation Gate](#codex-validation-gate) — one TODO per Codex finding rated "must fix" or "should fix".
+- External AI review findings from [Phase 8.5](#phase-85-external-ai-review--codex--antigravity--copilot-mandatory) — one TODO per Codex, Antigravity and Copilot finding rated `must-fix` or `should-fix`. Deduplicate findings more than one reviewer raises and credit every attribution; agreement across independent model families is higher-confidence and should be noted.
 
 **TODO item format:**
 
-| Field | Content |
-|-------|---------|
-| Title | Short imperative (e.g. "Fix SA1600 missing XML docs in `Foo.cs`") |
-| Source | One of: `local-warning`, `ci-check`, `pr-comment`, `xml-docs`, `coverage`, `grand-review`, `codex` |
-| Reference | File + line / check name + run link / comment URL |
-| Trivial? | `yes` or `no` — drives the Codex Validation Gate decision |
-| Status | `pending` → `in_progress` → `completed` |
+| Field     | Content                                                                                            |
+| --------- | -------------------------------------------------------------------------------------------------- |
+| Title     | Short imperative (e.g. "Fix SA1600 missing XML docs in `Foo.cs`")                                  |
+| Source    | One of: `local-warning`, `ci-check`, `pr-comment`, `xml-docs`, `coverage`, `grand-review`, `codex`, `antigravity`, `copilot` |
+| Reference | File + line / check name + run link / comment URL                                                  |
+| Trivial?  | `yes` or `no` — drives the Codex Validation Gate decision                                          |
+| Status    | `pending` → `in_progress` → `completed`                                                            |
 
 **Rules:**
 
@@ -362,6 +402,7 @@ For each modified `.cs` file in a NuGet-producing project:
 1. **Read the file** and identify all `public` members — classes, interfaces, structs, enums, records, methods, properties, constructors.
 
 2. **For each public member without XML docs**, add documentation following `rules/documentation.md`:
+   
    - `<summary>` on all public types, methods, properties, constructors.
    - `<param>` for each parameter.
    - `<returns>` for non-void methods.
@@ -371,12 +412,14 @@ For each modified `.cs` file in a NuGet-producing project:
    - Follow Microsoft's style (reference `System.Text.Json`, `Microsoft.Extensions.DependencyInjection` for examples).
 
 3. **For each public member with existing XML docs**, review for correctness:
+   
    - All parameters documented and named correctly (no stale `<param>` tags for renamed/removed parameters).
    - Return value described accurately.
    - Summary matches current behaviour (not stale from a refactor).
    - Exception documentation matches actual throws.
 
 4. Optionally use the Roslyn MCP tool for public API surface discovery:
+   
    ```
    mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_public_api
    ```
@@ -388,6 +431,7 @@ For each modified `.cs` file in a NuGet-producing project:
 ### Phase 4: Test Coverage Analysis
 
 1. **Run tests with coverage:**
+   
    ```bash
    dotnet test "$SOLUTION_FILE" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"
    ```
@@ -395,11 +439,13 @@ For each modified `.cs` file in a NuGet-producing project:
 2. **Analyse coverage** on the modified files. The target is **>= 80%** on changed/new code.
 
 3. Optionally use the Roslyn MCP tool for coverage mapping:
+   
    ```
    mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_test_coverage_map
    ```
 
 4. **If coverage is below 80%:**
+   
    - **Assess scope:** Can the missing tests be added without significant new test infrastructure (new test harnesses, database fixtures, complex mock setups)?
    - **If yes:** Add the missing tests following `rules/writing-dotnet-tests.md` — xUnit v3, FluentAssertions, AutoFixture. Test both positive and negative cases. Name tests: `<TestedMethodName>_should_<what_it_should_do>`.
    - **If no (significant new infra needed):** **STOP and ask the user** whether to proceed with test infrastructure creation or defer.
@@ -411,6 +457,7 @@ For each modified `.cs` file in a NuGet-producing project:
 ### Phase 5: Build Solution
 
 1. **Build with normal verbosity** to capture all warnings:
+   
    ```bash
    dotnet build "$SOLUTION_FILE" -v normal 2>&1
    ```
@@ -436,14 +483,15 @@ For each warning on a modified file, follow this decision tree:
 **YES — the code should be fixed:**
 
 1. Plan the fix carefully. Before applying, check two safety gates:
-
    **Safety Gate 1 — Public API impact:**
    Does the fix rename, remove, or change the signature of a public member? Does it add `sealed`, change a return type, or alter an interface?
+   
    - If **yes**: **STOP and ask the user.** Public API changes are a permanent commitment in a NuGet library.
    - If **no**: proceed to Safety Gate 2.
-
+   
    **Safety Gate 2 — Semantic behaviour change:**
    Does the fix change the runtime behaviour of the code on this branch? (e.g. altering exception handling, changing data transformation logic, modifying control flow)
+   
    - If **yes**: **STOP and ask the user.** The finishing-touches pass should not alter the branch's intended behaviour without explicit approval.
    - If **no**: apply the fix.
 
@@ -452,17 +500,21 @@ For each warning on a modified file, follow this decision tree:
 **NO — the warning is a false positive:**
 
 1. Check: does the **same warning appear in 3 or more other files** across the solution?
+   
    ```bash
    dotnet build "$SOLUTION_FILE" -v normal 2>&1 | grep "<WARNING_ID>" | wc -l
    ```
 
 2. **If common (3+ files):** Disable globally in `.editorconfig` rather than suppressing inline:
+   
    ```ini
    dotnet_diagnostic.<ID>.severity = none  # <reason>
    ```
+   
    For test-specific suppressions, use the nested `.editorconfig` in `tests/`.
 
 3. **If isolated (< 3 files):** Suppress inline using the narrowest scope technique from `/dotnet-dev-practical`:
+   
    - **Single line:** `#pragma warning disable <ID>` with `#pragma warning restore <ID>` and a comment explaining why.
    - **Single member:** `[SuppressMessage("Category", "ID", Justification = "...")]` — the `Justification` is **mandatory**.
    - The suppression **must** include a documented reason. Never suppress without explaining why.
@@ -472,6 +524,7 @@ For each warning on a modified file, follow this decision tree:
 #### Rules that must NEVER be suppressed
 
 Consult `/dotnet-dev-practical` → `analyzer-reference.md` → "Rules That Should Never Be Suppressed":
+
 - VSTHRD002, VSTHRD100, VSTHRD110 (threading bugs)
 - CS8600-CS8777 (nullable violations — elevated to ERROR in workspace)
 - CA2100 (SQL injection), CA2153 (corrupted state exceptions)
@@ -488,6 +541,7 @@ If one of these fires on a modified file, it indicates a real bug. Fix the code.
 After each fix or suppression in Phase 6:
 
 1. **Rebuild the solution:**
+   
    ```bash
    dotnet build "$SOLUTION_FILE" -v normal 2>&1
    ```
@@ -507,6 +561,7 @@ After each fix or suppression in Phase 6:
 Review all changes made during the finishing-touches pass holistically.
 
 1. **Read the full diff:**
+   
    ```bash
    git diff          # unstaged finishing-touches changes
    git diff --staged # if anything was staged
@@ -514,6 +569,7 @@ Review all changes made during the finishing-touches pass holistically.
    ```
 
 2. **Check for:**
+   
    - Consistency with the branch's original purpose — do all changes still make sense together?
    - Naming consistency (British English, camelCase, verb-first methods per `rules/naming.md`).
    - Unused imports or dead code introduced by fixes.
@@ -521,10 +577,9 @@ Review all changes made during the finishing-touches pass holistically.
    - No leftover debugging code, TODO comments, or temporary workarounds.
 
 3. **Project documentation review — keep markdown docs in sync with code changes.**
-
    The branch's changes may have introduced new features, changed behaviour, added configuration options, or modified APIs that are described in the project's manually-authored markdown documentation. These docs **must** be updated to reflect the current state.
-
    **Discovery — find all project documentation:**
+   
    ```bash
    # Primary location
    find "$REPO_ROOT/docs" -name "*.md" 2>/dev/null
@@ -533,14 +588,16 @@ Review all changes made during the finishing-touches pass holistically.
    # Other common locations
    find "$REPO_ROOT" -maxdepth 2 -name "*.md" -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/bin/*" -not -path "*/obj/*" -not -path "*/.claude/*" -not -path "*/change-log/*" 2>/dev/null
    ```
-
+   
    **For each documentation file found**, check whether the branch's changes affect what it describes:
+   
    - **README.md** — Does it describe features, APIs, or usage patterns that have changed? Are installation instructions, quick-start examples, or configuration options still accurate?
    - **docs/*.md** — Do design documents, architecture guides, or spec files reference behaviour or APIs that the branch modified? Are code examples still valid?
    - **RELEASE_NOTES.md / CHANGELOG.md** — Should a new entry be added for user-visible changes (new features, breaking changes, significant bug fixes)?
    - **Any other `.md` files** in the project — plans, migration guides, API references.
-
+   
    **What to do:**
+   
    - If a doc page describes something the branch changed → **update the doc** to match the new reality.
    - If a doc page contains code examples that reference modified APIs → **update or verify the examples**.
    - If a doc page describes a feature that was removed → **remove or update the section**.
@@ -548,16 +605,74 @@ Review all changes made during the finishing-touches pass holistically.
    - **Do not create new documentation files** unless explicitly asked — this skill focuses on keeping existing docs accurate.
 
 4. Optionally use Roslyn MCP tools for deeper analysis:
+   
    ```
    mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__detect_antipatterns
    mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__find_dead_code
    ```
 
-4. **If suggestions are actionable and non-controversial**, apply them and loop back to Phase 5 (Build).
+5. **If suggestions are actionable and non-controversial**, apply them and loop back to Phase 5 (Build).
 
-5. **If suggestions require user input** or are outside the finishing-touches scope, record them for the completion report.
+6. **If suggestions require user input** or are outside the finishing-touches scope, record them for the completion report.
 
 **Cross-reference:** `dotnet-claude-kit:80-20-review`, `dotnet-claude-kit:code-review-workflow`.
+
+---
+
+### Phase 8.5: External AI Review — Codex + Antigravity + Copilot (MANDATORY)
+
+**Purpose:** An independent, whole-branch review by three external models from three different providers **before** commit/push. This is distinct from the [Codex Validation Gate](#codex-validation-gate) (which validates one staged fix at a time): here every reviewer sees the **entire branch** and hunts for what the pass missed — correctness bugs, API-contract breaks, async and thread-safety hazards, suppressions that hide real defects, test gaps, better approaches.
+
+**Panel definition, invocation flags, preflight and fallbacks live in [`rules/external-ai-review.md`](../../rules/external-ai-review.md).** Read it before running this phase; this section covers only what is specific to .NET library work.
+
+**When:** After the Grand Review (Phase 8), when the branch is in its intended final local state — zero build warnings, tests passing, coverage met. If findings force changes, apply them, loop back to Phase 5 (Build), and re-run the affected reviewer on the updated diff before proceeding.
+
+**All three reviewers run. In parallel. None is optional.** If one is unavailable, follow the fallback ladder in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Fallback Ladder — never silently downgrade the panel. A reviewer that was skipped or substituted is always named in the Phase 12 report with the reason.
+
+**Run the Copilot preflight first**, before assembling the context — a stale Copilot session surfaces as `421 Misdirected Request` on every call, and it is cheaper to discover that with a one-token probe than after building a full context package.
+
+#### Step 1 — Assemble the full context package (once, shared by all three)
+
+Reviewers receive the **entire context first**, then the review request. Build a single context document containing, in this order:
+
+1. **Repo primer:** what the library does, its public surface, its consumers, and the conventions that constrain changes — `Directory.Build.props` settings, central package management, the analyser set (StyleCop, Roslynator, SonarAnalyzer, NetAnalyzers), the zero-warning bar, xUnit v3 + FluentAssertions + AutoFixture testing standards, and the repo's versioning scheme (NBGV or `VersionPrefix`).
+2. **Branch intent:** PR title + full body (or intended PR description if not yet opened), linked issue title + body, branch name.
+3. **The complete diff:** `git diff "$BASE_BRANCH"...HEAD` plus any staged/unstaged finishing-touches changes.
+4. **Full current contents of every modified file** — not just hunks; reviewers need surrounding types and members to judge contracts.
+5. **Verification already performed:** build output (zero warnings), test counts and results, coverage figures on modified code, and every analyser suppression added in Phase 6 **with its justification**.
+6. **The review brief** (last, after all context).
+
+**Review brief (same for all three reviewers):**
+
+> Review this branch as a senior .NET reviewer for a published NuGet library. Work at **maximum depth/effort** — this is a pre-merge gate, not a skim. Hunt specifically for: (1) correctness bugs in the C# changes; (2) **public API contract problems** — breaking changes to signatures, nullability annotations, or behavioural contracts that consumers depend on, and whether they are declared as breaking; (3) async/await correctness — missing `ConfigureAwait`, sync-over-async, unobserved tasks, `CancellationToken` not honoured; (4) thread-safety and disposal hazards; (5) **analyser suppressions that hide a real defect** rather than a false positive — challenge every suppression in the diff against its stated justification; (6) test gaps — untested edge cases, negative paths, and boundary conditions, judged against the xUnit v3 / FluentAssertions / AutoFixture conventions; (7) XML documentation that is missing, inaccurate, or contradicts the implementation; (8) allocation and performance regressions on hot paths; (9) simpler or more idiomatic approaches worth taking now. For each finding return: severity (`must-fix` / `should-fix` / `nit`), file + line, what is wrong, evidence, and a concrete suggested fix. If you find nothing in a category, say so explicitly. End with an overall verdict: `APPROVE`, `APPROVE_WITH_NOTES`, or `REQUEST_CHANGES`.
+
+#### Step 2 — Dispatch all three reviews in parallel
+
+- **Codex:** `mcp__codex-cli__review` (purpose-built review action) or `mcp__codex-cli__codex`, passing the full context package at the highest reasoning effort the tool exposes.
+- **Antigravity:** `mcp__antigravity__ask_antigravity` with `model="gemini-3.1-pro-high"` and `paths` set to every file in scope, same package. **Capture `git status --porcelain` before the call and diff it after** — the bridge runs with `--dangerously-skip-permissions` (ploch-ai-configuration#47), so this check is the only thing keeping the reviewer read-only.
+- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Use the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a scratch file and pass it via shell substitution rather than inlining it in the command line.
+
+Send all three requests in the same tool-call block so they run concurrently. If the package exceeds a transport's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the brief only after the final part — the requirement is *entire context first, then the review*.
+
+#### Step 3 — Triage the findings
+
+1. Merge the three findings lists; deduplicate (same file/line/concern → one TODO crediting every reviewer that raised it). A finding raised independently by two or more model families is higher-confidence — note the agreement on the TODO.
+2. One master-TODO per `must-fix` and `should-fix` finding (`Source: codex` / `antigravity` / `copilot`). `nit`s are batched into a single TODO and applied where cheap, or explicitly declined in the report.
+3. Triage each finding like a PR comment, using the seven-category model in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md): valid → fix (backups, ask-gates for API/semantic changes, **Codex Validation Gate for non-trivial fixes**, then loop to Phase 5); disagree → record the finding **and** the evidence-based reason for declining in the report. A declined external finding is never silently dropped.
+4. **Verdict handling:** if any reviewer returns `REQUEST_CHANGES`, the skill cannot proceed to Phase 9 until every `must-fix` from that reviewer is fixed or explicitly declined with evidence the user can audit. Re-run that reviewer on the updated diff and obtain `APPROVE`/`APPROVE_WITH_NOTES` (or user override).
+5. **A finding that would change the public API or semantic behaviour still hits the existing ask-gates** — an external reviewer's recommendation does not bypass the user's sign-off on breaking changes.
+
+#### Step 4 — Verify the reviewers changed nothing, then record
+
+Copilot runs with shell access, and `--deny-tool 'write'` does not cover shell redirections. Confirm the working tree is untouched:
+
+```bash
+git status --porcelain
+```
+
+The output must match its pre-review state. Any difference is an unintended write — revert it and record the incident.
+
+Store for the Phase 12 report: each reviewer's verdict, finding counts by severity, which findings were fixed vs declined (with reasons), re-review outcomes, and the model each reviewer actually ran (Copilot's in particular, since a fallback to Kimi K3 must be visible).
 
 ---
 
@@ -568,13 +683,18 @@ Review all changes made during the finishing-touches pass holistically.
 Before invoking `/commit`, ensure:
 
 1. **All files are ready.** Stage specific files — **never** `git add -A` or `git add .`. **Exclude all `.bak` files** — they must never be staged or committed. Verify the **staged** index contains no `.bak` paths:
+   
    ```bash
    # Lists only files staged for commit — must be empty
    git diff --cached --name-only | grep -E '\.bak(/|$)' && echo "FAIL: .bak staged" || echo "OK"
    ```
+   
    `git status` alone is **insufficient** because it also lists untracked `.bak` files, which are expected and allowed — the check must scope to the staged index.
+
 2. **The issue number** is known from Phase 1. If none was found, follow the lookup order in `rules/commits.md`: check PR → search issues → ask the user.
+
 3. **Breaking changes** are detected: check for removed/renamed public APIs, changed method signatures, changed defaults, changed serialisation formats.
+
 4. **The commit type** matches the nature of changes (typically `chore` or `refactor` for finishing-touches, but `fix` if a real bug was found and fixed, `docs` if only documentation was added).
 
 **Commit-message ownership.** The `/commit` skill handles generic mechanics (conventional format, HEREDOC, `Co-Authored-By` trailer) but **does not** enforce this workspace's `Refs: #<issue-number>` footer or `BREAKING CHANGE:` footer — those are per-repo rules from `rules/commits.md`. This skill is therefore responsible for:
@@ -609,27 +729,34 @@ If the finishing-touches pass made changes across multiple logical areas (e.g. d
 **Bots that must reach a `success` verdict before this phase exits** (when present on the PR): `build`, `Test Results`, `Analyze (csharp)` (CodeQL), `Codacy Static Code Analysis`, `SonarCloud Code Analysis` / `SonarQube Cloud`, `CodeRabbit`, `Bito AI Code Review Agent`, any coverage bot (Codecov / Coveralls / Codacy Coverage), and any repository-specific custom check. A bot that has not yet appeared in `gh pr checks` is **not** absent — it is **pending its first run**, and you wait for it.
 
 1. **Pre-push build verification:**
+   
    ```bash
    dotnet build "$SOLUTION_FILE"
    ```
+   
    If any warnings appear, **stop and fix before pushing**.
 
 2. **Push:**
+   
    ```bash
    git push -u origin HEAD
    ```
 
 3. **Monitor ALL CI checks** (including non-required):
+   
    ```bash
    gh pr checks --watch
    ```
+   
    If no PR exists, monitor via:
+   
    ```bash
    gh run list --branch "$(git branch --show-current)" --limit 5
    gh run view <run-id> --log-failed
    ```
 
 4. **On failure:**
+   
    - Retrieve failure logs: `gh run view <run-id> --log-failed`
    - Diagnose the root cause from the actual error output. Do not guess.
    - Fix the issue.
@@ -637,6 +764,7 @@ If the finishing-touches pass made changes across multiple logical areas (e.g. d
    - After pushing the fix, monitor checks again. Repeat until all green.
 
 5. **Do not:**
+   
    - Ignore or dismiss failing checks — even non-required ones.
    - Assume a failure is flaky without evidence.
    - Push speculative fixes without reading the failure logs.
@@ -685,15 +813,15 @@ gh api repos/<owner>/<repo>/pulls/<pr-number>/reviews --paginate
 
 Classify each thread into **exactly one** category. Record the category on the thread's TODO:
 
-| Category | Meaning | Required resolution path |
-|----------|---------|--------------------------|
-| `VALID_ISSUE` | The reviewer/analyser is correct and the code needs to change | Fix code → Codex (if non-trivial) → commit → push → CI green → reply citing commit + evidence → resolve thread |
-| `FALSE_POSITIVE` | The flag is wrong — code is correct, analyser misread, reviewer misread the context | Reply with specific evidence (what the code actually does, which test/spec/invariant proves it, why the flag is wrong) → resolve thread |
-| `ALREADY_FIXED` | The concern is valid but was resolved in a subsequent commit on this branch | Reply pointing at the specific commit hash + diff line → resolve thread |
-| `SUGGESTION_ACCEPTED` | Non-blocking suggestion worth taking | Same flow as `VALID_ISSUE` |
-| `SUGGESTION_DECLINED` | Non-blocking suggestion we decline on merit | Reply explaining why (principle, trade-off, out-of-scope + follow-up issue link) → resolve thread |
-| `QUESTION` | Reviewer asked for clarification, no code change implied | Reply with the answer → resolve thread |
-| `OUT_OF_SCOPE` | Valid concern but outside this PR's scope | Open a follow-up GitHub issue, reply linking the issue → resolve thread. Per `feedback_create_followup_issues` memory — always file the issue, never defer verbally. |
+| Category              | Meaning                                                                             | Required resolution path                                                                                                                                             |
+| --------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VALID_ISSUE`         | The reviewer/analyser is correct and the code needs to change                       | Fix code → Codex (if non-trivial) → commit → push → CI green → reply citing commit + evidence → resolve thread                                                       |
+| `FALSE_POSITIVE`      | The flag is wrong — code is correct, analyser misread, reviewer misread the context | Reply with specific evidence (what the code actually does, which test/spec/invariant proves it, why the flag is wrong) → resolve thread                              |
+| `ALREADY_FIXED`       | The concern is valid but was resolved in a subsequent commit on this branch         | Reply pointing at the specific commit hash + diff line → resolve thread                                                                                              |
+| `SUGGESTION_ACCEPTED` | Non-blocking suggestion worth taking                                                | Same flow as `VALID_ISSUE`                                                                                                                                           |
+| `SUGGESTION_DECLINED` | Non-blocking suggestion we decline on merit                                         | Reply explaining why (principle, trade-off, out-of-scope + follow-up issue link) → resolve thread                                                                    |
+| `QUESTION`            | Reviewer asked for clarification, no code change implied                            | Reply with the answer → resolve thread                                                                                                                               |
+| `OUT_OF_SCOPE`        | Valid concern but outside this PR's scope                                           | Open a follow-up GitHub issue, reply linking the issue → resolve thread. Per `feedback_create_followup_issues` memory — always file the issue, never defer verbally. |
 
 **A thread must never be closed without a reply.** "Resolve with no response" is only acceptable when the thread was authored by us and had no other participants.
 
@@ -714,23 +842,34 @@ For bot-flagged false positives (SonarCloud, Codacy, codeant-ai): the same bar a
 For each thread in these categories:
 
 1. Mark the TODO `in_progress`.
+
 2. Create `.bak` copies of all files the fix will touch (per [Backup Before Modify](#backup-before-modify)).
+
 3. Plan the fix. Apply the [Safety Gate 1 — Public API impact](#phase-6-classify--address-each-warning) and [Safety Gate 2 — Semantic behaviour change](#phase-6-classify--address-each-warning) checks from Phase 6.
+
 4. **Codex validation (mandatory before commit for non-trivial fixes)** — invoke the [Codex Validation Gate](#codex-validation-gate) with the thread URL, original code, proposed diff, and reasoning. Do **not** commit until the verdict is `APPROVED` or `APPROVED_WITH_NOTES`.
+
 5. Apply the fix. Rebuild (loop back to Phase 5 → Phase 7 if warnings regress). Run the affected tests.
+
 6. Commit (via the `/commit` skill — one commit per logical thread group; batching threads that touch the same file or concern is fine, but the commit message body must list every thread addressed). **Never amend.**
+
 7. Push. Monitor CI via Phase 10 until all checks are green.
+
 8. Reply on the thread (using the root `databaseId` as `in_reply_to`):
+   
    ```bash
    gh api repos/<owner>/<repo>/pulls/<pr-number>/comments \
      -f body='<evidence-based response referencing commit <hash> and the specific change>' \
      -F in_reply_to=<root-comment-databaseId>
    ```
+
 9. Resolve the thread:
+   
    ```bash
    gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}' \
      -F id=<thread-id>
    ```
+
 10. Mark the TODO `completed` and record the reply URL + commit hash on the TODO for the Phase 12 report.
 
 #### Step 5 — Reply-only workflow for FALSE_POSITIVE / SUGGESTION_DECLINED / ALREADY_FIXED / QUESTION / OUT_OF_SCOPE
@@ -799,10 +938,12 @@ Pass forward for the completion report:
 **Additionally required when Phase 11 ran (`--no-push` OFF AND a PR exists):**
 
 6. **Zero unaddressed PR review threads.** Re-run the Phase 11 Step 1 GraphQL enumeration one final time. Every thread in the result must satisfy one of:
+   
    - `isResolved=true`, **or**
    - `isResolved=false` AND the latest comment on the thread is authored by us AND the thread is listed under "Awaiting reviewer" in the final report.
-
+   
    Any thread that is `isResolved=false` with the latest comment authored by someone other than us is **unaddressed** — loop back to Phase 11 Step 2.
+
 7. **No new PR activity has arrived since the last poll.** Re-fetch issue comments and reviews one final time. If anything new has appeared (new inline comments, new review, new issue comment), extend the TODO list and loop back to Phase 11.
 
 If any applicable condition is not satisfied, **do not report completion.** State which gate failed and continue the loop.
@@ -822,6 +963,14 @@ Provide a summary with evidence:
 - **Test Coverage:** ~<percentage>% on modified code (<count> tests added)
 - **Warnings Resolved:** <count> fixed, <count> suppressed (with justification), <count> disabled globally
 - **Code Review Fixes:** <count> improvements applied
+- **External-review fixes:** <count> from Codex, <count> from Antigravity, <count> from Copilot, <count> declined with reasons
+
+### External AI Review
+| Reviewer | Model | Verdict | must-fix | should-fix | nit | Fixed | Declined (with evidence) |
+|----------|-------|---------|----------|------------|-----|-------|--------------------------|
+| Codex    | ...   | ...     | n        | n          | n   | n     | n                        |
+| Antigravity | ...   | ...     | n        | n          | n   | n     | n                        |
+| Copilot  | `grok-4.6` | ... | n   | n          | n   | n     | n                        |
 
 ### Warning Resolution Summary
 | Warning ID | File | Resolution | Justification |
@@ -876,19 +1025,22 @@ done
 ```
 
 **Cleanup command:**
+
 ```bash
 find . -name "*.bak" -not -path "*/bin/*" -not -path "*/obj/*" -delete
 ```
 
 ### Commit
+
 `<commit-hash>` — `<commit-message-subject>`
+
 ```
 
 ---
 
 ## Codex Validation Gate
 
-**Purpose:** Non-trivial fixes (anything beyond a mechanical edit) must pass a second-opinion review by the Codex MCP (`mcp__codex-cli__codex`) **before the change is committed**, not after. This is a cross-cutting gate that applies to Phases 6 (warning fixes), 10 (CI-failure fixes), and 11 (PR-comment fixes), as well as any test additions in Phase 4b.
+**Purpose:** Non-trivial fixes (anything beyond a mechanical edit) must pass a second-opinion review by the Codex MCP (`mcp__codex-cli__codex`) **before the change is committed**, not after. This gate is **distinct from [Phase 8.5](#phase-85-external-ai-review--codex--antigravity--copilot-mandatory)**: the gate validates one specific staged diff, Phase 8.5 reviews the entire branch. A fix that came *out of* Phase 8.5 still goes through this gate if it is non-trivial. This is a cross-cutting gate that applies to Phases 6 (warning fixes), 10 (CI-failure fixes), and 11 (PR-comment fixes), as well as any test additions in Phase 4b.
 
 **Timing rule:** Codex runs on the *uncommitted* diff. The correct sequence is: stage files → invoke Codex on the staged diff → act on the verdict → commit. If you are already mid-commit when you realise the gate was skipped, reset the staging, run Codex, then re-stage and commit as a single commit. Do **not** commit first and retroactively "validate" — that defeats the gate.
 
@@ -967,6 +1119,7 @@ Use the `codex` action of `mcp__codex-cli__codex` with a self-contained brief. T
 When CI fails or PR comments require code changes:
 
 ```
+
 Fix code → Phase 5 (Build — zero warnings locally)
          → Phase 7 (Rebuild & Verify)
          → Phase 8 (Grand Review)
@@ -975,6 +1128,7 @@ Fix code → Phase 5 (Build — zero warnings locally)
          → Phase 10 (Monitor CI)
          → Phase 11 (Address Comments)
          → Phase 12 (Report)
+
 ```
 
 Each iteration creates a **new commit**. After all fixes are done, update the PR description to reflect the **final** state.
@@ -1032,6 +1186,10 @@ If you catch yourself about to do any of these, stop and reconsider:
 - About to **apply a non-trivial fix without a Codex MCP review** — non-trivial fixes must pass the Codex Validation Gate **before the commit**, not after.
 - About to **commit a PR-comment-driven code change without running Codex first** — PR-comment fixes are never exempt from the gate; stage, validate, then commit.
 - About to **silently skip the Codex gate because the MCP is unavailable** — retry or explicitly ask the user; never pretend the gate passed.
+- About to **skip Phase 8.5** or run fewer than **all three** external reviewers without the user's explicit sign-off.
+- About to let Copilot's `--model` fall back to `auto`, or to omit `--effort high` — both silently downgrade the review.
+- About to **run Copilot without the read-only `--deny-tool` set**, or to skip the post-review `git status --porcelain` check.
+- About to **silently drop an external reviewer's `must-fix`** — every one is fixed or declined with recorded evidence.
 - About to **reply to a PR comment with a generic "false positive" message** — every false-positive reply must cite specific evidence (file/line, test, spec, invariant) per [Step 3 — Reply quality rules](#step-3--reply-quality-rules-especially-for-false_positive).
 - About to **resolve a PR review thread without posting a reply first** — a resolved thread without an explicit response does not count as addressed; the only exception is a thread we authored ourselves with no other participants.
 - About to **leave a thread unresolved after replying to a bot** (SonarCloud, Codacy, codeant-ai, Dependabot) — bot threads always get both a reply and a resolve.
@@ -1055,6 +1213,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 | 6. Warnings | Each warning classified and addressed | Resolution documented per warning |
 | 7. Verify | Warning resolved after each fix | Rebuild output confirms |
 | 8. Grand Review | All changes reviewed holistically | No outstanding concerns |
+| 8.5 External AI Review | Codex, Antigravity AND Copilot reviewed with full context at high effort; verdicts recorded; `git status --porcelain` unchanged after the Copilot run | Verdicts + findings table |
 | 9. Commit | Conventional format with `Refs` footer | Commit message |
 | 10. CI | All checks green (including non-required) | `gh pr checks` output |
 | 11. PR Comments | Every thread triaged, fixed-or-replied, and (for bots + clear-cut cases) resolved | Zero `isResolved=false` threads whose latest comment is not ours; category breakdown recorded |
@@ -1095,10 +1254,13 @@ If you catch yourself about to do any of these, stop and reconsider:
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_test_coverage_map` — Coverage analysis
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__detect_antipatterns` — Anti-pattern detection
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__find_dead_code` — Unused code detection
-- **`mcp__codex-cli__codex`** — **Required** second-opinion review for every non-trivial fix (see [Codex Validation Gate](#codex-validation-gate)). Use `ToolSearch` to load the schema if not already available.
+- **`mcp__codex-cli__codex` / `mcp__codex-cli__review`** — **Required** second-opinion review for every non-trivial fix (see [Codex Validation Gate](#codex-validation-gate)) and one third of the Phase 8.5 panel. Use `ToolSearch` to load the schema if not already available.
+- **`mcp__antigravity__ask_antigravity`** (fallback `mcp__gemini__gemini-analyze-code`) — Phase 8.5 whole-branch review (load via `ToolSearch`); pin `model="gemini-3.1-pro-high"` and run the pre/post `git status --porcelain` write check
+- **`copilot` CLI (Grok 4.6)** — Phase 8.5 whole-branch review, invoked through `Bash`; flags, preflight and fallbacks in [`rules/external-ai-review.md`](../../rules/external-ai-review.md)
 - GitHub CLI (`gh`) — PR management, CI monitoring, comment handling
 
 **Uses these tools for sub-agent / TODO orchestration:**
 - `Agent` (with `subagent_type="general-purpose"`) — the Phase 1.5 CI pre-check sub-agent.
 - `TaskCreate` / `TaskUpdate` / `TaskList` — master TODO list in Phase 2.5 and ongoing throughout the pass.
 - `mcp__contextstream__memory(action="create_todo")` — optional alternative to `TaskCreate` when ContextStream is active.
+```
