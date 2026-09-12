@@ -13,8 +13,17 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Ploch sibling dependencies. See UsePlochProjectReferences in Directory.Build.props. -->
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' != 'true'">
+    <PackageReference Include="Ploch.TestingSupport.XUnit3.AutoMoq" />
+    <PackageReference Include="Ploch.TestingSupport.XUnit3.Dependencies" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' == 'true'">
     <ProjectReference Include="..\..\..\..\ploch-common\src\TestingSupport.XUnit3.AutoMoq\Ploch.TestingSupport.XUnit3.AutoMoq.csproj" />
+    <ProjectReference Include="..\..\..\..\ploch-common\src\TestingSupport.XUnit3.Dependencies\Ploch.TestingSupport.XUnit3.Dependencies.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spectre\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
   </ItemGroup>
 

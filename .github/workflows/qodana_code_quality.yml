@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: mrploch/ploch-common
-          ref: master
+          ref: main
           path: ploch-common
           fetch-depth: 0
       - uses: actions/checkout@v4
@@ -63,5 +63,9 @@ jobs:
         with:
           pr-mode: false
         env:
+          # Scoped to this step, not the job (least privilege, raised by the CodeRabbit reviewer
+          # on PR #52). The scan restores the solution inside its container, which resolves
+          # Ploch.* from the authenticated GitHub Packages feed. Full reasoning in release.yml.
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_657107159 }}
           QODANA_ENDPOINT: 'https://qodana.cloud'

@@ -78,6 +78,32 @@
     <LangVersion>default</LangVersion>
   </PropertyGroup>
 
+  <!--
+    How this repository consumes the sibling Ploch repositories (ploch-common).
+
+    Default (false): PackageReference against the released packages on nuget.org, versioned
+    centrally from mrploch-development/dependencies/Ploch.Packages.props. This is what CI and
+    the release build use, and it is the only mode that produces a correct package at pack
+    time - a cross-repo ProjectReference becomes a NuGet *dependency* whose version comes from
+    whatever the sibling checkout happens to be, which is how a stable Ploch.CommandLine.Spectre
+    would otherwise have shipped depending on a prerelease Ploch.Common (issue #47, NU5104).
+    It also removes the requirement for a sibling checkout to exist at all.
+
+    Opt in with -p:UsePlochProjectReferences=true to build against a local ploch-common
+    checkout instead - for cross-repo development, where a change in ploch-common needs to be
+    seen here before it is published. Note the local checkout may be ahead of the released
+    packages (ploch-common main is on 4.1-prerelease), so the two modes are not interchangeable.
+
+    CI only exercises the DEFAULT (package) mode for the main solution. The one
+    -p:UsePlochProjectReferences=true invocation in build-dotnet.yml builds the *sample*
+    solution and does not run the main test projects against the sibling dependency graph, so
+    project-reference mode is verified locally but not guarded by CI. Raised by the Codex
+    reviewer on PR #52; adding a second CI job for it is tracked in #51.
+  -->
+  <PropertyGroup>
+    <UsePlochProjectReferences Condition="'$(UsePlochProjectReferences)' == ''">false</UsePlochProjectReferences>
+  </PropertyGroup>
+
   <!-- Nerdbank.GitVersioning and SourceLink for all projects. -->
   <ItemGroup>
     <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
@@ -101,5 +127,34 @@
   </PropertyGroup>
   <ItemGroup Condition="$(IsTestProject)">
     <PackageReference Include="coverlet.msbuild" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    Test harness, declared here so every test project owns the runner it needs.
+
+    These used to arrive transitively: a ProjectReference propagates the referenced project's
+    entire PackageReference closure, so the test projects free-rode on the harness of the
+    sibling Ploch.TestingSupport.XUnit3.* projects. A PackageReference does not work that way -
+    only what the .nuspec declares flows - and the published
+    Ploch.TestingSupport.XUnit3.Dependencies package declares Microsoft.NET.Test.Sdk with
+    exclude="Build,Analyzers" (which strips the MSBuild targets that register the test host)
+    and does not declare xunit.runner.visualstudio at all. The result after the switch to
+    packages was a clean build in which `dotnet test` discovered nothing: "No test is available
+    ... Make sure that test discoverer & executors are registered".
+
+    A test project should declare its own runner regardless of where its assertions come from,
+    so this is the correct home for it rather than a transitive accident.
+  -->
+  <ItemGroup Condition="$(IsTestProject)">
+    <!--
+      PrivateAssets on the runner infrastructure but not on xunit.v3, matching the dotnet SDK
+      test template: the host and the VSTest adapter are build-time infrastructure, whereas
+      xunit.v3 is a real reference the test code compiles against. Currently cosmetic - test
+      projects are IsPackable=false so nothing flows anywhere - but the template shape is the
+      one a reader expects. Raised by the Copilot (Grok 4.6) reviewer on PR #52.
+    -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
 </Project>

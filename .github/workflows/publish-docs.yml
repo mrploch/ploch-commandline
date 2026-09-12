@@ -26,9 +26,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      # The solution references sibling repositories by relative path - the workspace layout where
-      # every mrploch repo is cloned next to the others. Reproduce that layout here, otherwise the
-      # docfx metadata pass fails with MSB3202 for every ../ploch-common project.
+      # Reproduce the workspace layout here - every mrploch repo cloned next to the others.
+      # mrploch-development is required: Directory.Packages.props imports the shared version
+      # files from it. The ploch-common clone below is now belt-and-braces: in the default
+      # package mode the docfx metadata pass resolves Ploch dependencies from nuget.org, so the
+      # old MSB3202-on-every-ploch-common-project rationale no longer applies. Whether it can
+      # be dropped is #51.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -39,7 +42,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mrploch/ploch-common
-          ref: master
+          ref: main
           path: ploch-common
           fetch-depth: 0
 
@@ -65,6 +68,13 @@ jobs:
 
       - name: Build documentation site
         working-directory: ploch-commandline
+        # Scoped to this step, not the job, so the package credential is not exposed to
+        # checkout, upload or deployment actions (least privilege, raised by the CodeRabbit
+        # reviewer on PR #52). nuget.config maps Ploch.* to both nuget.org and the
+        # authenticated GitHub Packages feed; without the token that feed 401s on every Ploch
+        # package and the nuget.org fallback is a race. Full reasoning in release.yml.
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: dotnet docfx DocumentationSite/docfx.json
 
       - name: Upload artifact

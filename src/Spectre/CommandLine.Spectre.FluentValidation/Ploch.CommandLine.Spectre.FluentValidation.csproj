@@ -8,13 +8,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
+
+  <!-- Ploch sibling dependencies. See UsePlochProjectReferences in Directory.Build.props. -->
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' != 'true'">
+    <PackageReference Include="Ploch.Common.DependencyInjection" />
+    <PackageReference Include="Ploch.Common" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsePlochProjectReferences)' == 'true'">
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common.DependencyInjection\Ploch.Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common\Ploch.Common.csproj" />
-    <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
   </ItemGroup>
 
 </Project>
