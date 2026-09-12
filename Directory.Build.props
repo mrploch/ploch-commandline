@@ -92,8 +92,13 @@
     Opt in with -p:UsePlochProjectReferences=true to build against a local ploch-common
     checkout instead - for cross-repo development, where a change in ploch-common needs to be
     seen here before it is published. Note the local checkout may be ahead of the released
-    packages (ploch-common main is on 4.1-prerelease), so the two modes are not interchangeable
-    and both are exercised in CI.
+    packages (ploch-common main is on 4.1-prerelease), so the two modes are not interchangeable.
+
+    CI only exercises the DEFAULT (package) mode for the main solution. The one
+    -p:UsePlochProjectReferences=true invocation in build-dotnet.yml builds the *sample*
+    solution and does not run the main test projects against the sibling dependency graph, so
+    project-reference mode is verified locally but not guarded by CI. Raised by the Codex
+    reviewer on PR #52; adding a second CI job for it is tracked in #51.
   -->
   <PropertyGroup>
     <UsePlochProjectReferences Condition="'$(UsePlochProjectReferences)' == ''">false</UsePlochProjectReferences>
@@ -141,8 +146,15 @@
     so this is the correct home for it rather than a transitive accident.
   -->
   <ItemGroup Condition="$(IsTestProject)">
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <!--
+      PrivateAssets on the runner infrastructure but not on xunit.v3, matching the dotnet SDK
+      test template: the host and the VSTest adapter are build-time infrastructure, whereas
+      xunit.v3 is a real reference the test code compiles against. Currently cosmetic - test
+      projects are IsPackable=false so nothing flows anywhere - but the template shape is the
+      one a reader expects. Raised by the Copilot (Grok 4.6) reviewer on PR #52.
+    -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
     <PackageReference Include="xunit.v3" />
-    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
 </Project>

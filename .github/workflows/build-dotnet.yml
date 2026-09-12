@@ -40,12 +40,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The solution references sibling repositories by relative path (../ploch-common and
-      # ../mrploch-development) - the workspace layout where every mrploch repo is cloned next
-      # to the others. Reproduce that layout beside the workspace, otherwise restore fails with
-      # MSB3202 for every ../ploch-common project. Cloning the siblings (rather than checking
-      # this repository out into a named sub-directory) keeps this repository at the workspace
-      # root, which is what the Codacy reporter and SonarScanner both expect.
+      # Reproduce the workspace layout beside the checkout: every mrploch repo cloned next to
+      # the others. Cloning the siblings (rather than checking this repository out into a named
+      # sub-directory) keeps this repository at the workspace root, which is what the Codacy
+      # reporter and SonarScanner both expect.
+      #
+      # mrploch-development is required unconditionally: Directory.Packages.props imports the
+      # shared version files from it.
+      #
+      # ploch-common is required by exactly ONE step - "Build sample application", which runs
+      # -p:UsePlochProjectReferences=true so a library change cannot break the sample silently.
+      # The main solution restore no longer needs it: in the default package mode the Ploch
+      # dependencies come from nuget.org, so the old MSB3202-on-every-ploch-common-project
+      # rationale no longer applies. Whether this clone should go away entirely is #51.
       #
       # ploch-common is cloned in full because it uses Nerdbank.GitVersioning too, and NBGV
       # cannot compute a version height from a shallow clone.
@@ -179,8 +186,25 @@ jobs:
       # between begin and end, and the sample is deliberately excluded from analysis (it also
       # already sits in sonar.coverage.exclusions). Not continue-on-error - a broken sample is a
       # broken build.
+      #
+      # -p:GeneratePackageOnBuild=false is defence in depth, not a fix for a live bug. In
+      # UsePlochProjectReferences mode this step pulls the four library projects in as
+      # ProjectReferences, and they set GeneratePackageOnBuild=true, so in principle they could
+      # pack a second time - over the package-mode nupkgs this workflow later publishes - with
+      # ploch-common resolved as a ProjectReference and therefore a PRERELEASE dependency
+      # version. That is exactly the #47 defect this branch exists to remove.
+      #
+      # It does not currently happen: measured on a fully clean tree, this step packs the
+      # libraries into bin/Debug, while publish-nuget-packages.sh globs */bin/Release/*.nupkg,
+      # so the published artefacts are untouched. But the only thing preventing it is an
+      # incidental configuration-mapping quirk - the library projects are not members of the
+      # sample solution, so they do not inherit its Release mapping. Adding them to that
+      # solution would silently arm the bug. Suppressing the pack removes the class outright.
+      #
+      # Raised by the Copilot (Grok 4.6) reviewer on PR #52 as a live defect; investigated and
+      # refuted independently by the Codex reviewer; refutation confirmed by measurement.
       - name: Build sample application
-        run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true
+        run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false
 
       # The main ruleset has a code_coverage rule, which reads coverage GitHub itself holds -
       # SonarCloud's and Codacy's copies are invisible to it. actions/upload-code-coverage takes a

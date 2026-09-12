@@ -27,8 +27,34 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.release_version }}
       NEXT_VERSION_INPUT: ${{ inputs.next_version }}
-    # Every `run` step operates inside the checked-out repository. Sibling repositories are
-    # checked out next to it, reproducing the workspace layout the solution expects.
+      # nuget.config maps Ploch.* to both nuget.org and the GitHub Packages feed, and the
+      # GitHub feed authenticates with %GH_PACKAGES_TOKEN%. Without it, every Ploch restore
+      # queries that feed unauthenticated and takes a 401.
+      #
+      # This is a reliability fix, and the mechanism is worth stating precisely because the
+      # obvious reading of it is wrong in both directions. An unauthenticated eligible feed
+      # does not reliably fail - a local test with an isolated packages folder and no token
+      # warned, retried, fell back to nuget.org and exited 0 - but neither is it merely
+      # cosmetic. NuGet queries sources concurrently and a restore succeeds as soon as one
+      # supplies the requested version, while a terminal protocol failure from another source
+      # is rethrown rather than ignored. Which of those happens first is a race: if the
+      # GitHub feed exhausts its retries before nuget.org returns the match, restore can fail
+      # with NU1301 even though the package exists on nuget.org. One green run is a sample of
+      # that race, not proof it cannot go the other way.
+      #
+      # It is also load-bearing, not just defensive: prerelease Ploch builds exist ONLY on the
+      # GitHub feed, so the moment the shared Ploch.Packages.props names a prerelease the
+      # nuget.org fallback finds nothing and restore fails hard with NU1103.
+      #
+      # It does NOT fix that for pull requests from forks - GitHub does not expose repository
+      # secrets to fork PRs at all, so no workflow can authenticate for them. Tracked in #54.
+      #
+      # Raised by four PR reviewers (codeant-ai, qodo, copilot, chatgpt-codex) and sharpened
+      # by the Codex and Antigravity reviewers on PR #52.
+      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+    # Every `run` step operates inside the checked-out repository. mrploch-development - the
+    # only sibling this workflow still needs - is checked out next to it, reproducing the
+    # workspace layout Directory.Packages.props expects.
     defaults:
       run:
         working-directory: ploch-commandline
@@ -67,6 +93,23 @@ jobs:
             exit 1
           fi
           echo "GH_TOKEN is valid"
+
+      # Validate GH_PACKAGES_TOKEN too. Assigning it is not the same as having it: an unset or
+      # expired secret still leaves nuget.config sending an empty password to the GitHub
+      # Packages feed, which 401s and puts the restore back in the NU1301 race described on the
+      # job env above - the exact failure the token was added to remove. Fail here, with a
+      # readable message, rather than in the middle of a restore.
+      # Raised by the Copilot (Grok 4.6) reviewer on PR #52.
+      - name: Validate GH_PACKAGES_TOKEN secret
+        working-directory: .
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+        run: |
+          if [ -z "$GH_PACKAGES_TOKEN" ]; then
+            echo "::error::GH_PACKAGES_TOKEN secret is not set. A token with 'read:packages' scope is required so the GitHub Packages feed mapped for Ploch.* in nuget.config can be authenticated."
+            exit 1
+          fi
+          echo "GH_PACKAGES_TOKEN is set"
 
       # Use the default GITHUB_TOKEN for checkout - it always works and has read access.
       # GH_TOKEN (PAT) is configured separately before push steps, because it is the

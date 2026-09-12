@@ -14,19 +14,38 @@
   <!--
     Ploch package versions (ploch-common, ploch-data) come from the shared file so every
     repository in the workspace resolves the same builds. This replaces a local
-    `Ploch.Common 2.0.1` pin that was four major versions behind the packages this
+    `Ploch.Common 2.0.1` pin that was two major versions behind the packages this
     repository's own published package depends on (issues #46, #47).
   -->
   <Import Project="../mrploch-development/dependencies/Ploch.Packages.props" />
+  <!--
+    Ploch.Common.Apps.Shared is published (4.0.47) but is not listed in the shared
+    Ploch.Packages.props, so it cannot be centrally versioned from there yet.
+    Tracked by: mrploch/mrploch-development#21
+
+    Written as Remove-then-Include rather than a plain Include, and versioned from the shared
+    family property rather than a literal, so that it survives the upstream fix landing:
+
+      * A second PackageVersion for an id that the imported file also defines is a hard error,
+        not a warning - verified: "error NU1506: Warning As Error: Duplicate 'PackageVersion'
+        items found". Since CI checks out mrploch-development at the moving `main` branch, a
+        merge in *that* repository would otherwise break restore here with no commit in this
+        one. The Remove makes the collision impossible.
+      * Taking the version from $(PlochCommonPackagesVersion) means that once the id is listed
+        upstream this block resolves to the identical version the rest of the family gets, so
+        it degrades into a harmless no-op that can be deleted at leisure instead of urgently.
+        The literal is only a fallback for the case where that property does not exist -
+        mrploch/mrploch-development#5 proposes renaming it to per-repo variables.
+
+    Raised by the Codex reviewer on PR #52.
+  -->
+  <PropertyGroup>
+    <PlochAppsSharedVersion>$(PlochCommonPackagesVersion)</PlochAppsSharedVersion>
+    <PlochAppsSharedVersion Condition="'$(PlochAppsSharedVersion)' == ''">4.0.47</PlochAppsSharedVersion>
+  </PropertyGroup>
   <ItemGroup>
-    <!--
-      Ploch.Common.Apps.Shared is published (4.0.47) but is not listed in the shared
-      Ploch.Packages.props, so it cannot be centrally versioned from there yet. Pinned here
-      to the same version the rest of the ploch-common family resolves to; remove this entry
-      once mrploch/mrploch-development adds it upstream.
-      Tracked by: mrploch/mrploch-development#21
-    -->
-    <PackageVersion Include="Ploch.Common.Apps.Shared" Version="4.0.47" />
+    <PackageVersion Remove="Ploch.Common.Apps.Shared" />
+    <PackageVersion Include="Ploch.Common.Apps.Shared" Version="$(PlochAppsSharedVersion)" />
   </ItemGroup>
   <Import Project="../mrploch-development/dependencies/Common.Packages.props" />
   <Import Project="../mrploch-development/dependencies/Serilog.Logging.Packages.props" />
