@@ -1,4 +1,4 @@
-﻿name: Qodana
+name: Qodana
 on:
   workflow_dispatch:
   pull_request:
@@ -39,11 +39,16 @@ jobs:
       # workspace - otherwise ../ploch-common and ../mrploch-development sit outside /data and every
       # project reference is unresolvable. The repository's own qodana.yaml stays authoritative for
       # profile and inspection settings; only the paths are rebased onto the workspace layout.
+      #
+      # The linter is pinned to a release line rather than `latest`. A linter release can add
+      # inspections, and every finding they produce would be reported as new against the baseline
+      # (#55). Upgrading the linter is therefore a deliberate change that also refreshes the
+      # baseline. Keep this value in step with the repository's qodana.yaml.
       - name: Compose the workspace-level Qodana configuration
         run: |
           cat > qodana.yaml <<'QODANA'
           version: "1.0"
-          linter: jetbrains/qodana-cdnet:latest
+          linter: jetbrains/qodana-cdnet:2026.2
           profile:
             name: qodana.recommended
           include:
@@ -59,13 +64,18 @@ jobs:
           QODANA
 
       - name: 'Qodana Scan'
-        uses: JetBrains/qodana-action@c5a69b02e6c1adb092153f7a479169a4b9f3a1cf # v2024.1.10
+        uses: JetBrains/qodana-action@10be11607eb323a180e2b76b26c9c5cdceac3e77 # v2026.2.1
         with:
           pr-mode: false
+          # Publishes qodana.sarif.json as the `qodana-report` artifact. The committed baseline is
+          # regenerated from this artifact (see change-log/55-qodana-baseline.md).
+          upload-result: true
         env:
           # Scoped to this step, not the job (least privilege, raised by the CodeRabbit reviewer
-          # on PR #52). The scan restores the solution inside its container, which resolves
-          # Ploch.* from the authenticated GitHub Packages feed. Full reasoning in release.yml.
+          # on PR #52). Note that the linter runs in its own container and does not currently
+          # receive this token, so restores there log GitHub Packages authentication warnings;
+          # they still succeed because every Ploch.* package resolves from nuget.org. Forwarding
+          # it needs an action release with `env-vars-to-linter` (#57).
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_657107159 }}
           QODANA_ENDPOINT: 'https://qodana.cloud'
