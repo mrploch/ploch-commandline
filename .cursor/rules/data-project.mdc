@@ -21,7 +21,7 @@ src/
 - **Project name:** `Ploch.{Product}.Data` (e.g. `Ploch.Lists.Data`, `Ploch.Tools.SystemProfiles.Data`).
 - **Namespace:** `Ploch.{Product}.Data`.
 - Entity configurations go in a `Configurations` subfolder with namespace `Ploch.{Product}.Data.Configurations`.
-- The project **must** reference the corresponding Model project (`Ploch.{Product}.Model` or `Ploch.{Product}.Domain.Db`).
+- The project **must** reference the corresponding Model project, `Ploch.{Product}.Model` (see [`project-naming.md`](./project-naming.mdc) — singular `Model` is mandatory).
 
 ## Project File (.csproj)
 
@@ -123,10 +123,12 @@ private void SetAuditTimestamps()
 
 - Create one configuration class per entity implementing `IEntityTypeConfiguration<TEntity>`.
 - Name the class `{Entity}Configuration` (e.g. `ListConfiguration`, `ProjectConfiguration`).
-- Mark the class as `internal` — configurations are implementation details of the Data project.
+- Mark the class as `public` — configurations are referenced directly by provider projects and
+  unit tests, so they are part of the Data project's supported surface. This is a deliberate
+  workspace decision; do not "correct" it to `internal` on an analyser's or reviewer's advice.
 
 ```csharp
-internal class ListConfiguration : IEntityTypeConfiguration<List>
+public class ListConfiguration : IEntityTypeConfiguration<List>
 {
     public void Configure(EntityTypeBuilder<List> builder)
     {

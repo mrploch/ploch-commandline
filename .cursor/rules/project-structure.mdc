@@ -6,6 +6,8 @@ description: Repository & Project Structure Standards
 
 Rules for organising .NET repositories in the MrPloch workspace.
 
+This rule governs **where projects live**. For **what they are called** — the canonical layer names, the mandatory `.Model` suffix for domain model projects, provider casing, and test/sample naming — see [`project-naming.md`](./project-naming.mdc).
+
 ## Repository Root Layout
 
 Every repository follows this structure:
@@ -58,7 +60,7 @@ src/
 
 ### Naming Convention
 
-- **Directory name:** The short name without the `Ploch.` prefix, using dots for namespacing.
+- **Directory name:** Derived from the project name as defined in [`project-naming.md`](./project-naming.mdc): application repos strip `Ploch.{Product}.` (`src/Data/` holds `Ploch.Lists.Data.csproj`); library-family repos strip only `Ploch.` (`src/Common.Serialization/` holds `Ploch.Common.Serialization.csproj`) and may group projects under a feature folder (`src/Spectre/CommandLine.Spectre/`).
   - Example: `src/Common.Serialization/` contains `Ploch.Common.Serialization.csproj`
   - Example: `src/Data.EFCore/` contains `Ploch.Data.EFCore.csproj`
   - Example: `src/Data/` contains `Ploch.Lists.Data.csproj`
@@ -76,8 +78,9 @@ For application repos (e.g. `ploch-lists`, `ploch-groupmatters`), the `src/` dir
 | `Data/` | `Ploch.{Product}.Data` | DbContext, entity configurations |
 | `Data.SQLite/` | `Ploch.{Product}.Data.SQLite` | SQLite provider, migrations, design-time factory |
 | `Data.SqlServer/` | `Ploch.{Product}.Data.SqlServer` | SQL Server provider, migrations, design-time factory |
-| `Api/` | `Ploch.{Product}.Api` | Web API host / endpoints |
-| `UI/` | Various | UI application (MAUI, WinUI, etc.) |
+| `Api.WebApi/` | `Ploch.{Product}.Api.WebApi` | Web API host / endpoints |
+| `Api.Contracts/` | `Ploch.{Product}.Api.Contracts` | Request/response DTOs shared with consumers |
+| `UI.Web/`, `UI.Maui/`, `UI.WinUI/`, … | `Ploch.{Product}.UI.{Technology}` | UI application host — see [`project-naming.md`](./project-naming.mdc) |
 
 ## Test Project Layout
 

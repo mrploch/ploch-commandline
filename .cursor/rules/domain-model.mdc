@@ -55,4 +55,4 @@ Domain entities in MrPloch projects are **simple POCO types** that implement int
 - Nullable properties (`string?`, `ICollection<T>?`) for optional fields.
 - Mark navigation properties as `virtual` when lazy loading may be used.
 - Use `[Key]`, `[Required]`, `[MaxLength]` from `System.ComponentModel.DataAnnotations` where appropriate — do not rely solely on Fluent API for basic constraints.
-- Keep entities in a dedicated `Model` or `Models` namespace (e.g. `Ploch.Lists.Model`, `Ploch.EditorConfigTools.Models`).
+- Keep entities in a dedicated `Ploch.{Product}.Model` project and namespace — singular `Model`, never `Models` or `DomainModel`. See [`project-naming.md`](./project-naming.mdc) for the full naming rule and the migration list for existing projects.
