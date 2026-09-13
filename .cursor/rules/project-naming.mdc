@@ -431,7 +431,7 @@ Before creating a project, confirm:
 
 - [ ] Name matches `Ploch.{Product}[.{Area}].{Layer}[.{Qualifier}]`.
 - [ ] In an application repo, `{Layer}` is in the canonical set above, including Other Hosts (or a justification is recorded); in a library-family repo, it names a feature area.
-- [ ] Directory name is the project name minus `Ploch.{Product}.`, under `src/` or `tests/`.
+- [ ] Directory follows [Four Names, One String](#four-names-one-string): application repos strip `Ploch.{Product}.`, library-family repos strip only `Ploch.`; a multi-product `{Area}` is an extra directory level; test directories carry their test-kind suffix; everything sits under `src/` or `tests/`.
 - [ ] `AssemblyName`, `RootNamespace`, and `PackageId` are **not** set in the `.csproj` — all four names derive from the file name.
 - [ ] A domain model project is called `.Model` — singular, unqualified.
 - [ ] Provider casing is `SQLite` / `SqlServer` / `PostgreSql`.
