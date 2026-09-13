@@ -30,6 +30,8 @@ exclude_paths:
   - "AGENTS.md"
   - "CLAUDE.md"
   - "GEMINI.md"
+  # Qodana baseline (#55): a machine-generated SARIF report, regenerated from CI, not source.
+  - ".qodana/*.sarif.json"
 
 engines:
   # The engine key was previously misspelled "sonarscharp" and pointed at "src/**Tests/**", a path
@@ -50,5 +52,6 @@ engines:
       - "AGENTS.md"
       - "CLAUDE.md"
       - "GEMINI.md"
+      - ".qodana/*.sarif.json"
   markdownlint:
     line_length: 120
