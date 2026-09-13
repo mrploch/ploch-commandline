@@ -37,8 +37,10 @@ jobs:
           fetch-depth: 0
       # Qodana mounts only the analysis root into its container, so the analysis root has to be the
       # workspace - otherwise ../ploch-common and ../mrploch-development sit outside /data and every
-      # project reference is unresolvable. The repository's own qodana.yaml stays authoritative for
-      # profile and inspection settings; only the paths are rebased onto the workspace layout.
+      # project reference is unresolvable. This step writes the configuration from scratch and does
+      # not read the repository's qodana.yaml, which only serves local runs from the repository
+      # root. The two are duplicates: keep the profile, inclusions and linter in step by hand, with
+      # only the paths rebased onto the workspace layout here.
       #
       # The linter is pinned to a release line rather than `latest`. A linter release can add
       # inspections, and every finding they produce would be reported as new against the baseline
@@ -73,8 +75,9 @@ jobs:
           # them. How and when to refresh the baseline: .qodana/README.md.
           args: --baseline ploch-commandline/.qodana/baseline.sarif.json --fail-threshold 0
           pr-mode: false
-          # Publishes qodana.sarif.json as the `qodana-report` artifact. The committed baseline is
-          # regenerated from this artifact (see change-log/55-qodana-baseline.md).
+          # Publishes the results directory, zipped, as the `qodana-report` artifact; its
+          # qodana.sarif.json is what the committed baseline is refreshed from (see
+          # .qodana/README.md).
           upload-result: true
         env:
           # Scoped to this step, not the job (least privilege, raised by the CodeRabbit reviewer
