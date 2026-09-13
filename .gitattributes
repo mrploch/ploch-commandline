@@ -8,6 +8,11 @@
 # `bad interpreter: /usr/bin/env bash^M`.
 *.sh    text eol=lf
 
+# The Qodana baseline is a generated SARIF report that must stay byte-for-byte as CI produced it
+# (see .qodana/README.md). Do not normalise its line endings, do not render its multi-megabyte
+# diffs in reviews, and let GitHub collapse it as generated (#55).
+.qodana/*.sarif.json    -text -diff linguist-generated=true
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

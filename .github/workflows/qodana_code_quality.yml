@@ -66,6 +66,12 @@ jobs:
       - name: 'Qodana Scan'
         uses: JetBrains/qodana-action@10be11607eb323a180e2b76b26c9c5cdceac3e77 # v2026.2.1
         with:
+          # Report only problems that are not in the committed baseline, and fail on any of them
+          # (#55). The path is relative to the analysis root, which is the workspace, not this
+          # repository. Both flags live here rather than in qodana.yaml so a local run from the
+          # repository root, whose fingerprints cannot match the CI baseline, is not failed by
+          # them. How and when to refresh the baseline: .qodana/README.md.
+          args: --baseline ploch-commandline/.qodana/baseline.sarif.json --fail-threshold 0
           pr-mode: false
           # Publishes qodana.sarif.json as the `qodana-report` artifact. The committed baseline is
           # regenerated from this artifact (see change-log/55-qodana-baseline.md).
