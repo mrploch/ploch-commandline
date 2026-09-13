@@ -8,7 +8,7 @@ The workspace is primarily C#, so C# rules come first and are the default. Langu
 
 ## C# — Casing
 
-C# casing is **not a matter of taste**; it is fixed by the [.NET Framework Design Guidelines](https://learn.microsoft.com/dotnet/standard/design-guidelines/naming-guidelines) and enforced by the analysers already enabled in every repo (StyleCop, Roslynator, `Microsoft.CodeAnalysis.NetAnalyzers`). Deviating produces build warnings, and `TreatWarningsAsErrors` turns those into build failures in test projects.
+C# casing is **not a matter of taste**; it is fixed by the [.NET Framework Design Guidelines](https://learn.microsoft.com/dotnet/standard/design-guidelines/naming-guidelines) and enforced through each repo's `.editorconfig` naming rules plus whichever analysers it enables — `Microsoft.CodeAnalysis.NetAnalyzers` everywhere, StyleCop and Roslynator only where the repo actually references them (check `Directory.Build.props` / `Directory.Build.targets`; they are sometimes commented out). Violations are warnings, and a repo that sets `TreatWarningsAsErrors` turns them into build failures.
 
 | Identifier | Casing | Example |
 |---|---|---|
@@ -18,7 +18,8 @@ C# casing is **not a matter of taste**; it is fixed by the [.NET Framework Desig
 | Property, event | PascalCase | `CreatedTime` |
 | Public / protected field (rare — prefer a property) | PascalCase | `Empty` |
 | Private field | `_camelCase` | `_profileRepository` |
-| `const` / `static readonly` | PascalCase — **never** `SCREAMING_CASE` | `DefaultTimeout` |
+| `const` (any accessibility), public / protected `static readonly` | PascalCase — **never** `SCREAMING_CASE` | `DefaultTimeout` |
+| Private `static` / `static readonly` field | `_camelCase`, like other private fields | `_defaultTimeout` |
 | Parameter, local variable | camelCase | `cancellationToken` |
 | Generic type parameter | PascalCase, `T` prefix | `TEntity`, `TId` |
 | Enum member | PascalCase | `DeleteBehavior.Cascade` |
@@ -26,7 +27,7 @@ C# casing is **not a matter of taste**; it is fixed by the [.NET Framework Desig
 
 **Never use camelCase for a method or property in C#.** `shouldLogUserOutAfterTransfer` is a JavaScript identifier; the C# form is `ShouldLogUserOutAfterTransfer`.
 
-**Async methods end with `Async`** when they return `Task`/`Task<T>`/`ValueTask<T>` — `GetByIdAsync`, `CommitAsync` — matching the repository interfaces in `Ploch.Data.GenericRepository`. The suffix is omitted only where another contract fixes the name: overriding or implementing a member whose base or interface name has no suffix, and ASP.NET Core controller actions, whose method names form routes. An override of `ExecuteAsync` keeps the suffix, because the base member already has it.
+**Async methods end with `Async`** when they return `Task`, `Task<T>`, `ValueTask` or `ValueTask<T>` — `GetByIdAsync`, `CommitAsync` — matching the repository interfaces in `Ploch.Data.GenericRepository`. The suffix is omitted only where an existing contract fixes the name — overriding or implementing a member whose base or interface name has no suffix. An override of `ExecuteAsync` keeps the suffix, because the base member already has it. ASP.NET Core controller actions may keep the suffix too: MVC strips `Async` from action names by default.
 
 ---
 

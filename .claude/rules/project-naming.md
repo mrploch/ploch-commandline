@@ -17,8 +17,8 @@ Ploch.{Product}[.{Area}].{Layer}[.{Qualifier}]
 | `Ploch` | Yes | Organisation prefix. Every project, including tests and samples. | — |
 | `{Product}` | Yes | The product or library family the repo delivers. | `Common`, `Data`, `GroupMatters`, `EditorConfigTools`, `FileOrganizer` |
 | `{Area}` | Only in multi-product repos | A distinct deliverable inside a repo that hosts several. | `ConfigTracker`, `KnowledgeBase`, `AudioConverter` |
-| `{Layer}` | Yes | The architectural layer. **Must** come from the closed set below. | `Model`, `Data`, `UseCases`, `UI` |
-| `{Qualifier}` | Optional | Narrows the layer: a provider, technology, or slice. | `SQLite`, `SqlServer`, `Console`, `Windows` |
+| `{Layer}` | Yes | In an application repo, the architectural layer — **must** come from the closed set below, which includes the host names under [Other Hosts](#other-hosts). In a library-family repo, a feature area instead — see [Library Families](#library-families). | `Model`, `Data`, `UseCases`, `UI`; `Serialization`, `Spectre` |
+| `{Qualifier}` | Optional | Narrows the layer: a provider, technology, or slice. | `SQLite`, `SqlServer`, `ConsoleApp`, `Windows` |
 
 ### Four Names, One String
 
@@ -33,7 +33,7 @@ The project file name is the single source of truth. In an SDK-style project the
 
 **Never set `AssemblyName`, `RootNamespace`, or `PackageId` by hand.** Overriding any one of them breaks the chain and lets the four names drift apart — which is how a project ends up shipping a package whose ID does not match the namespace consumers must `using`. Get the file name right instead.
 
-The **directory** is the only name that differs: it is the project name **with the `Ploch.{Product}.` prefix stripped**.
+The **directory** is the only name that differs. In an application repo it is the project name **with the `Ploch.{Product}.` prefix stripped**. In a library-family repo only **`Ploch.`** is stripped, matching [`project-structure.md`](./project-structure.md) — see [Library Families](#library-families).
 
 ```
 src/Model/Ploch.GroupMatters.Model.csproj              →  namespace Ploch.GroupMatters.Model;
@@ -47,8 +47,19 @@ In multi-product repos the `{Area}` segment becomes a directory level, not part 
 
 ```
 src/ConfigTracker/Model/Ploch.AI.ConfigTracker.Model.csproj
-src/AudioConverter/Processing/Ploch.Toolbox.AudioConverter.Processing.csproj
+src/AudioConverter/UseCases/Ploch.Toolbox.AudioConverter.UseCases.csproj
 ```
+
+### Library Families
+
+A repo that publishes a family of libraries (`ploch-common`, `ploch-data`, `ploch-commandline`) has no application layers. The segment after `{Product}` names a **feature area or integration** and is not limited to the closed layer set: `Ploch.Common.Serialization`, `Ploch.Data.EFCore`, `Ploch.CommandLine.Spectre`. Directories strip only `Ploch.`, and related projects may be grouped under a feature folder:
+
+```
+src/Common.Serialization/Ploch.Common.Serialization.csproj
+src/Spectre/CommandLine.Spectre/Ploch.CommandLine.Spectre.csproj
+```
+
+**Never rename an existing published library project to fit the application layer set.**
 
 ### Alignment with the .NET Framework Design Guidelines
 
@@ -219,7 +230,7 @@ Ploch.{Product}.Api.{Protocol|Role}
 Rules:
 
 - **An API is not UI.** An API host never sits under `.UI.`, and a UI host never sits under `.Api.`. A product that serves both gets one project in each group.
-- **`.Api.Contracts` is the only `.Api.*` project other code may reference.** Hosts are endpoints, not libraries — nothing references `Api.WebApi`. If a type is needed by both the host and a consumer, it belongs in `.Api.Contracts`.
+- **Hosts are never referenced; only `.Api.Contracts` and `.Api.Client` are.** Hosts are endpoints, not libraries — nothing references `Api.WebApi`. Consumers reference `.Api.Client` (which itself references `.Api.Contracts`) or `.Api.Contracts` directly. If a type is needed by both the host and a consumer, it belongs in `.Api.Contracts`.
 - **Clients for *other people's* APIs are not `.Api.*`.** A client consuming a third-party service is `.Infrastructure.{ServiceName}` — `.Api.Client` means "client for **our** API".
 
 ### Other Hosts
@@ -229,6 +240,8 @@ Rules:
 | `Ploch.McpServers.{Name}` | MCP server host |
 | `Ploch.{Product}.Worker` | Background service / hosted-service worker with no UI or API surface |
 | `Ploch.{Product}.Functions` | Azure Functions / serverless host |
+
+These host names are part of the canonical set and need no README or ADR justification: `.Worker` and `.Functions` are layers in their own right, and `Ploch.McpServers.{Name}` is an approved exception in which `McpServers` is the product and `{Name}` the server.
 
 ### Existing UI projects to migrate
 
@@ -256,8 +269,8 @@ Test project names are derived mechanically from the project under test:
 |---|---|---|
 | Unit | `{ProjectUnderTest}.Tests` | `tests/{Dir}.Tests/` |
 | Integration | `{ProjectUnderTest}.IntegrationTests` | `tests/{Dir}.IntegrationTests/` |
-| Acceptance / E2E | `{Product}.AcceptanceTests` | `tests/AcceptanceTests/` |
-| Shared test infrastructure | `{Product}.TestingSupport` | `tests/TestingSupport/` |
+| Acceptance / E2E | `Ploch.{Product}.AcceptanceTests` | `tests/AcceptanceTests/` |
+| Shared test infrastructure | `Ploch.{Product}.TestingSupport` | `tests/TestingSupport/` |
 
 ```
 src/UseCases/Ploch.EditorConfigTools.UseCases.csproj
@@ -288,7 +301,7 @@ samples/SampleApp/tests/IntegrationTests/Ploch.Data.SampleApp.IntegrationTests.c
 
 A sample app follows every naming rule in this file — it is the executable documentation of the conventions, so a mis-named sample teaches the wrong thing. When a repo hosts several samples, the segment after the library name is the sample's own name: `Ploch.Data.OrdersSample.Model`.
 
-Sample projects must reference published NuGet packages, never `ProjectReference` — see [`sample-apps.md`](./sample-apps.md).
+Sample projects must reference published NuGet packages by default, never a plain `ProjectReference` — see [`sample-apps.md`](./sample-apps.md). An opt-in switch that swaps in project references for source validation (for example `-p:UsePlochProjectReferences=true`) is allowed, provided the default build uses packages.
 
 ---
 
@@ -343,7 +356,7 @@ Also avoid the guidelines' named-and-shamed generics — `Element`, `Node`, `Log
 
 The .NET convention, which this rule follows:
 
-1. **Two-letter acronyms are fully capitalised** — `IO`, `DB`, `UI`. This is why the group segment is `UI`, not `Ui`.
+1. **Two-letter acronyms are fully capitalised** — `IO`, `UI`. This is why the group segment is `UI`, not `Ui`. `Id`, `Ok` and `Db` are abbreviations rather than acronyms, so they are PascalCased like words: `DbContext`, `UserId`.
 2. **Three-or-more-letter acronyms are PascalCased** — `Xml`, `Html`, `Json`, `Sql`, `Http`, `Grpc`. So `Api`, never `API`.
 3. **Brand casing overrides both** where the vendor defines one — the guidelines say to follow the brand "even if it deviates from normal namespace casing". `SQLite` and `WinUI` are brand spellings; `GraphQL` is the product's own casing.
 
@@ -359,7 +372,7 @@ The .NET convention, which this rule follows:
 
   `Ploch.Common.Net9` is the live example, and it has already gone stale: `Directory.Build.props` sets `TargetFrameworkVersion` to **net10.0**, so the package called "Net9" ships net10 today. **Decision (2026-08-27): rename it to `Ploch.Common.AssemblyLoading`** — after what it contains (`AppDomainTypesLoader`, `TypeLoadingConfiguration`), not after a framework version. It is not grandfathered.
 
-  The rename is unusually cheap for a published package because the project already overrides `RootNamespace` to `Ploch.Common`, so its public namespace is `Ploch.Common.AssemblyLoading` and **no consumer's `using` directives or code change — only the `PackageReference` line**. Verified: zero `using Ploch.Common.Net9` occurrences exist anywhere in the workspace. The rename also lets the `RootNamespace` override be deleted, restoring the four-names-one-string chain.
+  The rename is unusually cheap for a published package because its source files already declare `namespace Ploch.Common.AssemblyLoading;` explicitly (the project's `RootNamespace` is `Ploch.Common`), so **consumers that compile against the package change only the `PackageReference` line — no `using` directives or code**. Anything that depends on the old package or assembly identity (lock files, binding redirects, reflection by assembly name) still needs updating. Verified: zero `using Ploch.Common.Net9` occurrences exist anywhere in the workspace. The rename also lets the `RootNamespace` override be deleted, restoring the four-names-one-string chain.
 
   Scope of the change: rename `src/Common.Net9/` → `src/Common.AssemblyLoading/` and `tests/Common.Net9.Tests/` → `tests/Common.AssemblyLoading.Tests/`, update the path entries in ~14 `.slnx` files across the workspace, update the entry in `mrploch-development/dependencies/Ploch.Packages.props`, and deprecate the published `Ploch.Common.Net9` 3.0.0 on nuget.org with a pointer to the new ID. Because it *is* a published rename, it needs its own GitHub issue, branch, PR and deprecation note in `RELEASE_NOTES.md` — not an opportunistic drive-by.
 - **Spell-check before committing.** `Ploch.SystemsProfiles.*` (vs `SystemProfiles`) and `src/Data.SqlServver/` are live typos in the workspace that a rename now cannot fix cheaply. A third, `Plocch.Common.DependencyInjection.Autofac`, was **deleted outright** in ploch-common #303 — it turned out never to have been published, so it was not grandfathered at all and the "expensive to fix" framing was wrong. Verify the claim before assuming a typo is stuck.
@@ -382,7 +395,7 @@ Every example below is a real project in this workspace.
 | Version/TFM baked into the name | `Ploch.Common.Net9` (ships net10.0) | `Ploch.Common.AssemblyLoading` — name it after its contents |
 | Abbreviated segment | `.Utils`, `.Cfg`, `.Svc`, `.Repos` | `.Utilities`, `.Configuration`, `.Services`→`.UseCases`, `.Data.Repositories` |
 | ViewModels in `.Model` | — | Move to `.UI.Shared` or the UI host |
-| Missing org/product prefix | `tests/Business/Business.csproj` | `Ploch.Tools.SystemProfiles.Business.Tests` (in `tests/`) |
+| Missing org/product prefix | `tests/Business/Business.csproj` | `Ploch.Tools.SystemProfiles.UseCases.Tests` (in `tests/UseCases.Tests/`) |
 | Test project under `src/` | `src/Data.SqLite.IntegrationTests/` | Move to `tests/Data.SQLite.IntegrationTests/` |
 | Synonym for `.Data` | `Ploch.EditorConfigTools.DataAccess` | `.Data` |
 | Synonym for `.UseCases` | `Ploch.FileOrganizer.Services`, `.Processing`, `.Core` | `.UseCases` |
@@ -413,7 +426,7 @@ These names are published NuGet packages. Renaming them is a breaking change for
 Before creating a project, confirm:
 
 - [ ] Name matches `Ploch.{Product}[.{Area}].{Layer}[.{Qualifier}]`.
-- [ ] `{Layer}` is in the canonical set above (or a justification is recorded).
+- [ ] In an application repo, `{Layer}` is in the canonical set above, including Other Hosts (or a justification is recorded); in a library-family repo, it names a feature area.
 - [ ] Directory name is the project name minus `Ploch.{Product}.`, under `src/` or `tests/`.
 - [ ] `AssemblyName`, `RootNamespace`, and `PackageId` are **not** set in the `.csproj` — all four names derive from the file name.
 - [ ] A domain model project is called `.Model` — singular, unqualified.
