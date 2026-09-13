@@ -1,0 +1,427 @@
+# Project Naming Standards
+
+Canonical names for .NET projects across all MrPloch repositories. This rule governs **what a project is called**; [`project-structure.md`](./project-structure.md) governs **where it lives** and what files sit beside it. Read both when creating a new project.
+
+**Authority:** this file is the single source of truth for project, directory, and root-namespace names. Where another rule names a project (e.g. `data-project.md`, `data-provider-project.md`, `domain-model.md`), that name must match the tables below.
+
+---
+
+## The Universal Pattern
+
+```
+Ploch.{Product}[.{Area}].{Layer}[.{Qualifier}]
+```
+
+| Segment | Required | Meaning | Examples |
+|---|---|---|---|
+| `Ploch` | Yes | Organisation prefix. Every project, including tests and samples. | — |
+| `{Product}` | Yes | The product or library family the repo delivers. | `Common`, `Data`, `GroupMatters`, `EditorConfigTools`, `FileOrganizer` |
+| `{Area}` | Only in multi-product repos | A distinct deliverable inside a repo that hosts several. | `ConfigTracker`, `KnowledgeBase`, `AudioConverter` |
+| `{Layer}` | Yes | The architectural layer. **Must** come from the closed set below. | `Model`, `Data`, `UseCases`, `UI` |
+| `{Qualifier}` | Optional | Narrows the layer: a provider, technology, or slice. | `SQLite`, `SqlServer`, `Console`, `Windows` |
+
+### Four Names, One String
+
+The project file name is the single source of truth. In an SDK-style project these all derive from it by default:
+
+| Name | Derived from | Result |
+|---|---|---|
+| Project file | — | `Ploch.GroupMatters.Data.SQLite.csproj` |
+| `AssemblyName` | project file name | `Ploch.GroupMatters.Data.SQLite.dll` |
+| `RootNamespace` | project file name | `namespace Ploch.GroupMatters.Data.SQLite;` |
+| `PackageId` | `AssemblyName` | `Ploch.GroupMatters.Data.SQLite` |
+
+**Never set `AssemblyName`, `RootNamespace`, or `PackageId` by hand.** Overriding any one of them breaks the chain and lets the four names drift apart — which is how a project ends up shipping a package whose ID does not match the namespace consumers must `using`. Get the file name right instead.
+
+The **directory** is the only name that differs: it is the project name **with the `Ploch.{Product}.` prefix stripped**.
+
+```
+src/Model/Ploch.GroupMatters.Model.csproj              →  namespace Ploch.GroupMatters.Model;
+src/Data.SQLite/Ploch.GroupMatters.Data.SQLite.csproj  →  namespace Ploch.GroupMatters.Data.SQLite;
+src/UI.Web/Ploch.GroupMatters.UI.Web.csproj            →  namespace Ploch.GroupMatters.UI.Web;
+```
+
+**A rename is never just a file rename.** Renaming a project renames its assembly, its namespace, its package ID, and every `using` that references it. Budget for that before starting.
+
+In multi-product repos the `{Area}` segment becomes a directory level, not part of the leaf directory name:
+
+```
+src/ConfigTracker/Model/Ploch.AI.ConfigTracker.Model.csproj
+src/AudioConverter/Processing/Ploch.Toolbox.AudioConverter.Processing.csproj
+```
+
+### Alignment with the .NET Framework Design Guidelines
+
+This rule is a workspace-specific application of Microsoft's guidance, not a local invention. The [namespace naming guidelines](https://learn.microsoft.com/dotnet/standard/design-guidelines/names-of-namespaces) specify:
+
+```
+<Company>.(<Product>|<Technology>)[.<Feature>][.<Subnamespace>]
+```
+
+which maps onto our pattern segment for segment — `Ploch` is `<Company>`, `{Product}` is `<Product>`, `{Layer}` is `<Feature>`, `{Qualifier}` is `<Subnamespace>`. The [assembly guidelines](https://learn.microsoft.com/dotnet/standard/design-guidelines/names-of-assemblies-and-dlls) then recommend naming the DLL after "the common prefix of the namespaces contained in the assembly", which is exactly the one-project-one-namespace-root rule above.
+
+Two further points from those guidelines are load-bearing here:
+
+- **"DO use a stable, version-independent product name at the second level."** `{Product}` names the product, never a version, a team, or a delivery phase.
+- **"DO NOT use organizational hierarchies as the basis for names... organize the hierarchy around groups of related technologies."** This is why `.UI.` and `.Api.` are technology groups rather than, say, a `.Frontend`/`.Backend` split.
+
+**One deliberate deviation.** The guidelines say "CONSIDER using plural namespace names where appropriate" (`System.Collections`). This rule mandates singular `.Model`. That guidance targets namespaces holding many instances of one concept; our `{Layer}` segment names an architectural layer, and every other layer name here is singular in the same way (`.Data`, not `.DataItems`). The decisive factor is internal consistency with `Ploch.Data.Model`, the library these projects are built on. **This is a settled decision — do not reopen it citing the plural guideline.**
+
+---
+
+## Domain Model Projects — `.Model` (Mandatory)
+
+**The domain model project is always named `Ploch.{Product}.Model`.** Singular `Model`. Never `Models`, never `DomainModel`, never `Domain`, never `Domain.Db`, never `Entities`, never `Domain.Common`.
+
+```
+src/Model/Ploch.GroupMatters.Model.csproj
+namespace Ploch.GroupMatters.Model;
+```
+
+This project contains the POCO entities described in [`domain-model.md`](./domain-model.md) — types implementing `IHasId<TId>`, `INamed`, `IHasAuditProperties`, and the `Category<>`/`Tag<>` base types from `Ploch.Data.Model`. It holds **no** behaviour, no EF Core dependency, and no data-access code.
+
+### Why singular `Model`, not `Models`
+
+- The organisation's own shared entity library is **`Ploch.Data.Model`**. A product model project named `Models` reads as a different kind of thing from the library it is built on.
+- The reference sample (`ploch-data/samples/SampleApp`) already ships `Ploch.Data.SampleApp.Model`.
+- `Model` names the *layer*; `Models` names a *bag of files*. Every other layer segment in this rule is a layer name (`Data`, `UseCases`, `UI`), so `Model` is the consistent choice.
+
+### When the domain genuinely has behaviour
+
+If a product has rich domain services, invariants, or aggregates that do not belong on the entities, add a **second** project — do not rename the first:
+
+| Project | Contains |
+|---|---|
+| `Ploch.{Product}.Model` | Entities (POCOs), value objects, enums, model interfaces |
+| `Ploch.{Product}.Domain` | Domain services, domain events, business invariants, specifications |
+
+`.Domain` is **only** legitimate when `.Model` also exists. A lone `.Domain` project holding entities is a mis-named `.Model` project.
+
+### Existing projects to migrate
+
+| Repo | Current | Target |
+|---|---|---|
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.Models` | `Ploch.EditorConfigTools.Model` |
+| `ploch-fileorganizer` | `Ploch.FileOrganizer.Models` | `Ploch.FileOrganizer.Model` |
+| `ploch-tools-systemprofiles` | `Ploch.Tools.SystemProfiles.DomainModel` | `Ploch.Tools.SystemProfiles.Model` |
+| `ploch-tools-systemprofiles` | `Ploch.Tools.SystemProfiles.Domain.Db` | fold into `.Model` (or `.Data` if EF-coupled) |
+| `ploch-ai-tools` | `Ploch.AI.KnowledgeBase.DomainModel` | `Ploch.AI.KnowledgeBase.Model` |
+
+Migrate opportunistically — when a repo is already being worked on, not as a big-bang sweep. Each migration is its own GitHub issue, branch, and PR per [`traceability.md`](./traceability.md). **New projects have no grace period: they use `.Model` from the first commit.**
+
+---
+
+## Canonical Layer Names
+
+This is a **closed set**. A project whose layer segment is not in this table needs a justification recorded in the repo README or an ADR before it is created.
+
+### Domain
+
+| Layer | Project | Contains |
+|---|---|---|
+| `.Model` | `Ploch.{Product}.Model` | Entity POCOs, value objects, enums. No behaviour, no EF Core. |
+| `.Domain` | `Ploch.{Product}.Domain` | Domain services, events, invariants. Only alongside `.Model`. |
+
+### Data Access
+
+| Layer | Project | Contains |
+|---|---|---|
+| `.Data` | `Ploch.{Product}.Data` | `DbContext`, `IEntityTypeConfiguration<>` classes, DI registration. See [`data-project.md`](./data-project.md). |
+| `.Data.SQLite` | `Ploch.{Product}.Data.SQLite` | SQLite design-time factory, migrations, connection config. See [`data-provider-project.md`](./data-provider-project.md). |
+| `.Data.SqlServer` | `Ploch.{Product}.Data.SqlServer` | SQL Server equivalent. |
+| `.Data.Repositories` | `Ploch.{Product}.Data.Repositories` | Custom repositories extending `ReadWriteRepositoryAsync<,>`. **Only** when they cannot live in `.Data`. |
+
+Do **not** use `DataAccess`, `Storage`, `Persistence`, or `Repository` as the layer segment. All of them mean `.Data`.
+
+### Application
+
+| Layer | Project | Contains |
+|---|---|---|
+| `.UseCases` | `Ploch.{Product}.UseCases` | Application-layer orchestration: use case classes, Ardalis specifications, DTOs, mapping profiles. |
+| `.Abstractions` | `Ploch.{Product}.{Layer}.Abstractions` | Interfaces and contracts extracted so consumers avoid the implementation. |
+
+Do **not** use `Core`, `Services`, `Business`, `Logic`, `Processing`, or `Handlers` as the application-layer segment. All of them mean `.UseCases`. One name, so that every product's application layer is found in the same place.
+
+**This applies to product/application repos, not to library families.** In `ploch-common` and `ploch-data`, the segment after `{Product}` names a *feature area* — `Ploch.Common.Serialization`, `Ploch.Common.AppServices` — not an architectural layer, because a shared library has no application layer of its own. `Ploch.Common.AppServices` is therefore **correct as named** and must not be swept into `.UseCases`. Reach for `.UseCases` when the project is the orchestration layer *of an application*.
+
+`.Abstractions` is a **qualifier on a layer**, never a layer alone: `Ploch.FileOrganizer.Data.Abstractions`, not `Ploch.FileOrganizer.Abstractions`. Prefer `.Abstractions` over `.Interfaces` — it covers interfaces, abstract bases, and contract records, and matches the naming Microsoft's own libraries use. An `.Abstractions` project earns its existence only when a consumer genuinely needs the contracts without the implementation; when nothing external consumes them, the interfaces belong beside their implementation.
+
+### Existing application- and data-layer projects to migrate
+
+| Repo | Current | Target |
+|---|---|---|
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.Processing` | `.UseCases` |
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.Processing.EntryHandling` | `.UseCases.EntryHandling` |
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.DataAccess` | `.Data` |
+| `ploch-tools-systemprofiles` | `Ploch.Tools.SystemProfiles.Core` | `.UseCases` |
+| `ploch-fileorganizer` | `Ploch.FileOrganizer.Services` | `.UseCases` |
+| `ploch-fileorganizer` | `Ploch.FileOrganizer.Services.Interfaces` | `.UseCases.Abstractions` |
+| `ploch-fileorganizer` | `Ploch.FileOrganizer.Data.Interfaces` | `.Data.Abstractions` |
+| `ploch-toolbox` | `Ploch.Toolbox.AudioConverter.Processing` | `.AudioConverter.UseCases` |
+
+Their test projects move with them (`tests/Processing.Tests/` → `tests/UseCases.Tests/`, and so on). Two of those test projects have a second defect to fix in the same pass: `tests/Processing.EntryHandling.Tests/Processing.EntryHandling.Tests.csproj` and `ploch-tools-systemprofiles/tests/Business/Business.csproj` are both missing the `Ploch.{Product}.` prefix entirely.
+
+Same migration policy as `.Model` and `.UI.`: opportunistic, one GitHub issue, branch and PR per repo — **never a big-bang sweep**, and **no grace period for new projects**. None of these are published packages, so the rename costs a `using` sweep and a solution-file update, not a deprecation cycle.
+
+### Cross-Cutting
+
+| Layer | Project | Contains |
+|---|---|---|
+| `.Common` | `Ploch.{Product}.Common` | Helpers shared by two or more layers **within this product**. |
+| `.Infrastructure` | `Ploch.{Product}.Infrastructure` | Adapters to external systems: file system, OS APIs, third-party HTTP clients, message brokers. |
+| `.Infrastructure.{Platform}` | `Ploch.{Product}.Infrastructure.Windows` | Platform-specific adapters. |
+
+If a helper is useful outside the product, it belongs in `ploch-common`, not in a product `.Common`.
+
+### Presentation — the `.UI.` Group (Mandatory)
+
+**Every user-facing presentation project lives under the `.UI.` segment**, followed by the technology or application kind. `UI` is a *group*, never a leaf: there is no bare `Ploch.{Product}.UI` project, and no presentation project may sit outside the group.
+
+```
+Ploch.{Product}.UI.{Technology}[.{Qualifier}]
+```
+
+| Project | Contains |
+|---|---|
+| `Ploch.{Product}.UI.Web` | Blazor, MVC, or Razor Pages web UI host |
+| `Ploch.{Product}.UI.ConsoleApp` | Console / CLI application host |
+| `Ploch.{Product}.UI.Maui` | .NET MAUI application host |
+| `Ploch.{Product}.UI.WinUI` | WinUI 3 desktop host |
+| `Ploch.{Product}.UI.Wpf` | WPF desktop host |
+| `Ploch.{Product}.UI.Shared` | ViewModels and presentation logic shared across **all** UI technologies |
+| `Ploch.{Product}.UI.{Technology}.Shared` | Views/controls shared between hosts of **one** technology (`UI.WinUI.Shared`) |
+| `Ploch.{Product}.UI.{Technology}.Controls` | Reusable custom controls for one technology |
+
+Rules:
+
+- **Never drop the `.UI.` segment.** `Ploch.Tools.SystemProfiles.WinUIApp` must become `Ploch.Tools.SystemProfiles.UI.WinUI`.
+- **Never repeat "UI" inside the technology segment.** `UI.ConsoleUI`, `UI.MauiUI`, and `UI.WebUI` all stutter — the `UI.` prefix already says it is UI. Use `UI.ConsoleApp`, `UI.Maui`, `UI.Web`.
+- **ViewModels belong in a UI project** — the host itself or a `.Shared` project — **never in `.Model`.** `.Model` holds persistence-shaped entities; a ViewModel is presentation state. Mixing them drags `INotifyPropertyChanged` into the domain.
+- The technology segment must not shadow a common type — see [Names That Collide](#names-that-collide). This is why the console host is `UI.ConsoleApp` and not `UI.Console`, and why the MAUI host is `UI.Maui` and not `UI.MauiApp`.
+
+### Services — the `.Api.` Group (Mandatory)
+
+**Every service-facing project lives under the `.Api.` segment**, followed by the protocol or role. Like `UI`, `Api` is a *group*, never a leaf.
+
+```
+Ploch.{Product}.Api.{Protocol|Role}
+```
+
+| Project | Contains |
+|---|---|
+| `Ploch.{Product}.Api.WebApi` | HTTP/REST host — FastEndpoints, Minimal API, or controllers |
+| `Ploch.{Product}.Api.GraphQL` | GraphQL host |
+| `Ploch.{Product}.Api.Grpc` | gRPC service host |
+| `Ploch.{Product}.Api.Contracts` | Request/response DTOs and shared contracts, published for consumers |
+| `Ploch.{Product}.Api.Client` | Generated or hand-written client for this product's API |
+| `Ploch.{Product}.Api.Shared` | Cross-protocol plumbing: filters, auth handlers, problem-details mapping |
+
+Rules:
+
+- **An API is not UI.** An API host never sits under `.UI.`, and a UI host never sits under `.Api.`. A product that serves both gets one project in each group.
+- **`.Api.Contracts` is the only `.Api.*` project other code may reference.** Hosts are endpoints, not libraries — nothing references `Api.WebApi`. If a type is needed by both the host and a consumer, it belongs in `.Api.Contracts`.
+- **Clients for *other people's* APIs are not `.Api.*`.** A client consuming a third-party service is `.Infrastructure.{ServiceName}` — `.Api.Client` means "client for **our** API".
+
+### Other Hosts
+
+| Project | Contains |
+|---|---|
+| `Ploch.McpServers.{Name}` | MCP server host |
+| `Ploch.{Product}.Worker` | Background service / hosted-service worker with no UI or API surface |
+| `Ploch.{Product}.Functions` | Azure Functions / serverless host |
+
+### Existing UI projects to migrate
+
+| Repo | Current | Target |
+|---|---|---|
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.UI.ConsoleUI` | `.UI.ConsoleApp` |
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.UI.MauiApp` | `.UI.Maui` |
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.UI.MauiUI` | `.UI.Maui.Shared` |
+| `ploch-tools-editorconfig` | `Ploch.EditorConfigTools.UI.WebUI` | `.UI.Web` |
+| `ploch-tools-systemprofiles` | `Ploch.Tools.SystemProfiles.UI.ConsoleUI` | `.UI.ConsoleApp` |
+| `ploch-tools-systemprofiles` | `Ploch.Tools.SystemProfiles.WinUIApp` | `.UI.WinUI` |
+| `ploch-tools-systemprofiles` | `Ploch.Tools.SystemProfiles.WinUIApp.Core` | `.UI.WinUI.Shared` |
+| `ploch-fileorganizer` | `Ploch.FileOrganizer.UI.MauiUI` | `.UI.Maui` |
+| `ploch-groupmatters` | `Ploch.GroupMatters.UI.WebApp` | `.UI.Web` |
+
+Same migration policy as `.Model`: opportunistic, one issue/branch/PR per repo, and **no grace period for new projects**.
+
+---
+
+## Test Projects
+
+Test project names are derived mechanically from the project under test:
+
+| Kind | Name | Directory |
+|---|---|---|
+| Unit | `{ProjectUnderTest}.Tests` | `tests/{Dir}.Tests/` |
+| Integration | `{ProjectUnderTest}.IntegrationTests` | `tests/{Dir}.IntegrationTests/` |
+| Acceptance / E2E | `{Product}.AcceptanceTests` | `tests/AcceptanceTests/` |
+| Shared test infrastructure | `{Product}.TestingSupport` | `tests/TestingSupport/` |
+
+```
+src/UseCases/Ploch.EditorConfigTools.UseCases.csproj
+tests/UseCases.Tests/Ploch.EditorConfigTools.UseCases.Tests.csproj
+tests/UseCases.IntegrationTests/Ploch.EditorConfigTools.UseCases.IntegrationTests.csproj
+```
+
+Hard requirements:
+
+- **Full `Ploch.` prefix, always.** `Business.csproj`, `ConsoleApp.Tests.csproj`, and `Processing.EntryHandling.Tests.csproj` are all wrong — they are missing the organisation and product segments.
+- **Tests live under `tests/`, never under `src/`.** A test project inside `src/` (e.g. `src/Data.SqLite.IntegrationTests/`) is misplaced regardless of its name.
+- **Test directory mirrors the source directory** with the suffix appended, so `src/Data.SQLite/` pairs with `tests/Data.SQLite.IntegrationTests/`.
+- Class and method naming inside these projects is governed by [`writing-dotnet-tests.md`](./writing-dotnet-tests.md).
+
+---
+
+## Sample Applications
+
+Samples live in `samples/` and carry the library they demonstrate plus a `SampleApp` segment:
+
+```
+samples/SampleApp/src/Model/Ploch.Data.SampleApp.Model.csproj
+samples/SampleApp/src/Data/Ploch.Data.SampleApp.Data.csproj
+samples/SampleApp/src/Data.SQLite/Ploch.Data.SampleApp.Data.SQLite.csproj
+samples/SampleApp/src/UI.ConsoleApp/Ploch.Data.SampleApp.UI.ConsoleApp.csproj
+samples/SampleApp/tests/IntegrationTests/Ploch.Data.SampleApp.IntegrationTests.csproj
+```
+
+A sample app follows every naming rule in this file — it is the executable documentation of the conventions, so a mis-named sample teaches the wrong thing. When a repo hosts several samples, the segment after the library name is the sample's own name: `Ploch.Data.OrdersSample.Model`.
+
+Sample projects must reference published NuGet packages, never `ProjectReference` — see [`sample-apps.md`](./sample-apps.md).
+
+---
+
+## Names That Collide
+
+C# resolves a namespace segment ahead of a type of the same name. A badly chosen segment therefore does not produce a naming *complaint* — it produces a compile error, or worse, silently binds to the wrong thing. The Framework Design Guidelines state the rule as **"DO NOT use the same name for a namespace and a type in that namespace"** and **"DO NOT give types names that would conflict with any type in the Core namespaces."**
+
+### Segments that must never be used
+
+Inside `namespace Ploch.MyApp.UI.Console`, the expression `Console.WriteLine(...)` resolves to the *namespace*, not `System.Console`, and every file needs `global::System.Console` to compile. Never use these as a segment:
+
+`Console`, `Task`, `Path`, `File`, `Timer`, `Type`, `Environment`, `Buffer`, `Math`, `Random`, `Uri`, `Version`, `Activity`, `Index`, `Range`, `Convert`, `Debug`, `Trace`, `Directory`, `Encoding`, `Guid`, `Stream`, `Process`, `Thread`, `Action`, `Attribute`, `Delegate`, `Object`, `Exception`, `Http`, `Binding`, `Application`, `Window`, `Page`, `Color`, `Point`, `Size`, `MauiApp`, `WebApplication`, `Host`.
+
+This is the concrete reason the canonical names are `UI.ConsoleApp` (not `UI.Console`) and `UI.Maui` (not `UI.MauiApp` — `MauiApp` is the type behind `MauiApp.CreateBuilder()`).
+
+### The namespace must not contain a type of its own name
+
+- `Ploch.MyApp.Model` must not contain `class Model`.
+- `Ploch.MyApp.UseCases` must not contain `class UseCases`.
+- `Ploch.MyApp.Api.Contracts` must not contain `class Contracts`.
+
+### Entity type names in `.Model`
+
+A `.Model` project is where BCL collisions bite hardest, because domain nouns and framework type names overlap. An entity must not be named `Task`, `File`, `Path`, `Type`, `Action`, `Event`, `Attribute`, `Delegate`, `Object`, `Stream`, `Timer`, `Comparer`, `Index`, `Range`, `Environment`, or `Version`.
+
+Qualify with the domain instead — the guidelines' own advice ("qualify the generic type names") applied to entities:
+
+| Ambiguous | Qualified |
+|---|---|
+| `Task` | `WorkItem`, `ScheduledTask` |
+| `File` | `TrackedFile`, `SourceFile` |
+| `Event` | `AuditEvent`, `CalendarEvent` |
+| `Type` | `ProfileType`, `DocumentKind` |
+| `Version` | `ConfigVersion`, `ReleaseVersion` |
+
+Also avoid the guidelines' named-and-shamed generics — `Element`, `Node`, `Log`, `Message`, `Item`, `Entry`, `Record`, `Value` — unqualified. `ConfigEntry` beats `Entry`.
+
+---
+
+## Casing and Spelling
+
+| Token | Correct | Wrong |
+|---|---|---|
+| SQLite | `SQLite` | `SqLite`, `Sqlite`, `SQLLite` |
+| SQL Server | `SqlServer` | `SQLServer`, `SqlServver`, `MSSQL` |
+| PostgreSQL | `PostgreSql` | `Postgres`, `PostgreSQL` |
+| Web API | `Api` (segment), `WebApi` (product) | `API`, `WEBAPI` |
+| WinUI / MAUI / WPF | `WinUI`, `Maui`, `Wpf` | `WINUI`, `MAUI`, `WPF` |
+| EF Core | `EFCore` | `EfCore`, `EntityFrameworkCore` |
+
+### Acronym casing
+
+The .NET convention, which this rule follows:
+
+1. **Two-letter acronyms are fully capitalised** — `IO`, `DB`, `UI`. This is why the group segment is `UI`, not `Ui`.
+2. **Three-or-more-letter acronyms are PascalCased** — `Xml`, `Html`, `Json`, `Sql`, `Http`, `Grpc`. So `Api`, never `API`.
+3. **Brand casing overrides both** where the vendor defines one — the guidelines say to follow the brand "even if it deviates from normal namespace casing". `SQLite` and `WinUI` are brand spellings; `GraphQL` is the product's own casing.
+
+**Why `SQLite` and not `Sqlite`:** rule 3 beats rule 2 — the vendor writes it `SQLite`. Note that Microsoft's own provider package is `Microsoft.EntityFrameworkCore.Sqlite`, applying rule 2 instead. Both are defensible; **this workspace has chosen `SQLite`**, matching [`data-provider-project.md`](./data-provider-project.md) and the existing `Data.SQLite` directories. Do not "correct" it to `Sqlite` citing the Microsoft package.
+
+### Other rules
+
+- **PascalCase every segment.** No hyphens, no underscores, no spaces in project or directory names. (Repository *directories* are kebab-case — `ploch-group-matters` — but nothing inside them is.)
+- **No abbreviations or contractions.** The guidelines are explicit: use `GetWindow`, not `GetWin`. Applied to project names: `Utilities` not `Utils`, `Configuration` not `Config`/`Cfg`, `Repositories` not `Repos`, `Services` not `Svc`, `Management` not `Mgmt`, `Authentication` not `Auth`. Widely accepted acronyms (`Api`, `UI`, `Db`, `Http`) are the exception.
+- **No `Impl`, `Helpers`, `Misc`, `Shared` as a leaf layer, or `Base`.** These describe nothing. `Shared` is legal only as a qualifier of a real layer (`UI.Shared`, `Api.Shared`).
+- **Product names are singular unless the domain is inherently plural**: `EditorConfigTools` (a toolbox of tools) is correct; `Models` for a layer is not.
+- **No version or TFM in a project name.** The guidelines require "a stable, version-independent product name". A TFM in the identity goes stale the moment the project retargets. Multi-target, or name the project after what it *does*.
+
+  `Ploch.Common.Net9` is the live example, and it has already gone stale: `Directory.Build.props` sets `TargetFrameworkVersion` to **net10.0**, so the package called "Net9" ships net10 today. **Decision (2026-08-27): rename it to `Ploch.Common.AssemblyLoading`** — after what it contains (`AppDomainTypesLoader`, `TypeLoadingConfiguration`), not after a framework version. It is not grandfathered.
+
+  The rename is unusually cheap for a published package because the project already overrides `RootNamespace` to `Ploch.Common`, so its public namespace is `Ploch.Common.AssemblyLoading` and **no consumer's `using` directives or code change — only the `PackageReference` line**. Verified: zero `using Ploch.Common.Net9` occurrences exist anywhere in the workspace. The rename also lets the `RootNamespace` override be deleted, restoring the four-names-one-string chain.
+
+  Scope of the change: rename `src/Common.Net9/` → `src/Common.AssemblyLoading/` and `tests/Common.Net9.Tests/` → `tests/Common.AssemblyLoading.Tests/`, update the path entries in ~14 `.slnx` files across the workspace, update the entry in `mrploch-development/dependencies/Ploch.Packages.props`, and deprecate the published `Ploch.Common.Net9` 3.0.0 on nuget.org with a pointer to the new ID. Because it *is* a published rename, it needs its own GitHub issue, branch, PR and deprecation note in `RELEASE_NOTES.md` — not an opportunistic drive-by.
+- **Spell-check before committing.** `Ploch.SystemsProfiles.*` (vs `SystemProfiles`) and `src/Data.SqlServver/` are live typos in the workspace that a rename now cannot fix cheaply. A third, `Plocch.Common.DependencyInjection.Autofac`, was **deleted outright** in ploch-common #303 — it turned out never to have been published, so it was not grandfathered at all and the "expensive to fix" framing was wrong. Verify the claim before assuming a typo is stuck.
+
+---
+
+## Anti-Patterns
+
+Every example below is a real project in this workspace.
+
+| Anti-pattern | Example | Fix |
+|---|---|---|
+| Plural model layer | `Ploch.EditorConfigTools.Models` | `.Model` |
+| Compound model layer | `Ploch.AI.KnowledgeBase.DomainModel` | `.Model` |
+| Model split across three projects | `.Domain`, `.Domain.Common`, `.Domain.Db` | One `.Model` (+ `.Domain` only if it holds behaviour) |
+| Stuttering UI segment | `Ploch.EditorConfigTools.UI.ConsoleUI`, `.UI.MauiUI`, `.UI.WebUI` | `.UI.ConsoleApp`, `.UI.Maui`, `.UI.Web` |
+| Missing `.UI.` group | `Ploch.Tools.SystemProfiles.WinUIApp` | `.UI.WinUI` |
+| Missing `.Api.` group | `Ploch.{Product}.Api` as a leaf, or a bare `.WebApi` | `.Api.WebApi` |
+| Segment shadowing a BCL type | `.UI.Console` (shadows `System.Console`), `.UI.MauiApp` | `.UI.ConsoleApp`, `.UI.Maui` |
+| Version/TFM baked into the name | `Ploch.Common.Net9` (ships net10.0) | `Ploch.Common.AssemblyLoading` — name it after its contents |
+| Abbreviated segment | `.Utils`, `.Cfg`, `.Svc`, `.Repos` | `.Utilities`, `.Configuration`, `.Services`→`.UseCases`, `.Data.Repositories` |
+| ViewModels in `.Model` | — | Move to `.UI.Shared` or the UI host |
+| Missing org/product prefix | `tests/Business/Business.csproj` | `Ploch.Tools.SystemProfiles.Business.Tests` (in `tests/`) |
+| Test project under `src/` | `src/Data.SqLite.IntegrationTests/` | Move to `tests/Data.SQLite.IntegrationTests/` |
+| Synonym for `.Data` | `Ploch.EditorConfigTools.DataAccess` | `.Data` |
+| Synonym for `.UseCases` | `Ploch.FileOrganizer.Services`, `.Processing`, `.Core` | `.UseCases` |
+| `.Interfaces` as a layer | `Ploch.FileOrganizer.Data.Interfaces` | `Ploch.FileOrganizer.Data.Abstractions` |
+| Inconsistent provider casing | `Data.SqLite` beside `Data.SQLite` | `Data.SQLite` everywhere |
+| Scaffolding left in the repo | `ClassLibrary1`, `MauiApp1`, `Temp/` | Delete or rename before committing |
+
+---
+
+## Grandfathered Exceptions
+
+These names are published NuGet packages. Renaming them is a breaking change for external consumers and requires its own deprecation plan — **do not rename them opportunistically**, and do not cite them as precedent for new projects.
+
+| Package | Deviation |
+|---|---|
+| `Ploch.Data.EFCore.SqLite` | `SqLite` casing (new app projects use `SQLite`) |
+| `Ploch.Data.EFCore.SqlServer` | Kept consistent with the pair above |
+| `Ploch.Common.WebUI` | Stuttering `WebUI` in a library context |
+
+`Ploch.Data.Model` and `Ploch.Data.StandardDataSets` are **not** exceptions — they are the pattern.
+
+`Ploch.Common.Net9` is **not** an exception either, despite being published. It is scheduled for rename to `Ploch.Common.AssemblyLoading` (see [Casing and Spelling](#casing-and-spelling) → no version or TFM in a project name). Being published buys a deprecation plan, not a permanent pass — the test is whether renaming would break consumers' *code*, and here it would not.
+
+---
+
+## New Project Checklist
+
+Before creating a project, confirm:
+
+- [ ] Name matches `Ploch.{Product}[.{Area}].{Layer}[.{Qualifier}]`.
+- [ ] `{Layer}` is in the canonical set above (or a justification is recorded).
+- [ ] Directory name is the project name minus `Ploch.{Product}.`, under `src/` or `tests/`.
+- [ ] `AssemblyName`, `RootNamespace`, and `PackageId` are **not** set in the `.csproj` — all four names derive from the file name.
+- [ ] A domain model project is called `.Model` — singular, unqualified.
+- [ ] Provider casing is `SQLite` / `SqlServer` / `PostgreSql`.
+- [ ] Every presentation project is under `.UI.` and every service project under `.Api.`, with no stutter (`UI.ConsoleApp`, not `UI.ConsoleUI`).
+- [ ] No segment shadows a BCL type — checked against [Names That Collide](#names-that-collide).
+- [ ] No segment is an abbreviation, and no version or TFM appears in the name.
+- [ ] No entity in `.Model` is named `Task`, `File`, `Event`, `Type`, or another BCL/generic name.
+- [ ] Test projects carry the full prefix and sit under `tests/`.
+- [ ] The project is added to the repo's `.slnx` solution at a solution folder mirroring its path on disk.
+- [ ] Nothing named `ClassLibrary1`, `MauiApp1`, `Project1`, or `Temp`.
