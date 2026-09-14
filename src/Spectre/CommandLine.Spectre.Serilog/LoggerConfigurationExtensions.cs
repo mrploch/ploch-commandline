@@ -133,8 +133,8 @@ public static class LoggerConfigurationExtensions
                                .MinimumLevel.Is(logMinimumLevelString)
                                .WriteTo
                                .File(BuildFullLogPath(logName, logPath),
-                                     formatProvider: CultureInfo.CurrentCulture,
                                      outputTemplate: template ?? DefaultOutputTemplate,
+                                     formatProvider: CultureInfo.CurrentCulture,
                                      fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
                                      rollOnFileSizeLimit: true,
                                      retainedFileCountLimit: RetainedFileCountLimit)
@@ -204,8 +204,8 @@ public static class LoggerConfigurationExtensions
         loggerConfiguration.Filter
                            .ByIncludingOnly(logEvent => logEvent.Level is LogEventLevel.Error or LogEventLevel.Warning or LogEventLevel.Fatal)
                            .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
-                                         formatProvider: CultureInfo.CurrentCulture,
                                          outputTemplate: ErrorOutputTemplate,
+                                         formatProvider: CultureInfo.CurrentCulture,
                                          fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
                                          rollOnFileSizeLimit: true,
                                          retainedFileCountLimit: RetainedFileCountLimit);
