@@ -292,6 +292,12 @@ dotnet_diagnostic.IDE0058.severity = none
 # SA1508 with AD0001. Re-enable once StyleCop is upgraded to a version that understands the syntax.
 # See ploch-commandline#24.
 dotnet_diagnostic.RCS1251.severity = none
+# S2436 ("Types and methods should not have too many generic parameters") is disabled by the
+# maintainer's decision. Its default limit of 2 does not fit this library: UseCaseAsyncCommand needs
+# four type parameters (settings, use case, request, response), because C# cannot infer the request
+# and response types from the use case type. See the <remarks> on UseCaseAsyncCommand and
+# ploch-commandline#24.
+dotnet_diagnostic.S2436.severity = none
 dotnet_diagnostic.IDE0018.severity = warning # Inline variable declaration
 
 ## Properties: 'dotnet_diagnostic.nu'
