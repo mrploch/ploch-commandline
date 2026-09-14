@@ -31,7 +31,7 @@ public class EnvironmentSettingsLoader : IEnvironmentSettingsLoader
         foreach (DictionaryEntry variable in variables)
         {
             var name = variable.Key.ToString();
-            if (name is null || !name.StartsWith(EnvironmentVariableNames.DevRuntimeVariablePrefix, StringComparison.OrdinalIgnoreCase))
+            if (name?.StartsWith(EnvironmentVariableNames.DevRuntimeVariablePrefix, StringComparison.OrdinalIgnoreCase) != true)
             {
                 continue;
             }

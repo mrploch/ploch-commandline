@@ -31,6 +31,6 @@ public static class CommandInfoFactory
                    commandAttributes.Alias,
                    commandAttributes.Description,
                    commandAttributes.IsHidden,
-                   commandAttributes.Examples.ToArray());
+                   [.. commandAttributes.Examples]);
     }
 }

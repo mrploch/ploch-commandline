@@ -133,11 +133,11 @@ public static class LoggerConfigurationExtensions
                                .MinimumLevel.Is(logMinimumLevelString)
                                .WriteTo
                                .File(BuildFullLogPath(logName, logPath),
-                                     rollOnFileSizeLimit: true,
-                                     fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
+                                     formatProvider: CultureInfo.CurrentCulture,
                                      outputTemplate: template ?? DefaultOutputTemplate,
-                                     retainedFileCountLimit: RetainedFileCountLimit,
-                                     formatProvider: CultureInfo.CurrentCulture)
+                                     fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
+                                     rollOnFileSizeLimit: true,
+                                     retainedFileCountLimit: RetainedFileCountLimit)
 
                                 // The error file sink must live INSIDE the filtered sub-logger. Chained after it,
                                 // as it previously was, the filter applies to nothing and the "errors" file
@@ -204,10 +204,10 @@ public static class LoggerConfigurationExtensions
         loggerConfiguration.Filter
                            .ByIncludingOnly(logEvent => logEvent.Level is LogEventLevel.Error or LogEventLevel.Warning or LogEventLevel.Fatal)
                            .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
+                                         formatProvider: CultureInfo.CurrentCulture,
                                          outputTemplate: ErrorOutputTemplate,
-                                         rollOnFileSizeLimit: true,
                                          fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
-                                         retainedFileCountLimit: RetainedFileCountLimit,
-                                         formatProvider: CultureInfo.CurrentCulture);
+                                         rollOnFileSizeLimit: true,
+                                         retainedFileCountLimit: RetainedFileCountLimit);
     }
 }

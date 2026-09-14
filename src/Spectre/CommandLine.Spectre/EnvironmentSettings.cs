@@ -8,7 +8,7 @@
 /// <param name="devRuntimeVariables">The development-time runtime variables available to the application.</param>
 public class EnvironmentSettings(bool isDebugging, bool pauseBeforeExit, IReadOnlyDictionary<string, string?> devRuntimeVariables)
 {
-    private static readonly object SyncRoot = new();
+    private static readonly Lock SyncRoot = new();
 
     // volatile because the getter reads this outside the lock. Without it the unsynchronised fast path is a broken
     // double-checked lock: another thread could observe a non-null reference before the writes that initialised the
