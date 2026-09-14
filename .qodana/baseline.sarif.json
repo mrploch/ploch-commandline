@@ -80142,8 +80142,8 @@
       "versionControlProvenance": [
         {
           "repositoryUri": "https://github.com/mrploch/ploch-commandline.git",
-          "revisionId": "f4ee0068117f0a6743a167e55e1ec55610c0c65a",
-          "branch": "ci/55-qodana-baseline",
+          "revisionId": "3ba84437301dc413f71cc3dc1b46ef25c7a3444f",
+          "branch": "refactor/24-clear-sonarcloud-findings",
           "properties": {
             "repoUrl": "https://github.com/mrploch/ploch-commandline.git",
             "lastAuthorName": "",
@@ -80240,21 +80240,7 @@
         },
         {
           "location": {
-            "uri": "src/Spectre/CommandLine.Spectre/EnvironmentSettings.cs",
-            "uriBaseId": "solutionDir"
-          },
-          "hashes": {}
-        },
-        {
-          "location": {
             "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/CommandInfoFactoryTests.cs",
-            "uriBaseId": "solutionDir"
-          },
-          "hashes": {}
-        },
-        {
-          "location": {
-            "uri": "src/Spectre/CommandLine.Spectre/Output/BaseExceptionMessageFormatter.cs",
             "uriBaseId": "solutionDir"
           },
           "hashes": {}
@@ -80296,7 +80282,21 @@
         },
         {
           "location": {
+            "uri": "src/Spectre/CommandLine.Spectre/EnvironmentSettings.cs",
+            "uriBaseId": "solutionDir"
+          },
+          "hashes": {}
+        },
+        {
+          "location": {
             "uri": "src/Spectre/CommandLine.Spectre/EnvironmentVariableNames.cs",
+            "uriBaseId": "solutionDir"
+          },
+          "hashes": {}
+        },
+        {
+          "location": {
+            "uri": "src/Spectre/CommandLine.Spectre/Output/BaseExceptionMessageFormatter.cs",
             "uriBaseId": "solutionDir"
           },
           "hashes": {}
@@ -80554,7 +80554,7 @@
                   "startColumn": 21,
                   "endLine": 165,
                   "endColumn": 44,
-                  "charOffset": 9603,
+                  "charOffset": 9595,
                   "charLength": 23,
                   "snippet": {
                     "text": "cancellationTokenSource"
@@ -80565,7 +80565,7 @@
                   "startColumn": 1,
                   "endLine": 166,
                   "endColumn": 18,
-                  "charOffset": 9565,
+                  "charOffset": 9557,
                   "charLength": 89,
                   "snippet": {
                     "text": "                {\n                    cancellationTokenSource.Cancel();\n                }"
@@ -80577,6 +80577,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "32E4B1C77A1FEA576C952D53D4CF1942B06BABD1E47DC537B7881B46501A5871"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -80605,7 +80606,7 @@
                   "startColumn": 29,
                   "endLine": 186,
                   "endColumn": 52,
-                  "charOffset": 10835,
+                  "charOffset": 10827,
                   "charLength": 23,
                   "snippet": {
                     "text": "cancellationTokenSource"
@@ -80616,7 +80617,7 @@
                   "startColumn": 1,
                   "endLine": 187,
                   "endColumn": 26,
-                  "charOffset": 10742,
+                  "charOffset": 10734,
                   "charLength": 153,
                   "snippet": {
                     "text": "                            interruptGate.SourceReleased = true;\n                            cancellationTokenSource.Dispose();\n                        }"
@@ -80628,6 +80629,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "5A2D37D26394E41559E7842A1B3A11DADEF7EE18FFE639DDFC1F50D285CD53AF"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -80680,6 +80682,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "8EA866E7E5A4B35EBE532FCAD69E13B70684A8F14960B99697E7F51E8710BD13"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -80732,6 +80735,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "D69F3FBA1660D7880673250B77AF3FC7E9D5C5B4BA6CF39CAC1FD29781D6CF7F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -80784,6 +80788,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "1EC6DF0AD71BD76F37136DC946AE023FD9B76E44DF5BD247927053805C96F000"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -80836,6 +80841,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "280C2DA9BF8C267392656A046333D8B1A39FA7FDEC3610E36F46071CB0C20A1A"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -80888,6 +80894,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "C28FC8A823F8DA1010803ECAE172ED5A1C51DC4E7072A36F7658358F5D211E16"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -80940,6 +80947,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "28CDEAB5717AA9E6B309DD3C6997B403C7AA8176A0060651D1865A38A7620A54"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -80992,6 +81000,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "5EFF1A3CA23FFF0168E3BFA5AD9B1BBEF644A895062E1115901C3AF2404B301D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -81044,6 +81053,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "91393688DFA1F67FAFC817D02D4A8E3C0D35F9FAF3772EC8A22167CD11F81559"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81096,6 +81106,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "67E1688886F48F46A8C97BCD6C0A664C4D38508AC4D319733C2AA0F8FE56B3AD"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81148,6 +81159,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "83FDA1A3FD8377780F67AF1FD6797035491591B92A980A34E2B7F6811C797D3E"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81200,6 +81212,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "4BDFF0E9E190EC66A1386A1E1EF4802E1318B72F204D247BCD41FE67F1166BEE"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81252,6 +81265,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "43DE76B1237C898F9619EB6A5525174D0242792003E29C62950DA722EFA77CA0"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81304,6 +81318,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "253F4F993794DD0E6ADAB0073291AA6003F9664D9F2480758E6CC783514D7F7A"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81356,6 +81371,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "7EC93B313B7CA3476627206431CD59845F0C67DED7C43142783EC992AC45E796"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81408,6 +81424,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "A8C952EB822044C3B3637CCB37B02FC6FCA55368B6FD8A37C0492DDF7EECE3AB"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81460,6 +81477,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "FAE06D8F105602B58E01BCB2DAF224ABB68FB6CAFFD3F6095269822D5A82E9C1"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81512,6 +81530,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "1CA2B6ECB06D12C468C3E4529BBE1680DECC5E2FDF08D2CCE406DAC77E0B11B7"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81564,6 +81583,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "35ED229CAE4DA8C15A950474B397F11322ABE7E93DFEA8B6393DD876A31927DD"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -81616,60 +81636,9 @@
           "partialFingerprints": {
             "equalIndicator/v1": "676C6A22BE2FBE214D09F3FDFD1184F1897BB9C4922296549875BA590E1989E7"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
-            "tags": [
-              "C#",
-              ".NET 10.0"
-            ]
-          }
-        },
-        {
-          "ruleId": "ChangeFieldTypeToSystemThreadingLock",
-          "ruleIndex": 334,
-          "kind": "fail",
-          "level": "note",
-          "message": {
-            "text": "Consider changing the type of 'SyncRoot' field to 'System.Threading.Lock' to express the field's intent"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/Spectre/CommandLine.Spectre/EnvironmentSettings.cs",
-                  "uriBaseId": "solutionDir",
-                  "index": 11
-                },
-                "region": {
-                  "startLine": 11,
-                  "startColumn": 29,
-                  "endLine": 11,
-                  "endColumn": 35,
-                  "charOffset": 649,
-                  "charLength": 6,
-                  "snippet": {
-                    "text": "object"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 10,
-                  "startColumn": 1,
-                  "endLine": 12,
-                  "endColumn": 1,
-                  "charOffset": 619,
-                  "charLength": 55,
-                  "snippet": {
-                    "text": "{\n    private static readonly object SyncRoot = new();\n"
-                  }
-                }
-              }
-            }
-          ],
-          "partialFingerprints": {
-            "equalIndicator/v1": "F721BE79A1FA0150D5327D284E55AC0B14EDA31498721C9DD408BFC24D549106"
-          },
-          "properties": {
-            "qodanaSeverity": "Moderate",
             "tags": [
               "C#",
               ".NET 10.0"
@@ -81690,7 +81659,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/CommandInfoFactoryTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 12
+                  "index": 11
                 },
                 "region": {
                   "startLine": 7,
@@ -81720,6 +81689,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "B292EB4A3518BAF7629D917CD29A3486E5566AC6BFB68CEC4B2E17B30EBF638E"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -81772,6 +81742,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "714B0E574924ECF7FC4E5704C6CFFF32D16A949390D8DB5486A1FD1285734900"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -81824,6 +81795,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "1F914E9474D13956BE1F3D37AEFCFCC679A3797EBAB4840CDE5539CFDBBECAAA"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -81876,6 +81848,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2E00B72F435E9534E72792EF896E0221981F3F185708DF0F48EC6A89760CB867"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -81885,64 +81858,12 @@
           }
         },
         {
-          "ruleId": "ConditionalAccessQualifierIsNonNullableAccordingToAPIContract",
-          "ruleIndex": 360,
+          "ruleId": "AccessToDisposedClosure",
+          "ruleIndex": 1,
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "Conditional access qualifier expression is never null according to nullable reference types' annotations"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/Spectre/CommandLine.Spectre/Output/BaseExceptionMessageFormatter.cs",
-                  "uriBaseId": "solutionDir",
-                  "index": 13
-                },
-                "region": {
-                  "startLine": 27,
-                  "startColumn": 49,
-                  "endLine": 27,
-                  "endColumn": 50,
-                  "charOffset": 1421,
-                  "charLength": 1,
-                  "snippet": {
-                    "text": "?"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 26,
-                  "startColumn": 1,
-                  "endLine": 28,
-                  "endColumn": 1,
-                  "charOffset": 1372,
-                  "charLength": 68,
-                  "snippet": {
-                    "text": "\n        text += GetInnerExceptionMessage(message?.InnerException);\n"
-                  }
-                }
-              }
-            }
-          ],
-          "partialFingerprints": {
-            "equalIndicator/v1": "502F0A191363B7B8DD1F613DD882F2ED0F77693AD56601D7E5404440FA6F3BBF"
-          },
-          "properties": {
-            "qodanaSeverity": "High",
-            "tags": [
-              "C#",
-              ".NET 10.0"
-            ]
-          }
-        },
-        {
-          "ruleId": "DisposeOnUsingVariable",
-          "ruleIndex": 2272,
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Variable 'builder' is captured by the 'using' statement and will be automatically disposed when the execution gets out of the scope"
+            "text": "Captured variable is disposed in the outer scope"
           },
           "locations": [
             {
@@ -81954,13 +81875,13 @@
                 },
                 "region": {
                   "startLine": 495,
-                  "startColumn": 85,
+                  "startColumn": 77,
                   "endLine": 495,
-                  "endColumn": 92,
-                  "charOffset": 25019,
+                  "endColumn": 84,
+                  "charOffset": 25011,
                   "charLength": 7,
                   "snippet": {
-                    "text": "Dispose"
+                    "text": "builder"
                   }
                 },
                 "contextRegion": {
@@ -81980,6 +81901,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "1EC6DF0AD71BD76F37136DC946AE023FD9B76E44DF5BD247927053805C96F000"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82032,6 +81954,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "4A07625C1C1253D97CAF917DE93F4BB65A5BB9A48B617B57509F14A7B6F9F712"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82054,7 +81977,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppConfiguratorTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 14
+                  "index": 12
                 },
                 "region": {
                   "startLine": 17,
@@ -82084,6 +82007,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "EA8898B29DCE300E67D402A3F818DABB75F190C77C4EBD2A09FEA4C2B85187DB"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82104,27 +82028,27 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppExecutorTests.cs",
+                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppConfiguratorTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 15
+                  "index": 12
                 },
                 "region": {
-                  "startLine": 23,
+                  "startLine": 17,
                   "startColumn": 29,
-                  "endLine": 23,
+                  "endLine": 17,
                   "endColumn": 33,
-                  "charOffset": 839,
+                  "charOffset": 488,
                   "charLength": 4,
                   "snippet": {
                     "text": "this"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 22,
+                  "startLine": 16,
                   "startColumn": 1,
-                  "endLine": 24,
+                  "endLine": 18,
                   "endColumn": 6,
-                  "charOffset": 774,
+                  "charOffset": 423,
                   "charLength": 77,
                   "snippet": {
                     "text": "        EnvironmentSettings.Reset();\n        GC.SuppressFinalize(this);\n    }"
@@ -82136,6 +82060,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "EA8898B29DCE300E67D402A3F818DABB75F190C77C4EBD2A09FEA4C2B85187DB"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82156,27 +82081,27 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/Configuration/OutputServicesBundleTests.cs",
+                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/AppBuilderTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 16
+                  "index": 2
                 },
                 "region": {
-                  "startLine": 33,
+                  "startLine": 46,
                   "startColumn": 29,
-                  "endLine": 33,
+                  "endLine": 46,
                   "endColumn": 33,
-                  "charOffset": 1304,
+                  "charOffset": 2077,
                   "charLength": 4,
                   "snippet": {
                     "text": "this"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 32,
+                  "startLine": 45,
                   "startColumn": 1,
-                  "endLine": 34,
+                  "endLine": 47,
                   "endColumn": 6,
-                  "charOffset": 1248,
+                  "charOffset": 2021,
                   "charLength": 68,
                   "snippet": {
                     "text": "        _console.Dispose();\n        GC.SuppressFinalize(this);\n    }"
@@ -82188,6 +82113,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "4A07625C1C1253D97CAF917DE93F4BB65A5BB9A48B617B57509F14A7B6F9F712"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82240,6 +82166,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "F4243AC96E75EA22996A9C273F6603369DA067C4A6EE4492CDE0E0A31DEF469F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82262,7 +82189,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/EnvironmentSettingsLoaderTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 17
+                  "index": 15
                 },
                 "region": {
                   "startLine": 19,
@@ -82292,6 +82219,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "79BD68389C73A5A0164F9D7000B3B721A4C3D4CA6934CEF54E7B046CBE598D4A"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82312,27 +82240,27 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/EnvironmentSettingsTests.cs",
+                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppConfiguratorTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 18
+                  "index": 12
                 },
                 "region": {
-                  "startLine": 20,
+                  "startLine": 17,
                   "startColumn": 29,
-                  "endLine": 20,
+                  "endLine": 17,
                   "endColumn": 33,
-                  "charOffset": 993,
+                  "charOffset": 488,
                   "charLength": 4,
                   "snippet": {
                     "text": "this"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 19,
+                  "startLine": 16,
                   "startColumn": 1,
-                  "endLine": 21,
+                  "endLine": 18,
                   "endColumn": 6,
-                  "charOffset": 928,
+                  "charOffset": 423,
                   "charLength": 77,
                   "snippet": {
                     "text": "        EnvironmentSettings.Reset();\n        GC.SuppressFinalize(this);\n    }"
@@ -82344,6 +82272,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "EA8898B29DCE300E67D402A3F818DABB75F190C77C4EBD2A09FEA4C2B85187DB"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82366,14 +82295,14 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/EnvironmentSettings.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 11
+                  "index": 17
                 },
                 "region": {
                   "startLine": 16,
                   "startColumn": 50,
                   "endLine": 16,
                   "endColumn": 58,
-                  "charOffset": 1015,
+                  "charOffset": 1013,
                   "charLength": 8,
                   "snippet": {
                     "text": "_current"
@@ -82384,7 +82313,7 @@
                   "startColumn": 1,
                   "endLine": 17,
                   "endColumn": 97,
-                  "charOffset": 908,
+                  "charOffset": 906,
                   "charLength": 213,
                   "snippet": {
                     "text": "    // instance are visible. Benign on x86, not on ARM64.\n    private static volatile EnvironmentSettings? _current;\n    private static IEnvironmentSettingsLoader _settingsLoader = new EnvironmentSettingsLoader();"
@@ -82396,6 +82325,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "85C47FD02F756AA82E67A35135A9038A6E4DE1E07342DA71BB4D0357B5F0E956"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82418,14 +82348,14 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/EnvironmentSettings.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 11
+                  "index": 17
                 },
                 "region": {
                   "startLine": 17,
                   "startColumn": 47,
                   "endLine": 17,
                   "endColumn": 62,
-                  "charOffset": 1071,
+                  "charOffset": 1069,
                   "charLength": 15,
                   "snippet": {
                     "text": "_settingsLoader"
@@ -82436,7 +82366,7 @@
                   "startColumn": 1,
                   "endLine": 18,
                   "endColumn": 1,
-                  "charOffset": 966,
+                  "charOffset": 964,
                   "charLength": 156,
                   "snippet": {
                     "text": "    private static volatile EnvironmentSettings? _current;\n    private static IEnvironmentSettingsLoader _settingsLoader = new EnvironmentSettingsLoader();\n"
@@ -82448,6 +82378,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "DB2DE43AF3D731BB58E1B1B8C0A110EAC84306E47D17579592A02ADE412A0296"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82470,7 +82401,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/EnvironmentVariableNames.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 19
+                  "index": 18
                 },
                 "region": {
                   "startLine": 16,
@@ -82500,6 +82431,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "B3FDE92579171EE150C83B07BC265E27C83092E10FE7DAD6A668936C366BC40E"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -82522,14 +82454,14 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/BaseExceptionMessageFormatter.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 13
+                  "index": 19
                 },
                 "region": {
                   "startLine": 37,
                   "startColumn": 5,
                   "endLine": 37,
                   "endColumn": 14,
-                  "charOffset": 1806,
+                  "charOffset": 1805,
                   "charLength": 9,
                   "snippet": {
                     "text": "protected"
@@ -82540,7 +82472,7 @@
                   "startColumn": 1,
                   "endLine": 38,
                   "endColumn": 6,
-                  "charOffset": 1657,
+                  "charOffset": 1656,
                   "charLength": 230,
                   "snippet": {
                     "text": "    /// <returns>A formatted string containing inner exception details if the inner exception is not null; otherwise, an empty string.</returns>\n    protected static string GetInnerExceptionMessage(Exception? innerException)\n    {"
@@ -82552,6 +82484,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "E96891911B3E8763A298AE9E688D46533C125F1DFA081E049C962ADC6AA3B22C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -82604,6 +82537,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "311C496E037E4AA8DF63767BC92C6AD16F563241E47F7F9A17702C96E09A31D9"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -82629,22 +82563,22 @@
                   "index": 21
                 },
                 "region": {
-                  "startLine": 34,
+                  "startLine": 41,
                   "startColumn": 5,
-                  "endLine": 34,
+                  "endLine": 41,
                   "endColumn": 14,
-                  "charOffset": 1821,
+                  "charOffset": 2416,
                   "charLength": 9,
                   "snippet": {
                     "text": "protected"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 33,
+                  "startLine": 40,
                   "startColumn": 1,
-                  "endLine": 35,
+                  "endLine": 42,
                   "endColumn": 1,
-                  "charOffset": 1798,
+                  "charOffset": 2393,
                   "charLength": 62,
                   "snippet": {
                     "text": "    /// </summary>\n    protected TUseCase UseCase => useCase;\n"
@@ -82656,6 +82590,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "6AB75D9C3835F01540AF38B2B10C4520E4EDBB7545A977AE3C0B4E9224AC6E5C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -82665,12 +82600,12 @@
           }
         },
         {
-          "ruleId": "MemberCanBePrivate.Local",
-          "ruleIndex": 2400,
+          "ruleId": "CollectionNeverQueried.Local",
+          "ruleIndex": 351,
           "kind": "fail",
-          "level": "note",
+          "level": "warning",
           "message": {
-            "text": "Property 'MessagesOfferedToWriters' can be made private"
+            "text": "Content of collection 'MessagesOfferedToWriters' is only updated but never used"
           },
           "locations": [
             {
@@ -82682,13 +82617,13 @@
                 },
                 "region": {
                   "startLine": 518,
-                  "startColumn": 9,
+                  "startColumn": 30,
                   "endLine": 518,
-                  "endColumn": 15,
-                  "charOffset": 18912,
-                  "charLength": 6,
+                  "endColumn": 54,
+                  "charOffset": 18933,
+                  "charLength": 24,
                   "snippet": {
-                    "text": "public"
+                    "text": "MessagesOfferedToWriters"
                   }
                 },
                 "contextRegion": {
@@ -82708,8 +82643,9 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2E00B72F435E9534E72792EF896E0221981F3F185708DF0F48EC6A89760CB867"
           },
+          "baselineState": "unchanged",
           "properties": {
-            "qodanaSeverity": "Moderate",
+            "qodanaSeverity": "High",
             "tags": [
               "C#",
               ".NET 10.0"
@@ -82760,6 +82696,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "64648CFCF26D91ED960EBC95F28316ECF1E8A5D3CA20A01C561DAC0FBA722C5C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -82812,6 +82749,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "74D7C61F5CC35A6C83040B0473DF6CCD8E6C73CEA2BA90941658C5F1504BF59B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -82840,7 +82778,7 @@
                   "startColumn": 59,
                   "endLine": 183,
                   "endColumn": 61,
-                  "charOffset": 10682,
+                  "charOffset": 10674,
                   "charLength": 2,
                   "snippet": {
                     "text": "&&"
@@ -82851,7 +82789,7 @@
                   "startColumn": 1,
                   "endLine": 184,
                   "endColumn": 26,
-                  "charOffset": 10548,
+                  "charOffset": 10540,
                   "charLength": 193,
                   "snippet": {
                     "text": "                        // release, now that nothing is running against it.\n                        if (interruptGate.DisposeDeferred && !interruptGate.SourceReleased)\n                        {"
@@ -82863,6 +82801,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "C473D8CC40CA498BCD2AF754EE0875214F24E8C9E790AD09E5FBB6D2F1A32A5C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -82885,14 +82824,14 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/EnvironmentSettings.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 11
+                  "index": 17
                 },
                 "region": {
                   "startLine": 36,
                   "startColumn": 24,
                   "endLine": 36,
                   "endColumn": 36,
-                  "charOffset": 1655,
+                  "charOffset": 1653,
                   "charLength": 12,
                   "snippet": {
                     "text": "_current ??="
@@ -82903,7 +82842,7 @@
                   "startColumn": 1,
                   "endLine": 37,
                   "endColumn": 14,
-                  "charOffset": 1618,
+                  "charOffset": 1616,
                   "charLength": 87,
                   "snippet": {
                     "text": "            {\n                return _current ??= _settingsLoader.Load();\n            }"
@@ -82915,6 +82854,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "F44AE781F2C6CA634F5265FB31763E628810FB973B6C39A0EB376C62E53F5E59"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -82967,6 +82907,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "08196DE9B611C7C7580DA378E7588CC0322180BD06E9B3B7091E6B4B7A50B090"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83019,6 +82960,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "70766C2A0FC7ED8150059F587EB44C92748E835144466B7DDA6056B7ACB8CBD1"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83041,7 +82983,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppConfiguratorTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 14
+                  "index": 12
                 },
                 "region": {
                   "startLine": 47,
@@ -83071,6 +83013,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "0FB496C89042417A122BB36E4F88AB82C824FF7EBE6CD5882354752776132128"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83091,27 +83034,27 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppExecutorTests.cs",
+                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppConfiguratorTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 15
+                  "index": 12
                 },
                 "region": {
-                  "startLine": 95,
+                  "startLine": 47,
                   "startColumn": 38,
-                  "endLine": 95,
+                  "endLine": 47,
                   "endColumn": 45,
-                  "charOffset": 3592,
+                  "charOffset": 1731,
                   "charLength": 7,
                   "snippet": {
                     "text": "default"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 94,
+                  "startLine": 46,
                   "startColumn": 1,
-                  "endLine": 96,
+                  "endLine": 48,
                   "endColumn": 105,
-                  "charOffset": 3505,
+                  "charOffset": 1644,
                   "charLength": 200,
                   "snippet": {
                     "text": "        var commandApp = new Mock<ICommandApp>();\n        CancellationToken received = default;\n        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))"
@@ -83123,6 +83066,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "0FB496C89042417A122BB36E4F88AB82C824FF7EBE6CD5882354752776132128"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83145,7 +83089,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/CommandAppExecutorTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 15
+                  "index": 13
                 },
                 "region": {
                   "startLine": 118,
@@ -83175,6 +83119,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "84C6885777C448B5A5719E89777E1BB3C12F8F7B4F8408BD73AAEBD3F69ACD9F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83227,6 +83172,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "0A04FC78752E28B2A03F8EAED6E33541DDACA15B3B94C6B8F0BF94CF2B6D2559"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83279,6 +83225,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "F1B0680B79FF398C5BB476951D906B1155BE5B2042777A71B76D2190F3838B0A"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83331,6 +83278,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "C52AFC8C11746E795362D08E993516E3FF24B78BD50E7EF5966F8F1E63D15A18"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83383,6 +83331,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "51B5BC2AC5521AC8604B1F1E32916775EE174C89917B57F822778984A33796EF"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83435,6 +83384,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "417104B9623B353701AC55EF44BC29E79A2732CB80E54B66EC16C422B2DB257F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83487,6 +83437,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "76D3617B0DCE06C9B034CD41B4861C4300BE4418BDF0499B625EE83ED91B4732"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83539,6 +83490,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "8B47A5332F23963B32D35F7C1DD212EBDF3BA180ED3DECA42AF45718C05116EF"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83591,6 +83543,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "8508C500DC0227F9BE1B9051E8705B51A61860AA1769836D0C046830A114CA81"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83643,6 +83596,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "FC0028E6CE03E40859C5603C8423B3B764983A7677F228F7E06207573CCCEDD1"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83695,6 +83649,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "B296D627DF835B05F91EB559F1F7ADF2A169BE72C43DCEE3E0084A4238C79073"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -83747,6 +83702,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "8A1462ED535969CAB61BD30FB262824C7CF149F8E52282F6C23CAC9910EA51F8"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83799,6 +83755,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2707A56DBCDFE4C9A3C04191316A6950C0828640D049A21F20C5D31F1ED58EDC"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83851,6 +83808,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "5C53AD9947B6F59034F85A4498C0989A0B1957931AF586AB82B7C6BA44AC79F9"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83903,6 +83861,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "A3A6399D3624E968936AD5D01AF4803EE0D827C2FE0FF19FF30C64E8E52178B4"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83955,6 +83914,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "ADF38528B3C7044A39A78ECCF84C1B3138B18C39669F30239D00056EEC4CAB81"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -83975,27 +83935,27 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/AsyncAppCommandTests.cs",
+                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/AppCommandTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 26
+                  "index": 25
                 },
                 "region": {
-                  "startLine": 112,
+                  "startLine": 84,
                   "startColumn": 5,
-                  "endLine": 113,
+                  "endLine": 85,
                   "endColumn": 6,
-                  "charOffset": 4594,
+                  "charOffset": 3077,
                   "charLength": 7,
                   "snippet": {
                     "text": "{\n    }"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 111,
+                  "startLine": 83,
                   "startColumn": 1,
-                  "endLine": 114,
+                  "endLine": 86,
                   "endColumn": 1,
-                  "charOffset": 4534,
+                  "charOffset": 3017,
                   "charLength": 68,
                   "snippet": {
                     "text": "    private sealed class StubSettings : CommandSettings\n    {\n    }\n"
@@ -84007,6 +83967,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "ADF38528B3C7044A39A78ECCF84C1B3138B18C39669F30239D00056EEC4CAB81"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84059,6 +84020,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2AC07B8F8FEAB5E804913DFCF50237B8A301DCA0038B77C07695B34246A7540B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84111,6 +84073,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "4E82AA3B273559EB056FDB8D09FC652DE5D344987A0283782DB2C884CE91580F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84163,6 +84126,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2560CE232281B2A4D782F62979765652279029CE826755D11288074DF7AC33AE"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84185,7 +84149,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/CommandInfoFactoryTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 12
+                  "index": 11
                 },
                 "region": {
                   "startLine": 37,
@@ -84215,6 +84179,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2D1E08552BEE00E3E86B560949BBB9688BB580C1FADB723BA3DE45CFA712AC6D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84267,6 +84232,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "4BC4474C5B8CBC4CE06449119B6380A58FB3A5D5E2EA4F2CF01F16A98D075B2B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84319,6 +84285,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "D70E359F84997F0579F46B0100A5F0C3CDF2A284C1442276D3E0CE3CB3742CE7"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84371,6 +84338,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "F86EA742971FCE4D725491EF53E2866B5A0AE705B88E60E53E6689E8E9841A8F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84423,6 +84391,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "A1A1C96AB4E5D348F38A015E5C36F7A949D73C07F3F4FFBFC7FA16810D0DAD8C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -84475,6 +84444,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "05F83F23DB507DABE371910487133FABD85E6B50BBAC330B3870653E2B534C4D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84525,6 +84495,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "E80A0E9F1AB88F766C5AACFD938FE5A21859C11E40AAB2683081109CA4089DCB"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84576,6 +84547,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "203AD1B4F4A06A881D61D6F4DFF4D96DE4B0C29C8D5046E726C2748636890359"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84596,26 +84568,27 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/Spectre/CommandLine.Spectre.FluentValidation/FluentCommandSettingsValidator.cs",
+                  "uri": "src/Spectre/CommandLine.Spectre.FluentValidation/CommandLineFluentValidationServicesBundle.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 34
+                  "index": 32
                 },
                 "region": {
-                  "startLine": 2,
+                  "startLine": 3,
                   "startColumn": 1,
-                  "endLine": 2,
+                  "endLine": 3,
                   "endColumn": 48,
-                  "charOffset": 24,
+                  "charOffset": 49,
                   "charLength": 47,
                   "snippet": {
                     "text": "using Microsoft.Extensions.DependencyInjection;"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 1,
+                  "startLine": 2,
                   "startColumn": 1,
-                  "endLine": 3,
+                  "endLine": 4,
                   "endColumn": 42,
+                  "charOffset": 25,
                   "charLength": 113,
                   "snippet": {
                     "text": "using FluentValidation;\nusing Microsoft.Extensions.DependencyInjection;\nusing Ploch.CommandLine.Spectre.Commands;"
@@ -84627,6 +84600,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "05F83F23DB507DABE371910487133FABD85E6B50BBAC330B3870653E2B534C4D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84679,6 +84653,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "AB2CAAC682447FF4CD5B7BA51C3891C7D0F4FB1733A0C479167B709828A7C664"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84729,6 +84704,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "19F2B8D53C142587C36B54D11BEA808207A16D27F70742E6B05619C13549D7C4"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84780,57 +84756,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "D28ECA0610B032DCEBBF53E92451E3E5AEFBCF4C0F5E31FF3B1BF25E238181E5"
           },
-          "properties": {
-            "qodanaSeverity": "High",
-            "tags": [
-              "C#",
-              ".NET 10.0"
-            ]
-          }
-        },
-        {
-          "ruleId": "RedundantUsingDirective",
-          "ruleIndex": 2664,
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Using directive is not required by the code and can be safely removed"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/Spectre/CommandLine.UseCases/UseCaseAsyncCommand.cs",
-                  "uriBaseId": "solutionDir",
-                  "index": 21
-                },
-                "region": {
-                  "startLine": 2,
-                  "startColumn": 1,
-                  "endLine": 2,
-                  "endColumn": 30,
-                  "charOffset": 19,
-                  "charLength": 29,
-                  "snippet": {
-                    "text": "using System.Threading.Tasks;"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 1,
-                  "startColumn": 1,
-                  "endLine": 3,
-                  "endColumn": 22,
-                  "charLength": 70,
-                  "snippet": {
-                    "text": "using System.Linq;\nusing System.Threading.Tasks;\nusing Ardalis.Result;"
-                  }
-                }
-              }
-            }
-          ],
-          "partialFingerprints": {
-            "equalIndicator/v1": "4F90CAE8FF99B6ED8614D07031FDD6E86E833DB4A271157EA9BE77D51F839C38"
-          },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84883,6 +84809,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "354591CF6F188A409109C48B981FC8AF99C644D122A00C338FEC126D714A4EF8"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84934,6 +84861,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "DDBC77AA47B5DB6E99EA918934EBCABD04976801ECC361CE82CD93125A1756C9"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -84984,6 +84912,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "51965E1AE442499A8BFB623DACAD0C6B1547DDF98C55C069E4BB0F56FF50446F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85035,6 +84964,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "F0205ED5B3C75865AD9A713F81E1ADBA4D9254ECFC066357CCC9C646659B1032"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85087,6 +85017,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "7C316EC2144CD22CE8E6D6278589D301A10B851C779D18E7FFE4772F204122D5"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85138,6 +85069,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "278B341A94750ADC24C1F6D38F82A00A22EF10E71AB667E166CD3939ECC9547C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85190,6 +85122,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "8F07EAB275BE04572B056ADF9FAED21406B929710E68954AC156780009E3448D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85242,6 +85175,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "C4435BBD6809E1BB33253FDD8CA175E96112FE7FEE50B9D36C91F6F1A01C48A7"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85294,6 +85228,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "428C0C6A91C77E8D91911DC32C0AD99EB949A09AFF0F573ABB753E95560B5761"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85346,6 +85281,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "3CBC658498A6CDF0FBB13AD5810C1A4BF097E6A5832C07E7508A6A59E611FE36"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -85398,6 +85334,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "63D6DED41898B97AE7CBCD9CDBF492DBA5DA67093C28CF1853DFF1B99C7C1010"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85450,6 +85387,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "9B87AAFC6C28CC10CE3BCF0FE54DBA563A7FE6B32158BF127CB5D48933783F8D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85502,6 +85440,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "12FF6D43D6A61C745421F7851F4B94118AA861C2761FF20085E060E058027B80"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85554,6 +85493,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "4F0B96316B046A9FC943E309F606DD1E1B40C37FA094A755B514F4F1E2322666"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85606,6 +85546,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "697C378A51BB5C780379AB40473D487F819F3E34E778ECAA271A066B03A4FAD4"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85658,6 +85599,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "FB68F767E94747ED52F3F69471626B9EE7CEE1011D8F99DD08EF3F387DD0C513"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85667,12 +85609,12 @@
           }
         },
         {
-          "ruleId": "SA1615",
-          "ruleIndex": 2762,
+          "ruleId": "SA1611",
+          "ruleIndex": 2761,
           "kind": "fail",
           "level": "error",
           "message": {
-            "text": "Element return value should be documented"
+            "text": "The documentation for parameter 'context' is missing"
           },
           "locations": [
             {
@@ -85684,13 +85626,13 @@
                 },
                 "region": {
                   "startLine": 119,
-                  "startColumn": 18,
+                  "startColumn": 91,
                   "endLine": 119,
-                  "endColumn": 22,
-                  "charOffset": 5068,
-                  "charLength": 4,
+                  "endColumn": 98,
+                  "charOffset": 5141,
+                  "charLength": 7,
                   "snippet": {
-                    "text": "Task"
+                    "text": "context"
                   }
                 },
                 "contextRegion": {
@@ -85710,6 +85652,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "63D6DED41898B97AE7CBCD9CDBF492DBA5DA67093C28CF1853DFF1B99C7C1010"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85719,12 +85662,12 @@
           }
         },
         {
-          "ruleId": "SA1615",
-          "ruleIndex": 2762,
+          "ruleId": "SA1611",
+          "ruleIndex": 2761,
           "kind": "fail",
           "level": "error",
           "message": {
-            "text": "Element return value should be documented"
+            "text": "The documentation for parameter 'context' is missing"
           },
           "locations": [
             {
@@ -85736,13 +85679,13 @@
                 },
                 "region": {
                   "startLine": 149,
-                  "startColumn": 18,
+                  "startColumn": 106,
                   "endLine": 149,
-                  "endColumn": 22,
-                  "charOffset": 6507,
-                  "charLength": 4,
+                  "endColumn": 113,
+                  "charOffset": 6595,
+                  "charLength": 7,
                   "snippet": {
-                    "text": "Task"
+                    "text": "context"
                   }
                 },
                 "contextRegion": {
@@ -85762,6 +85705,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "9B87AAFC6C28CC10CE3BCF0FE54DBA563A7FE6B32158BF127CB5D48933783F8D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85771,12 +85715,12 @@
           }
         },
         {
-          "ruleId": "SA1615",
-          "ruleIndex": 2762,
+          "ruleId": "SA1611",
+          "ruleIndex": 2761,
           "kind": "fail",
           "level": "error",
           "message": {
-            "text": "Element return value should be documented"
+            "text": "The documentation for parameter 'context' is missing"
           },
           "locations": [
             {
@@ -85788,13 +85732,13 @@
                 },
                 "region": {
                   "startLine": 167,
-                  "startColumn": 18,
+                  "startColumn": 125,
                   "endLine": 167,
-                  "endColumn": 22,
-                  "charOffset": 7406,
-                  "charLength": 4,
+                  "endColumn": 132,
+                  "charOffset": 7513,
+                  "charLength": 7,
                   "snippet": {
-                    "text": "Task"
+                    "text": "context"
                   }
                 },
                 "contextRegion": {
@@ -85814,6 +85758,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "12FF6D43D6A61C745421F7851F4B94118AA861C2761FF20085E060E058027B80"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Critical",
             "tags": [
@@ -85866,6 +85811,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "9EDFBC4665EAA6A0018C63B978E7AFFD18852C9AE79808F24ABE0A122E22B6A1"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -85918,6 +85864,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "582DA66379EA8F1253CDD88638D5B96D1A9005CD198D4D562D5ADFE999677495"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -85970,6 +85917,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "277652D94A2D7EDA55677A5FC77010B52A386947295D742BC3643F9C9DE30064"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86022,6 +85970,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "D91BBE602CE2477F951B8BF3AAC147350F4ABC6781278C3856902121B48D770E"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86074,6 +86023,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "10BBEDEF565912AE8479E0B3269E5CB8B71E7E55031A6E1885BF929F3116BA4A"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86126,6 +86076,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2F6DEEA618AEEB546B912C62DCF5B87C6E2639CF1225CB13199B264E9128D8BC"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86178,6 +86129,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "C2876EB0D66E206DB7D43FB6621454218ED9DF6C9865FBCA0115FE67AD12A581"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86230,6 +86182,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "5D43ECB2215D91B57D2826A0727AB9C44B74F2C63F1D6CB56A159EAE508FFA96"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86282,6 +86235,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "EC95BD6073CC879E6056722264A71997821C272E12FE0CE9D6743E018F7A8A58"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86334,6 +86288,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "3E1AF66966BCC4D536C096C328535AED3BEE682D225FB26A9FE0A942259E35CF"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86386,6 +86341,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "4FF612E59B77832A3EFEF13CC22F42ABA79A6A14063CA6B8769406444C845421"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86438,6 +86394,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "CCB93274F24C0CC01088D9844A1A88410656C36B31AEE99FB94314C3DE223530"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86463,22 +86420,22 @@
                   "index": 42
                 },
                 "region": {
-                  "startLine": 25,
+                  "startLine": 13,
                   "startColumn": 9,
-                  "endLine": 25,
+                  "endLine": 13,
                   "endColumn": 15,
-                  "charOffset": 679,
+                  "charOffset": 388,
                   "charLength": 6,
                   "snippet": {
                     "text": "Action"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 24,
+                  "startLine": 12,
                   "startColumn": 1,
-                  "endLine": 26,
+                  "endLine": 14,
                   "endColumn": 1,
-                  "charOffset": 670,
+                  "charOffset": 379,
                   "charLength": 40,
                   "snippet": {
                     "text": "\n        Action act = appInfo.Validate;\n"
@@ -86490,6 +86447,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "CCB93274F24C0CC01088D9844A1A88410656C36B31AEE99FB94314C3DE223530"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86515,22 +86473,22 @@
                   "index": 42
                 },
                 "region": {
-                  "startLine": 35,
+                  "startLine": 13,
                   "startColumn": 9,
-                  "endLine": 35,
+                  "endLine": 13,
                   "endColumn": 15,
-                  "charOffset": 983,
+                  "charOffset": 388,
                   "charLength": 6,
                   "snippet": {
                     "text": "Action"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 34,
+                  "startLine": 12,
                   "startColumn": 1,
-                  "endLine": 36,
+                  "endLine": 14,
                   "endColumn": 1,
-                  "charOffset": 974,
+                  "charOffset": 379,
                   "charLength": 40,
                   "snippet": {
                     "text": "\n        Action act = appInfo.Validate;\n"
@@ -86542,6 +86500,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "CCB93274F24C0CC01088D9844A1A88410656C36B31AEE99FB94314C3DE223530"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86564,7 +86523,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/CommandInfoFactoryTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 12
+                  "index": 11
                 },
                 "region": {
                   "startLine": 16,
@@ -86594,6 +86553,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "BBC9BA175258E555A280B15D0ECB5B7BE526739E3637C7F87BF9920C5C6B19BB"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -86646,6 +86606,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "38E86BB248C8D790EC762CDF9FD8424A9DE1D37FA024C5609631920EEE7D91ED"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -86698,6 +86659,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "EB56955B6CB63119008302F0B968DCE627156DFFD04A45F85740A21E50CAACD6"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -86720,7 +86682,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/CommandInfoFactoryTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 12
+                  "index": 11
                 },
                 "region": {
                   "startLine": 18,
@@ -86750,6 +86712,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "093513180CA697E49BD9638CB89D8831B2BC0D84DB3229A2505171689F0F428C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "High",
             "tags": [
@@ -86802,6 +86765,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "05E08B52622C44DAB5FBD6E7AA82A8FD966E202F074328CD5FEBE78EC03D4788"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86824,7 +86788,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/CommandInfoFactoryTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 12
+                  "index": 11
                 },
                 "region": {
                   "startLine": 10,
@@ -86854,6 +86818,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "E930E5B8BF6F5D8DC46ECAB1EA99AAF08DA6A1EF36023D4412F6F3169494B99D"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86906,6 +86871,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "813A7A7A1A083D5089DEDB473EF42B451D6598625FF7A27D57A0C55B84F8F7CC"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -86958,6 +86924,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "207FDAC613C25FD1E4E76C4DD4126BFEADA6A772372BAE7D446C3E6CD187366C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87010,6 +86977,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "CE6B40463F2F26AB662F86A6D21C33465FAB0925AE8F1CC7641B6E11ED251A8F"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87062,6 +87030,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "554C11869CA2E5939F652C57E1A15FE0CBDE1BE65A30836DE658C7591EA8410C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87114,6 +87083,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "5F6EAD75538ABC6CE61E07B22883511A2724B24D6D277485B29CA750DE4D05F7"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87166,6 +87136,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "0E11605642E1C261448EBC87E1830F33DDDC320B7D9204C32E97FF7CF4D1C917"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87218,6 +87189,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "DE70836D7AF724031A59E7417E2855F86BA0AB3ED87B534D91AC1D35A3AFBA9B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87270,6 +87242,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "B5DEC6EE4D016D342E09A7405E74000C81DF3D71374EB1A3AA7463410BDF1B48"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87298,7 +87271,7 @@
                   "startColumn": 12,
                   "endLine": 421,
                   "endColumn": 22,
-                  "charOffset": 22811,
+                  "charOffset": 22803,
                   "charLength": 10,
                   "snippet": {
                     "text": "AppBuilder"
@@ -87309,7 +87282,7 @@
                   "startColumn": 1,
                   "endLine": 422,
                   "endColumn": 6,
-                  "charOffset": 22709,
+                  "charOffset": 22701,
                   "charLength": 202,
                   "snippet": {
                     "text": "    /// <returns>The same <see cref=\"AppBuilder\" /> instance, to allow chaining.</returns>\n    public AppBuilder AddServicesBundle<TServicesBundle>() where TServicesBundle : IServicesBundle, new()\n    {"
@@ -87321,6 +87294,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "FD153AF89F475F1D45116A027513D3AED2998C86A592B90D4BB966B46057255B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87330,12 +87304,12 @@
           }
         },
         {
-          "ruleId": "UnusedMethodReturnValue.Global",
-          "ruleIndex": 2937,
+          "ruleId": "UnusedMemberInSuper.Global",
+          "ruleIndex": 2935,
           "kind": "fail",
           "level": "note",
           "message": {
-            "text": "Method 'MarkupInterpolated' return value is never used"
+            "text": "Only implementations of method 'MarkupInterpolated' are used"
           },
           "locations": [
             {
@@ -87347,13 +87321,13 @@
                 },
                 "region": {
                   "startLine": 21,
-                  "startColumn": 5,
+                  "startColumn": 13,
                   "endLine": 21,
-                  "endColumn": 12,
-                  "charOffset": 687,
-                  "charLength": 7,
+                  "endColumn": 31,
+                  "charOffset": 695,
+                  "charLength": 18,
                   "snippet": {
-                    "text": "IOutput"
+                    "text": "MarkupInterpolated"
                   }
                 },
                 "contextRegion": {
@@ -87373,6 +87347,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "207FDAC613C25FD1E4E76C4DD4126BFEADA6A772372BAE7D446C3E6CD187366C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87425,6 +87400,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "9DC3D719A77D740BAE4CAD0D24FCD633730252236D7C53F45FB25FEE494BB70B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87434,12 +87410,12 @@
           }
         },
         {
-          "ruleId": "UnusedMethodReturnValue.Global",
-          "ruleIndex": 2937,
+          "ruleId": "UnusedMemberInSuper.Global",
+          "ruleIndex": 2935,
           "kind": "fail",
           "level": "note",
           "message": {
-            "text": "Method 'WriteBoldLine' return value is never used"
+            "text": "Only implementations of method 'WriteBoldLine' are used"
           },
           "locations": [
             {
@@ -87451,13 +87427,13 @@
                 },
                 "region": {
                   "startLine": 60,
-                  "startColumn": 5,
+                  "startColumn": 13,
                   "endLine": 60,
-                  "endColumn": 12,
-                  "charOffset": 2619,
-                  "charLength": 7,
+                  "endColumn": 26,
+                  "charOffset": 2627,
+                  "charLength": 13,
                   "snippet": {
-                    "text": "IOutput"
+                    "text": "WriteBoldLine"
                   }
                 },
                 "contextRegion": {
@@ -87477,6 +87453,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "0E11605642E1C261448EBC87E1830F33DDDC320B7D9204C32E97FF7CF4D1C917"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87486,12 +87463,12 @@
           }
         },
         {
-          "ruleId": "UnusedMethodReturnValue.Global",
-          "ruleIndex": 2937,
+          "ruleId": "UnusedMemberInSuper.Global",
+          "ruleIndex": 2935,
           "kind": "fail",
           "level": "note",
           "message": {
-            "text": "Method 'WriteErrorLine' return value is never used"
+            "text": "Only implementations of method 'WriteErrorLine' are used"
           },
           "locations": [
             {
@@ -87503,13 +87480,13 @@
                 },
                 "region": {
                   "startLine": 76,
-                  "startColumn": 5,
+                  "startColumn": 13,
                   "endLine": 76,
-                  "endColumn": 12,
-                  "charOffset": 3371,
-                  "charLength": 7,
+                  "endColumn": 27,
+                  "charOffset": 3379,
+                  "charLength": 14,
                   "snippet": {
-                    "text": "IOutput"
+                    "text": "WriteErrorLine"
                   }
                 },
                 "contextRegion": {
@@ -87529,6 +87506,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "DE70836D7AF724031A59E7417E2855F86BA0AB3ED87B534D91AC1D35A3AFBA9B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87581,6 +87559,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "F1FECD1659DCEE88C0C5EB10313A39A8F90A229AD2BACD66E23D424E8C8206BD"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87633,6 +87612,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "25FC94AE04BC68E0AEB5FB5F6A8F6B848B65BA425F45592C63DEF552639A64D1"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87685,6 +87665,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "C40345557B682BEC437DC4ED405912F6EDD20FF2FF266C79EBD386E0D373E08C"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87710,22 +87691,22 @@
                   "index": 21
                 },
                 "region": {
-                  "startLine": 123,
+                  "startLine": 130,
                   "startColumn": 80,
-                  "endLine": 123,
+                  "endLine": 130,
                   "endColumn": 86,
-                  "charOffset": 6287,
+                  "charOffset": 6882,
                   "charLength": 6,
                   "snippet": {
                     "text": "result"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 122,
+                  "startLine": 129,
                   "startColumn": 1,
-                  "endLine": 124,
+                  "endLine": 131,
                   "endColumn": 6,
-                  "charOffset": 6148,
+                  "charOffset": 6743,
                   "charLength": 152,
                   "snippet": {
                     "text": "    /// <returns><see cref=\"ExitCode.Success\" />.</returns>\n    protected virtual ExitCode ProcessSuccessResponse(Result<TUseCaseResponse> result)\n    {"
@@ -87737,6 +87718,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "07538DE5FF8C78D5D244FF4BF7F48E0851C388A93D6628E88852C103EB601835"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87751,7 +87733,7 @@
           "kind": "fail",
           "level": "note",
           "message": {
-            "text": "Parameter 'settings' is not used in any of the implementations"
+            "text": "Parameter 'context' is not used in any of the implementations"
           },
           "locations": [
             {
@@ -87763,13 +87745,13 @@
                 },
                 "region": {
                   "startLine": 62,
-                  "startColumn": 77,
+                  "startColumn": 58,
                   "endLine": 62,
-                  "endColumn": 85,
-                  "charOffset": 3147,
-                  "charLength": 8,
+                  "endColumn": 65,
+                  "charOffset": 3128,
+                  "charLength": 7,
                   "snippet": {
-                    "text": "settings"
+                    "text": "context"
                   }
                 },
                 "contextRegion": {
@@ -87789,6 +87771,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "25FC94AE04BC68E0AEB5FB5F6A8F6B848B65BA425F45592C63DEF552639A64D1"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87811,7 +87794,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.Tests/Commands/CommandInfoFactoryTests.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 12
+                  "index": 11
                 },
                 "region": {
                   "startLine": 36,
@@ -87841,6 +87824,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "FC9504C793F8B28696FEF115825651DEF1AFA8222A217BD77C61C173578DF9A8"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87893,57 +87877,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "181DBCC62D0304C716C6679A1226F02E7B0EA8B4A7468C6C7B76611E7E63E6DF"
           },
-          "properties": {
-            "qodanaSeverity": "Moderate",
-            "tags": [
-              "C#",
-              ".NET 10.0"
-            ]
-          }
-        },
-        {
-          "ruleId": "UseCollectionExpression",
-          "ruleIndex": 2958,
-          "kind": "fail",
-          "level": "note",
-          "message": {
-            "text": "Use collection expression"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/Spectre/CommandLine.Spectre/AppBuilder.cs",
-                  "uriBaseId": "solutionDir"
-                },
-                "region": {
-                  "startLine": 41,
-                  "startColumn": 66,
-                  "endLine": 41,
-                  "endColumn": 69,
-                  "charOffset": 2009,
-                  "charLength": 3,
-                  "snippet": {
-                    "text": "new"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 40,
-                  "startColumn": 1,
-                  "endLine": 42,
-                  "endColumn": 28,
-                  "charOffset": 1832,
-                  "charLength": 239,
-                  "snippet": {
-                    "text": "    private readonly List<Action<HostBuilderContext, IServiceCollection>> _serviceCollectionConfigurators = [];\n    private readonly HashSet<IServicesBundle> _servicesBundles = new() { new AppServicesBundle() };\n    private bool _disposed;"
-                  }
-                }
-              }
-            }
-          ],
-          "partialFingerprints": {
-            "equalIndicator/v1": "7042080C9E4F48CA59567A7DCD7E8E97A812662F0636A57EF0B61669CFEE5624"
-          },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -87969,22 +87903,22 @@
                   "index": 21
                 },
                 "region": {
-                  "startLine": 104,
+                  "startLine": 111,
                   "startColumn": 15,
-                  "endLine": 104,
+                  "endLine": 111,
                   "endColumn": 22,
-                  "charOffset": 5382,
+                  "charOffset": 5977,
                   "charLength": 7,
                   "snippet": {
                     "text": "virtual"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 103,
+                  "startLine": 110,
                   "startColumn": 1,
-                  "endLine": 105,
+                  "endLine": 112,
                   "endColumn": 6,
-                  "charOffset": 5349,
+                  "charOffset": 5944,
                   "charLength": 111,
                   "snippet": {
                     "text": "    /// </remarks>\n    protected virtual ExitCode ProcessFailureResponse(Result<TUseCaseResponse> result)\n    {"
@@ -87996,6 +87930,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "CAD8D388BA06DBE9365B6664EC93AD818831E84A07683095D8595EDE43B6BB7B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -88048,6 +87983,7 @@
           "partialFingerprints": {
             "equalIndicator/v1": "2357FC847FFFAE78C640A9A789FCD30BFA9C91B970A5DB91FD4757803E499F5B"
           },
+          "baselineState": "unchanged",
           "properties": {
             "qodanaSeverity": "Moderate",
             "tags": [
@@ -88058,10 +87994,10 @@
         }
       ],
       "automationDetails": {
-        "id": "QDNETC/qodana/2026-09-13",
-        "guid": "d2d9552d-fa3d-4f59-89d4-8e7dec21f2c4",
+        "id": "QDNETC/qodana/2026-09-14",
+        "guid": "0de56468-bd6a-46e0-838d-0a1ac756ac14",
         "properties": {
-          "jobUrl": "https://github.com/mrploch/ploch-commandline/actions/runs/34779094934"
+          "jobUrl": "https://github.com/mrploch/ploch-commandline/actions/runs/34836278816"
         }
       },
       "newlineSequences": [

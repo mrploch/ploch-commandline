@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Threading.Tasks;
 using Ardalis.Result;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
@@ -15,6 +14,14 @@ namespace Ploch.CommandLine.UseCases;
 /// <typeparam name="TUseCase">The use case type executed by the command.</typeparam>
 /// <typeparam name="TUseCaseRequest">The request type passed to the use case.</typeparam>
 /// <typeparam name="TUseCaseResponse">The response type produced by the use case.</typeparam>
+/// <remarks>
+///     The four type parameters are deliberate. <typeparamref name="TCommandSettings" /> is required by the
+///     <see cref="AsyncAppCommand{TSettings}" /> base class. <typeparamref name="TUseCase" /> keeps the concrete use
+///     case type, so a derived command can reach members beyond <see cref="IResultUseCase{TRequest, TResponse}" />.
+///     C# cannot infer <typeparamref name="TUseCaseRequest" /> and <typeparamref name="TUseCaseResponse" /> from
+///     <typeparamref name="TUseCase" />, so they must be stated to constrain it and to type the request and the
+///     rendered result.
+/// </remarks>
 /// <param name="output">The output writer used to render progress and results.</param>
 /// <param name="useCase">The use case executed by this command.</param>
 /// <param name="settingsProcessor">The processor applied to the command settings before execution.</param>

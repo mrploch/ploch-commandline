@@ -24,7 +24,7 @@ public class BaseExceptionMessageFormatter<TException> : TypeMessageFormatter<TE
 
         var text = GetExceptionText(message);
 
-        text += GetInnerExceptionMessage(message?.InnerException);
+        text += GetInnerExceptionMessage(message.InnerException);
 
         return text;
     }

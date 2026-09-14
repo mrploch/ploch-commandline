@@ -38,7 +38,7 @@ public class AppBuilder : IDisposable
     private readonly InterruptGate? _interruptGate;
 
     private readonly List<Action<HostBuilderContext, IServiceCollection>> _serviceCollectionConfigurators = [];
-    private readonly HashSet<IServicesBundle> _servicesBundles = new() { new AppServicesBundle() };
+    private readonly HashSet<IServicesBundle> _servicesBundles = [new AppServicesBundle()];
     private bool _disposed;
 
     /// <summary>
