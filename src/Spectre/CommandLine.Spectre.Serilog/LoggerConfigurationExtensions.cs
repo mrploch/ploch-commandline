@@ -63,6 +63,13 @@ public static class LoggerConfigurationExtensions
     ///     Optional directory path where log files will be stored. If not provided, the application's
     ///     base directory will be used. Both main and error log files will be created in this directory.
     /// </param>
+    /// <param name="culture">
+    ///     Optional culture used to format values in both file sinks (the main log and the
+    ///     error log). When <see langword="null" />, <see cref="CultureInfo.InvariantCulture" /> is used, so numbers,
+    ///     dates and other formatted values are written identically whatever the locale of the machine running the
+    ///     application. Pass <see cref="CultureInfo.CurrentCulture" /> to write locale-formatted values instead.
+    ///     Console output from the Spectre.Console sink is not affected by this setting.
+    /// </param>
     /// <returns>
     ///     The configured <see cref="LoggerConfiguration" /> instance for method chaining.
     /// </returns>
@@ -90,6 +97,12 @@ public static class LoggerConfigurationExtensions
     ///         <item>
     ///             <description>File retention policy to prevent disk space issues</description>
     ///         </item>
+    ///         <item>
+    ///             <description>
+    ///                 Culture-invariant formatting in both log files by default, because log files are read by
+    ///                 tools and aggregated across machines with different locales
+    ///             </description>
+    ///         </item>
     ///     </list>
     ///     <para>
     ///         The configuration process first applies the predefined settings, then reads additional
@@ -113,14 +126,24 @@ public static class LoggerConfigurationExtensions
     ///         logPath: @"C:\Logs"
     ///     )
     ///     .CreateLogger();
+    ///
+    /// // Locale-formatted values in the log files instead of the invariant default
+    /// var logger = new LoggerConfiguration()
+    ///     .ConfigureSerilog(culture: CultureInfo.CurrentCulture)
+    ///     .CreateLogger();
     /// </code>
     /// </example>
     public static LoggerConfiguration ConfigureSerilog(this LoggerConfiguration loggerConfiguration,
                                                        IConfiguration? configuration = null,
                                                        string? template = null,
                                                        string? logName = null,
-                                                       string? logPath = null)
+                                                       string? logPath = null,
+                                                       CultureInfo? culture = null)
     {
+        // Log files are machine-read and aggregated across environments, so their values must not depend on the
+        // locale of whichever machine wrote them: "1234.5" on one host and "1234,5" on another breaks parsing.
+        var fileCulture = culture ?? CultureInfo.InvariantCulture;
+
         var logMinimumLevelString =
             configuration?.GetSection("Serilog:MinimumLevel:Default").Value.SafeParseToEnum<LogEventLevel>() ?? LogEventLevel.Information;
 
@@ -134,7 +157,7 @@ public static class LoggerConfigurationExtensions
                                .WriteTo
                                .File(BuildFullLogPath(logName, logPath),
                                      outputTemplate: template ?? DefaultOutputTemplate,
-                                     formatProvider: CultureInfo.CurrentCulture,
+                                     formatProvider: fileCulture,
                                      fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
                                      rollOnFileSizeLimit: true,
                                      retainedFileCountLimit: RetainedFileCountLimit)
@@ -142,7 +165,7 @@ public static class LoggerConfigurationExtensions
                                 // The error file sink must live INSIDE the filtered sub-logger. Chained after it,
                                 // as it previously was, the filter applies to nothing and the "errors" file
                                 // receives every event.
-                               .WriteTo.Logger(errorLog => ConfigureErrorFileSink(errorLog, logName, logPath))
+                               .WriteTo.Logger(errorLog => ConfigureErrorFileSink(errorLog, logName, logPath, fileCulture))
 
                                 // Only the Spectre sink: adding WriteTo.Console as well duplicated every
                                 // console log line.
@@ -199,13 +222,17 @@ public static class LoggerConfigurationExtensions
     /// <param name="loggerConfiguration">The sub-logger configuration to populate.</param>
     /// <param name="logName">The base name of the log file.</param>
     /// <param name="logPath">The directory the log file is written to.</param>
-    private static void ConfigureErrorFileSink(LoggerConfiguration loggerConfiguration, string? logName, string? logPath)
+    /// <param name="formatProvider">The formatting information used to render values in the file.</param>
+    private static void ConfigureErrorFileSink(LoggerConfiguration loggerConfiguration,
+                                               string? logName,
+                                               string? logPath,
+                                               IFormatProvider formatProvider)
     {
         loggerConfiguration.Filter
                            .ByIncludingOnly(logEvent => logEvent.Level is LogEventLevel.Error or LogEventLevel.Warning or LogEventLevel.Fatal)
                            .WriteTo.File(BuildFullLogPath(logName, logPath, "errors"),
                                          outputTemplate: ErrorOutputTemplate,
-                                         formatProvider: CultureInfo.CurrentCulture,
+                                         formatProvider: formatProvider,
                                          fileSizeLimitBytes: ContentSizes.MegabytesToBytes(2),
                                          rollOnFileSizeLimit: true,
                                          retainedFileCountLimit: RetainedFileCountLimit);

@@ -720,6 +720,11 @@ Levels come from the `Serilog` section of `appsettings.json`:
 }
 ```
 
+Both log files are written with `CultureInfo.InvariantCulture`, so numbers and dates in them read the
+same on every machine, whatever its locale. If you prefer locale-formatted values in the files, pass
+`culture: System.Globalization.CultureInfo.CurrentCulture` to `AddSerilog`. Console output is not
+affected.
+
 Inject `ILogger<TCommand>` into a command and use it for the operator's record, keeping `IOutput`
 for what the user reads:
 
