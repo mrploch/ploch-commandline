@@ -21,14 +21,21 @@ namespace Ploch.CommandLine.Spectre;
 /// </remarks>
 public class AppBuilder : IDisposable
 {
-    private readonly List<Action<HostBuilderContext, IConfigurationBuilder>> _appConfigurationConfigurators = [];
     private readonly ConsoleAppInfo _appInfo;
 
     /// <summary>The handler installed by <see cref="Create" />, or <see langword="null" /> when this builder did not install one.</summary>
     private readonly ConsoleCancelEventHandler? _cancelKeyPressHandler;
 
     private readonly CancellationTokenSource _cancellationTokenSource;
-    private readonly List<Action<IHostBuilder>> _hostBuilderConfigurators = [];
+
+    /// <summary>
+    ///     Every <see cref="ConfigureServices(Action{HostBuilderContext, IServiceCollection})" />,
+    ///     <see cref="ConfigureAppConfiguration(Action{HostBuilderContext, IConfigurationBuilder})" /> and
+    ///     <see cref="ConfigureHost" /> call, recorded as one operation against the <see cref="IHostBuilder" /> and
+    ///     replayed in call order by <see cref="ConfigureCommandApp" />. One list rather than one per kind is what keeps
+    ///     the relative order of the different kinds of call (issue #29).
+    /// </summary>
+    private readonly List<Action<IHostBuilder>> _hostBuilderOperations = [];
 
     /// <summary>
     ///     Non-<see langword="null" /> exactly when this builder created the cancellation source and is therefore
@@ -37,7 +44,6 @@ public class AppBuilder : IDisposable
     /// </summary>
     private readonly InterruptGate? _interruptGate;
 
-    private readonly List<Action<HostBuilderContext, IServiceCollection>> _serviceCollectionConfigurators = [];
     private readonly HashSet<IServicesBundle> _servicesBundles = [new AppServicesBundle()];
     private bool _disposed;
 
@@ -236,6 +242,37 @@ public class AppBuilder : IDisposable
     /// </summary>
     /// <param name="configurator">Command line application configurator used to configure the commands and options.</param>
     /// <returns>An instance of <see cref="ICommandAppExecutor" /> allowing execution of the app.</returns>
+    /// <remarks>
+    ///     <para>
+    ///         Every <see cref="ConfigureServices(Action{HostBuilderContext, IServiceCollection})" />,
+    ///         <see cref="ConfigureAppConfiguration(Action{HostBuilderContext, IConfigurationBuilder})" /> and
+    ///         <see cref="ConfigureHost" /> call is applied to the host builder in the order the calls were made, so the
+    ///         fluent chain reads the way it executes. Of two service registrations for the same service, the one from the
+    ///         later call wins, whether it was made through <c>ConfigureServices</c> or through
+    ///         <see cref="IHostBuilder.ConfigureServices" /> inside a <see cref="ConfigureHost" /> delegate. Likewise for
+    ///         two application configuration sources supplying the same key, made through <c>ConfigureAppConfiguration</c>
+    ///         or through <see cref="IHostBuilder.ConfigureAppConfiguration" /> inside <see cref="ConfigureHost" />.
+    ///     </para>
+    ///     <para>
+    ///         Call order decides precedence between delegates of the same kind only. The host builder still runs its
+    ///         phases in its own fixed order, whatever order the calls were recorded in: host configuration
+    ///         (<see cref="IHostBuilder.ConfigureHostConfiguration" />), then application configuration, then services,
+    ///         then <see cref="IHostBuilder.ConfigureContainer{TContainerBuilder}" />. So an application configuration
+    ///         source always overrides a host configuration source for the same key, and a container delegate always
+    ///         runs after every service delegate.
+    ///     </para>
+    ///     <para>
+    ///         The builder's own defaults sit outside that sequence. The default host configuration sources —
+    ///         <c>appsettings.json</c>, <c>appsettings.{Environment}.json</c>, user secrets in Development, environment
+    ///         variables and the command-line arguments, in ascending precedence — are added before any caller
+    ///         application configuration source, and the registered services bundles are configured before any caller
+    ///         service registration, so a caller can override both. The application's
+    ///         <see cref="CancellationTokenSource" /> is registered after every caller service delegate, so no
+    ///         <c>ConfigureServices</c> call can replace it; only a container delegate or a custom service provider
+    ///         factory, which run later still, could. The token handed to running commands always comes from the
+    ///         builder's own source, whatever the container holds.
+    ///     </para>
+    /// </remarks>
     public ICommandAppExecutor ConfigureCommandApp(Action<IConfigurator> configurator)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -244,32 +281,25 @@ public class AppBuilder : IDisposable
         _appInfo.PrintAppInfo();
         var builder = Host.CreateDefaultBuilder(_appInfo.Args?.ToArray());
 
-        builder.ConfigureServices((context, services) =>
-                                  {
-                                      InitializeBundles(services, context);
+        // Defaults a caller may override go first: IHostBuilder runs delegates of the same kind in the order they were
+        // added, so anything recorded after these takes precedence over them. Configuration needs nothing here:
+        // CreateDefaultBuilder has already added appsettings.json, appsettings.{Environment}.json, user secrets,
+        // environment variables and the command line, in that precedence order. Adding appsettings.json again would
+        // put it above environment variables and command-line arguments (issue #82).
+        builder.ConfigureServices((context, services) => InitializeBundles(services, context));
 
-                                      foreach (var servicesConfigurator in _serviceCollectionConfigurators)
-                                      {
-                                          servicesConfigurator(context, services);
-                                      }
-
-                                      services.AddSingleton(_cancellationTokenSource);
-                                  });
-        builder.ConfigureAppConfiguration((context, configurationBuilder) =>
-                                          {
-                                              configurationBuilder.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-
-                                              foreach (var appConfigurationConfigurator in _appConfigurationConfigurators)
-                                              {
-                                                  appConfigurationConfigurator(context, configurationBuilder);
-                                              }
-                                          });
-
-        // Add services to the container
-        foreach (var hostBuilderConfigurator in _hostBuilderConfigurators)
+        // The caller's calls, replayed in the order they were made, whichever fluent method made them. The replay runs
+        // over a snapshot, so a host delegate that calls back into this builder cannot modify the list mid-iteration.
+        // Such a late call only takes effect in a later build of the application.
+        foreach (var hostBuilderOperation in _hostBuilderOperations.ToArray())
         {
-            hostBuilderConfigurator(builder);
+            hostBuilderOperation(builder);
         }
+
+        // Registered after every caller service delegate so no ConfigureServices call can replace the source the
+        // application actually cancels through. The token handed to the running command comes from this instance, not
+        // from the container, so a replaced registration would hand commands a source that cancels nothing.
+        builder.ConfigureServices(services => services.AddSingleton(_cancellationTokenSource));
 
         var registrar = new DependencyInjectionTypeRegistrar(builder);
 
@@ -295,7 +325,10 @@ public class AppBuilder : IDisposable
     ///     or apply specific settings without requiring access to the hosting context.
     ///     <para>
     ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
-    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureAppConfiguration" />.
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureAppConfiguration" />. The order is shared with
+    ///         <see cref="ConfigureHost" />, so a source added here takes precedence over one added by an earlier
+    ///         <see cref="ConfigureHost" /> call and yields to one added by a later call. See
+    ///         <see cref="ConfigureCommandApp" /> for the full ordering guarantee.
     ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
@@ -323,7 +356,10 @@ public class AppBuilder : IDisposable
     ///     configuration sources, modify existing configurations, or apply environment-specific settings.
     ///     <para>
     ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
-    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureAppConfiguration" />.
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureAppConfiguration" />. The order is shared with
+    ///         <see cref="ConfigureHost" />, so a source added here takes precedence over one added by an earlier
+    ///         <see cref="ConfigureHost" /> call and yields to one added by a later call. See
+    ///         <see cref="ConfigureCommandApp" /> for the full ordering guarantee.
     ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
@@ -331,7 +367,9 @@ public class AppBuilder : IDisposable
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> appConfigurationConfigurator)
     {
-        _appConfigurationConfigurators.Add(appConfigurationConfigurator.NotNull());
+        appConfigurationConfigurator.NotNull();
+
+        _hostBuilderOperations.Add(hostBuilder => hostBuilder.ConfigureAppConfiguration(appConfigurationConfigurator));
 
         return this;
     }
@@ -350,14 +388,23 @@ public class AppBuilder : IDisposable
     ///     This method allows customization of the application's host builder, enabling the addition
     ///     of services, configuration, and other host-level settings. It integrates with the
     ///     <see cref="Microsoft.Extensions.Hosting" /> framework.
-    ///     <para>Calls accumulate: every delegate is applied to the host builder, in the order it was added.</para>
+    ///     <para>
+    ///         Calls accumulate: every delegate is applied to the host builder, in the order it was added. That order is
+    ///         shared with <see cref="ConfigureServices(Action{HostBuilderContext, IServiceCollection})" /> and
+    ///         <see cref="ConfigureAppConfiguration(Action{HostBuilderContext, IConfigurationBuilder})" />, so a service
+    ///         this delegate registers through <see cref="IHostBuilder.ConfigureServices" />, or an application
+    ///         configuration source it adds through <see cref="IHostBuilder.ConfigureAppConfiguration" />, takes
+    ///         precedence over one registered by an earlier call to the matching method and yields to one registered by a
+    ///         later call. Other host builder phases keep their own fixed order; see <see cref="ConfigureCommandApp" />
+    ///         for the full ordering guarantee.
+    ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
                      "UnusedMember.Global",
                      Justification = "This method is a part of the public API and is intended for use by consumers of the AppBuilder class.")]
     public AppBuilder ConfigureHost(Action<IHostBuilder> configureDelegate)
     {
-        _hostBuilderConfigurators.Add(configureDelegate.NotNull());
+        _hostBuilderOperations.Add(configureDelegate.NotNull());
 
         return this;
     }
@@ -376,7 +423,10 @@ public class AppBuilder : IDisposable
     ///     dependencies and configuring services required by the application.
     ///     <para>
     ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
-    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureServices" />.
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureServices" />. The order is shared with
+    ///         <see cref="ConfigureHost" />, so a registration made here takes precedence over one made by an earlier
+    ///         <see cref="ConfigureHost" /> call and yields to one made by a later call. See
+    ///         <see cref="ConfigureCommandApp" /> for the full ordering guarantee.
     ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
@@ -403,12 +453,17 @@ public class AppBuilder : IDisposable
     ///     It supports advanced configuration scenarios by providing access to the hosting context.
     ///     <para>
     ///         Calls accumulate: every delegate passed to either overload is applied, in the order it was added, matching
-    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureServices" />.
+    ///         the additive behaviour of <see cref="IHostBuilder.ConfigureServices" />. The order is shared with
+    ///         <see cref="ConfigureHost" />, so a registration made here takes precedence over one made by an earlier
+    ///         <see cref="ConfigureHost" /> call and yields to one made by a later call. See
+    ///         <see cref="ConfigureCommandApp" /> for the full ordering guarantee.
     ///     </para>
     /// </remarks>
     public AppBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> servicesConfigurator)
     {
-        _serviceCollectionConfigurators.Add(servicesConfigurator.NotNull());
+        servicesConfigurator.NotNull();
+
+        _hostBuilderOperations.Add(hostBuilder => hostBuilder.ConfigureServices(servicesConfigurator));
 
         return this;
     }

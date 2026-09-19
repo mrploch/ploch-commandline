@@ -112,6 +112,34 @@ as many times as you like and every delegate runs, in the order you added them. 
 behaviour as the `IHostBuilder` methods underneath, so registration can be split across helper
 methods without one call quietly replacing another.
 
+The three methods share **one** sequence, replayed in call order when the application is built, so
+the chain reads the way it runs. When two calls register the same service, the later call wins,
+whether it used `ConfigureServices` or `host.ConfigureServices` inside `ConfigureHost`. The same
+goes for application configuration sources that supply the same key, whether added with
+`ConfigureAppConfiguration` or `host.ConfigureAppConfiguration`:
+
+```csharp
+AppBuilder.Create(args)
+          .ConfigureHost(host => host.ConfigureServices(s => s.AddSingleton<IClock, FakeClock>()))
+          .ConfigureServices(s => s.AddSingleton<IClock, SystemClock>()); // IClock resolves to SystemClock
+```
+
+Swap the two calls and `IClock` resolves to `FakeClock`.
+
+Call order decides precedence between calls of the same kind only, not which phase of the host
+build a delegate runs in. As with any `IHostBuilder`, host configuration
+(`ConfigureHostConfiguration`) runs first, then application configuration, then services, then
+`ConfigureContainer`. So an application configuration source always overrides a host
+configuration source for the same key, whatever order you called them in.
+
+The builder's own defaults sit outside that sequence. The standard host sources —
+`appsettings.json`, `appsettings.{Environment}.json`, user secrets in Development, environment
+variables and the command-line arguments, each overriding the one before — are loaded before any
+source you add, and the services bundles are configured before any service you register, so you
+can override both. The application's `CancellationTokenSource` is registered after every service
+delegate, so no `ConfigureServices` call can replace it. Your commands always receive the
+builder's own token either way.
+
 ## 4. Your first command: settings and AppCommand
 
 A command is a pair: a **settings** class describing the command line, and a **command** class
