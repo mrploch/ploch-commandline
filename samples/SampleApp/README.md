@@ -394,8 +394,8 @@ $ cat exports-2026-08-22/SpectreDemo.json
 }
 ```
 
-The export also shows what writing a file safely takes when the output directory might be shared (a
-world-writable `/tmp`, a CI workspace). A name such as `../outside` is rejected; the manifest is written
+The export also shows what writing a file safely takes when the output directory is controlled by the
+exporting user, even if its parent is shared (a private subdirectory under `/tmp`, a CI workspace). A name such as `../outside` is rejected; the manifest is written
 to a fresh temporary file opened with `FileMode.CreateNew` and then renamed over the destination, so a
 symbolic link planted at `SpectreDemo.json` is replaced rather than followed; and an output directory that
 is itself a symbolic link is refused. Re-exporting still overwrites the previous manifest. The XML docs on

@@ -44,9 +44,13 @@ namespace Ploch.CommandLine.Spectre.SampleApp.Commands.Projects.UseCases;
 ///         What the guard does <b>not</b> cover, because .NET exposes no <c>openat</c>/<c>O_NOFOLLOW</c> directory
 ///         handles to close it: links in the <em>ancestors</em> of the output directory (these are trusted, which is
 ///         what keeps paths such as macOS's <c>/tmp</c> -&gt; <c>/private/tmp</c> working), and an attacker who owns the
-///         output directory itself and swaps it for a link between the check and the write. The output directory's
-///         location is assumed to be under the caller's control; the guard stops a third party that can write
-///         <em>into</em> it from redirecting the export or truncating files elsewhere.
+///         output directory itself and swaps it for a link between the check and the write. Nor does it protect the
+///         <em>content</em> of the export from a writer who can replace entries in the output directory: the temporary
+///         file is closed before it is renamed, so such a writer can substitute it and the rename then publishes their
+///         entry as the manifest. That stays inside the output directory - the rename never follows or truncates
+///         anything - but it means the output directory itself is assumed to be under the caller's control, even when
+///         its parent (such as <c>/tmp</c>) is shared. Within that assumption the guard stops a planted link from
+///         redirecting the export or truncating files elsewhere.
 ///     </para>
 /// </remarks>
 public class ExportProjectUseCase(IProjectRepository projectRepository) : IResultUseCase<ExportProjectRequest, ExportProjectResponse>

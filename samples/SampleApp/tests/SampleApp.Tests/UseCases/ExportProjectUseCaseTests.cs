@@ -20,7 +20,7 @@ public class ExportProjectUseCaseTests
         try
         {
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             File.Exists(result.Value.OutputPath).Should().BeTrue();
@@ -51,7 +51,7 @@ public class ExportProjectUseCaseTests
         try
         {
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest(escapedName, outputPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest(escapedName, outputPath), TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeFalse("a name that escapes the requested directory must not be exported");
             File.Exists(siblingPath).Should().BeFalse("nothing may be written outside the requested output directory");
@@ -87,7 +87,7 @@ public class ExportProjectUseCaseTests
         try
         {
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest(dottedName, outputPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest(dottedName, outputPath), TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue("the name resolves inside the requested directory, so it is not an escape");
             File.Exists(Path.Join(outputPath, "..archive.json")).Should().BeTrue("the manifest belongs directly in the requested directory");
@@ -120,7 +120,7 @@ public class ExportProjectUseCaseTests
             await File.WriteAllTextAsync(manifestPath, "stale manifest from an earlier export", TestContext.Current.CancellationToken);
 
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue("re-exporting a project replaces its previous manifest");
             var contents = await File.ReadAllTextAsync(manifestPath, TestContext.Current.CancellationToken);
@@ -161,7 +161,7 @@ public class ExportProjectUseCaseTests
             CreateLinkOrSkip(() => File.CreateSymbolicLink(manifestPath, outsidePath));
 
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             (await File.ReadAllTextAsync(outsidePath, TestContext.Current.CancellationToken))
@@ -198,7 +198,7 @@ public class ExportProjectUseCaseTests
             CreateLinkOrSkip(() => File.CreateSymbolicLink(manifestPath, missingTargetPath));
 
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             File.Exists(missingTargetPath).Should().BeFalse("writing through a dangling link would create a file outside the export directory");
@@ -231,7 +231,7 @@ public class ExportProjectUseCaseTests
             Directory.CreateDirectory(blockingDirectory);
 
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", outputPath), TestContext.Current.CancellationToken);
 
             result.Status.Should().Be(Ardalis.Result.ResultStatus.Error);
             Directory.Exists(blockingDirectory).Should().BeTrue("the existing directory must not be replaced");
@@ -265,7 +265,7 @@ public class ExportProjectUseCaseTests
             CreateLinkOrSkip(() => Directory.CreateSymbolicLink(linkPath, targetDirectory));
 
             var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", linkPath), CancellationToken.None);
+                .ExecuteAsync(new ExportProjectRequest("SpectreDemo", linkPath), TestContext.Current.CancellationToken);
 
             result.Status.Should().Be(Ardalis.Result.ResultStatus.Invalid);
             Directory.GetFiles(targetDirectory).Should().BeEmpty("nothing may be written through a linked output directory");
@@ -290,7 +290,7 @@ public class ExportProjectUseCaseTests
         _projectRepositoryMock.Setup(r => r.GetByNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((ProjectItem?)null);
 
         var result = await new ExportProjectUseCase(_projectRepositoryMock.Object)
-            .ExecuteAsync(new ExportProjectRequest("Missing", Path.GetTempPath()), CancellationToken.None);
+            .ExecuteAsync(new ExportProjectRequest("Missing", Path.GetTempPath()), TestContext.Current.CancellationToken);
 
         result.Status.Should().Be(Ardalis.Result.ResultStatus.NotFound);
     }
