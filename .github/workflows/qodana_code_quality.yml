@@ -24,14 +24,7 @@ jobs:
           # in .git/config where it could read it: Qodana only needs the local history.
           persist-credentials: false
 
-      # Same sibling layout as the Build workflow: without these the analyser cannot resolve any
-      # ../ploch-common project reference and reports the solution as unresolved.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: mrploch/ploch-common
-          ref: main
-          path: ploch-common
-          fetch-depth: 0
+      # mrploch-development is required for shared build configuration and version files.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: mrploch/mrploch-development
@@ -40,8 +33,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       # Qodana mounts only the analysis root into its container, so the analysis root has to be the
-      # workspace - otherwise ../ploch-common and ../mrploch-development sit outside /data and every
-      # project reference is unresolvable. This step writes the configuration from scratch and does
+      # workspace - otherwise ../mrploch-development sits outside /data and shared files are
+      # unresolvable. This step writes the configuration from scratch and does
       # not read the repository's qodana.yaml, which only serves local runs from the repository
       # root. The two are duplicates: keep the profile, inclusions and linter in step by hand, with
       # only the paths rebased onto the workspace layout here.
@@ -65,7 +58,6 @@ jobs:
             - name: All
               paths:
                 - ploch-commandline/tests
-                - ploch-common
                 - mrploch-development
           QODANA
 

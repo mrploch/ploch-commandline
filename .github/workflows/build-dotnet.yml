@@ -51,8 +51,7 @@ jobs:
       # ploch-common is required by exactly ONE step - "Build sample application", which runs
       # -p:UsePlochProjectReferences=true so a library change cannot break the sample silently.
       # The main solution restore no longer needs it: in the default package mode the Ploch
-      # dependencies come from nuget.org, so the old MSB3202-on-every-ploch-common-project
-      # rationale no longer applies. Whether this clone should go away entirely is #51.
+      # dependencies come from nuget.org.
       #
       # ploch-common is cloned in full because it uses Nerdbank.GitVersioning too, and NBGV
       # cannot compute a version height from a shallow clone.
@@ -205,6 +204,8 @@ jobs:
       # refuted independently by the Codex reviewer; refutation confirmed by measurement.
       - name: Build sample application
         run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false
+      - name: Test sample application
+        run: dotnet test ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release --no-build -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false --logger "trx;LogFileName=${{ runner.temp }}/sample-test-results/SampleTestResults.trx" --results-directory "${{ runner.temp }}/sample-test-results"
 
       # The main ruleset has a code_coverage rule, which reads coverage GitHub itself holds -
       # SonarCloud's and Codacy's copies are invisible to it. actions/upload-code-coverage takes a
