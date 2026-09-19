@@ -1,4 +1,5 @@
-﻿using Ploch.CommandLine.Spectre.Commands;
+﻿using Moq;
+using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.TestingSupport.XUnit3.AutoMoq;
 using Spectre.Console;
@@ -92,6 +93,30 @@ public class AsyncAppCommandTests
 
     [Theory]
     [AutoMockData]
+    public async Task ExecuteAsync_should_route_a_banner_output_failure_to_the_exception_handler(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var output = new Mock<IOutput>();
+        output.Setup(o => o.MarkupLineInterpolated(It.IsAny<FormattableString>())).Throws(new IOException("console gone"));
+        var executed = false;
+        var command = CreateCommand((_, _) =>
+                                    {
+                                        executed = true;
+
+                                        return Task.FromResult(ExitCode.Success);
+                                    },
+                                    handler,
+                                    output: output.Object);
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        handler.Handled.Should().ContainSingle().Which.Should().BeOfType<IOException>();
+        executed.Should().BeFalse();
+    }
+
+    [Theory]
+    [AutoMockData]
     public void Validate_should_return_the_result_produced_by_the_configured_validator(CommandContext context)
     {
         var command = CreateCommand((_, _) => Task.FromResult(ExitCode.Success), validator: new RejectingValidator());
@@ -105,8 +130,9 @@ public class AsyncAppCommandTests
     private static StubAsyncCommand CreateCommand(Func<StubSettings, CancellationToken, Task<ExitCode>> body,
                                                   IExceptionHandler? exceptionHandler = null,
                                                   CommandArgumentsRootProcessor? processor = null,
-                                                  ICommandSettingsValidator<StubSettings>? validator = null) =>
-        new(processor ?? new([]), validator ?? new PassThroughValidator(), exceptionHandler ?? new RecordingExceptionHandler(), new NullOutput(), body);
+                                                  ICommandSettingsValidator<StubSettings>? validator = null,
+                                                  IOutput? output = null) =>
+        new(processor ?? new([]), validator ?? new PassThroughValidator(), exceptionHandler ?? new RecordingExceptionHandler(), output ?? new NullOutput(), body);
 
     private sealed class StubSettings : CommandSettings
     {

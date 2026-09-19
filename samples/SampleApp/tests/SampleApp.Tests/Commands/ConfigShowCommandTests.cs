@@ -88,7 +88,7 @@ public class ConfigShowCommandTests
         outputMock.Setup(output => output.WriteLine()).Returns(() => outputMock.Object);
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
-        var command = new ConfigShowCommand(_validatorMock.Object, _exceptionHandlerMock.Object, outputMock.Object, configuration);
+        var command = new ConfigShowCommand(new CommandArgumentsRootProcessor([]), _validatorMock.Object, _exceptionHandlerMock.Object, outputMock.Object, configuration);
 
         return (command, () => Render(renderables));
     }

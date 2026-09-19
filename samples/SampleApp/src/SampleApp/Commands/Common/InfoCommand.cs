@@ -10,16 +10,17 @@ namespace Ploch.CommandLine.Spectre.SampleApp.Commands.Common;
 /// <summary>
 ///     Synchronous command demonstrating <see cref="AppCommand{TSettings}" /> and rich output display.
 /// </summary>
-public class InfoCommand(ICommandSettingsValidator<InfoCommandSettings> validator,
+public class InfoCommand(CommandArgumentsRootProcessor settingsProcessor,
+                         ICommandSettingsValidator<InfoCommandSettings> validator,
                          IExceptionHandler exceptionHandler,
                          IOutput output,
-                         IConfiguration configuration) : AppCommand<InfoCommandSettings>(validator, exceptionHandler)
+                         IConfiguration configuration) : AppCommand<InfoCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
     /// <inheritdoc />
     protected override ExitCode DoExecute(CommandContext? context, InfoCommandSettings settings, CancellationToken cancellationToken)
     {
-        output.MarkupLineInterpolated($"[bold cyan]=== Application & System Information ===[/]");
-        output.WriteLine();
+        Output.MarkupLineInterpolated($"[bold cyan]=== Application & System Information ===[/]");
+        Output.WriteLine();
 
         var table = new Table().Border(TableBorder.Rounded);
         table.AddColumn("[yellow]Property[/]");
@@ -37,11 +38,11 @@ public class InfoCommand(ICommandSettingsValidator<InfoCommandSettings> validato
 
         // Rendered through IOutput rather than the static AnsiConsole, so the command stays testable
         // with a mocked IOutput and honours whatever console the host configured.
-        output.Write(table);
+        Output.Write(table);
 
         if (settings.ShowDiagnostics)
         {
-            output.WriteLine();
+            Output.WriteLine();
             var serilogLevel = Markup.Escape(configuration["Serilog:MinimumLevel:Default"] ?? "Information");
             var panel = new Panel(new Markup($"[dim]Memory Working Set:[/] [white]{Environment.WorkingSet / 1024 / 1024} MB[/]\n" +
                                              $"[dim]Thread Count:[/] [white]{Environment.ProcessorCount} logical cores[/]\n" +
@@ -50,11 +51,11 @@ public class InfoCommand(ICommandSettingsValidator<InfoCommandSettings> validato
                 Header = new PanelHeader("[bold yellow]Diagnostics[/]"),
                 Border = BoxBorder.Double
             };
-            output.Write(panel);
+            Output.Write(panel);
         }
 
-        output.WriteLine();
-        output.MarkupLineInterpolated($"[green]Command completed successfully.[/]");
+        Output.WriteLine();
+        Output.MarkupLineInterpolated($"[green]Command completed successfully.[/]");
 
         return ExitCode.Success;
     }

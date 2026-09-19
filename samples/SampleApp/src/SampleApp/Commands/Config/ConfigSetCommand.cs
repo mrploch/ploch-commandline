@@ -13,9 +13,10 @@ namespace Ploch.CommandLine.Spectre.SampleApp.Commands.Config;
 ///     value "set" here could not be observed by <c>config get</c> in the next invocation. Rather than
 ///     report a change that did not happen, the command shows what it would write.
 /// </remarks>
-public class ConfigSetCommand(ICommandSettingsValidator<ConfigSetCommandSettings> validator,
+public class ConfigSetCommand(CommandArgumentsRootProcessor settingsProcessor,
+                              ICommandSettingsValidator<ConfigSetCommandSettings> validator,
                               IExceptionHandler exceptionHandler,
-                              IOutput output) : AppCommand<ConfigSetCommandSettings>(validator, exceptionHandler)
+                              IOutput output) : AppCommand<ConfigSetCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
     private static readonly string[] SupportedScopes = ["user", "system"];
 
@@ -24,7 +25,7 @@ public class ConfigSetCommand(ICommandSettingsValidator<ConfigSetCommandSettings
     {
         if (!SupportedScopes.Contains(settings.Scope, StringComparer.OrdinalIgnoreCase))
         {
-            output.MarkupLineInterpolated($"[red]Unsupported scope '{settings.Scope}'. Supported scopes: {string.Join(", ", SupportedScopes)}.[/]");
+            Output.MarkupLineInterpolated($"[red]Unsupported scope '{settings.Scope}'. Supported scopes: {string.Join(", ", SupportedScopes)}.[/]");
 
             return ExitCode.InvalidInput;
         }
@@ -35,8 +36,8 @@ public class ConfigSetCommand(ICommandSettingsValidator<ConfigSetCommandSettings
         // disclosed, so no allow-list is applied here.
         var renderedValue = ConfigurationDisclosurePolicy.IsSensitive(settings.Key) ? "<redacted>" : settings.Value;
 
-        output.MarkupLineInterpolated($"[green]Would set '{settings.Key}' = '{renderedValue}' in the '{settings.Scope}' scope.[/]");
-        output.MarkupLineInterpolated($"[dim]Preview only - this sample has no writable configuration store, so nothing is persisted.[/]");
+        Output.MarkupLineInterpolated($"[green]Would set '{settings.Key}' = '{renderedValue}' in the '{settings.Scope}' scope.[/]");
+        Output.MarkupLineInterpolated($"[dim]Preview only - this sample has no writable configuration store, so nothing is persisted.[/]");
 
         return ExitCode.Success;
     }

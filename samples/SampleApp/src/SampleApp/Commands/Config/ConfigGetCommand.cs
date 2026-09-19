@@ -14,10 +14,11 @@ namespace Ploch.CommandLine.Spectre.SampleApp.Commands.Config;
 ///     this command used to do. It applies the same policy as <see cref="ConfigShowCommand" />: the key has to sit
 ///     inside a section this application owns, and a value whose path looks like a secret is redacted.
 /// </remarks>
-public class ConfigGetCommand(ICommandSettingsValidator<ConfigGetCommandSettings> validator,
+public class ConfigGetCommand(CommandArgumentsRootProcessor settingsProcessor,
+                              ICommandSettingsValidator<ConfigGetCommandSettings> validator,
                               IExceptionHandler exceptionHandler,
                               IOutput output,
-                              IConfiguration configuration) : AppCommand<ConfigGetCommandSettings>(validator, exceptionHandler)
+                              IConfiguration configuration) : AppCommand<ConfigGetCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
     /// <inheritdoc />
     protected override ExitCode DoExecute(CommandContext? context, ConfigGetCommandSettings settings, CancellationToken cancellationToken)
@@ -26,8 +27,8 @@ public class ConfigGetCommand(ICommandSettingsValidator<ConfigGetCommandSettings
         // "not found" branch below would otherwise confirm whether an arbitrary environment variable exists.
         if (!ConfigurationDisclosurePolicy.IsRenderable(settings.Key))
         {
-            output.MarkupLineInterpolated($"[yellow]Configuration key '{settings.Key}' is outside this application's own settings.[/]");
-            output.MarkupLineInterpolated($"[dim]Readable sections: {string.Join(", ", ConfigurationDisclosurePolicy.ApplicationSections)}[/]");
+            Output.MarkupLineInterpolated($"[yellow]Configuration key '{settings.Key}' is outside this application's own settings.[/]");
+            Output.MarkupLineInterpolated($"[dim]Readable sections: {string.Join(", ", ConfigurationDisclosurePolicy.ApplicationSections)}[/]");
 
             return ExitCode.InvalidInput;
         }
@@ -36,19 +37,19 @@ public class ConfigGetCommand(ICommandSettingsValidator<ConfigGetCommandSettings
 
         if (value is null)
         {
-            output.MarkupLineInterpolated($"[yellow]Configuration key '{settings.Key}' not found.[/]");
+            Output.MarkupLineInterpolated($"[yellow]Configuration key '{settings.Key}' not found.[/]");
 
             return ExitCode.Error;
         }
 
         if (ConfigurationDisclosurePolicy.IsSensitive(settings.Key))
         {
-            output.MarkupLineInterpolated($"[cyan]{settings.Key}[/]: [yellow]<redacted>[/]");
+            Output.MarkupLineInterpolated($"[cyan]{settings.Key}[/]: [yellow]<redacted>[/]");
 
             return ExitCode.Success;
         }
 
-        output.MarkupLineInterpolated($"[cyan]{settings.Key}[/]: [bold green]{value}[/]");
+        Output.MarkupLineInterpolated($"[cyan]{settings.Key}[/]: [bold green]{value}[/]");
 
         return ExitCode.Success;
     }
