@@ -44,13 +44,13 @@ list_output=$(bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list)
 
 list_count=$(echo "$list_output" | wc -l)
 if [[ "$list_count" -ne 1 ]]; then
-    echo "::error::--list output contains $list_count packages, expected 1"
+    echo "::error::--list output contains $list_count packages, expected 1" >&2
     echo "$list_output"
     exit 1
 fi
 
 if ! echo "$list_output" | grep -q "src/ProjectA/bin/Release/ProjectA.1.0.0.nupkg"; then
-    echo "::error::--list output missing ProjectA"
+    echo "::error::--list output missing ProjectA" >&2
     echo "$list_output"
     exit 1
 fi
@@ -85,13 +85,13 @@ mkdir -p src/ProjectB/bin/Release
 touch src/ProjectB/bin/Release/ProjectB.1.0.0.nupkg
 
 if bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" "https://mock.feed" > missing_symbols.log 2>&1; then
-    echo "::error::Script should have failed due to missing symbols"
+    echo "::error::Script should have failed due to missing symbols" >&2
     cat missing_symbols.log
     exit 1
 fi
 
 if grep -q "MOCK DOTNET:" missing_symbols.log; then
-    echo "::error::Script pushed packages despite missing symbols!"
+    echo "::error::Script pushed packages despite missing symbols!" >&2
     cat missing_symbols.log
     exit 1
 fi
@@ -109,12 +109,12 @@ touch mock_dir/bin/Debug/ProjectA.1.0.0.nupkg
 
 list_dir_output=$(bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list --dir mock_dir)
 if echo "$list_dir_output" | grep -qi "test"; then
-    echo "::error::--dir list output contains test packages"
+    echo "::error::--dir list output contains test packages" >&2
     echo "$list_dir_output"
     exit 1
 fi
 if echo "$list_dir_output" | grep -qi "Debug"; then
-    echo "::error::--dir list output contains Debug packages"
+    echo "::error::--dir list output contains Debug packages" >&2
     echo "$list_dir_output"
     exit 1
 fi
