@@ -1,4 +1,5 @@
 using System.Globalization;
+using Moq;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.TestingSupport.XUnit3.AutoMoq;
@@ -127,6 +128,30 @@ public class AppCommandTests
 
         result.Should().Be((int)ExitCode.Cancelled);
         handler.Handled.Should().BeEmpty("cancellation is a requested outcome, not a fault");
+    }
+
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_route_a_banner_output_failure_to_the_exception_handler(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var output = new Mock<IOutput>();
+        output.Setup(o => o.MarkupLineInterpolated(It.IsAny<FormattableString>())).Throws(new IOException("console gone"));
+        var executed = false;
+        var command = new StubCommand(_ =>
+                                      {
+                                          executed = true;
+
+                                          return ExitCode.Success;
+                                      },
+                                      handler,
+                                      output: output.Object);
+
+        var result = command.Execute(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        handler.Handled.Should().ContainSingle().Which.Should().BeOfType<IOException>();
+        executed.Should().BeFalse();
     }
 
     [Theory]

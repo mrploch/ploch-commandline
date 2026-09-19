@@ -10,6 +10,12 @@
   settings processor) to the `IExceptionHandler`, with cancellation still reported
   as `ExitCode.Cancelled` (#33).
 
+- An exception thrown by the `IOutput` while writing that banner no longer
+  escapes the command. Both `AppCommand<TSettings>` and
+  `AsyncAppCommand<TSettings>` now write the banner inside the guarded block, so
+  such a failure reaches the `IExceptionHandler` like any other fault, as the
+  documented contract already promised (#33).
+
 ### Changed
 
 - **Breaking:** `AppCommand<TSettings>` takes the same constructor arguments as

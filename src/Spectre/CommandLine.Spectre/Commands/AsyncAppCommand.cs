@@ -36,7 +36,7 @@ public abstract class AsyncAppCommand<TSettings>(CommandArgumentsRootProcessor s
     /// <exception cref="ArgumentNullException">Thrown when context or settings is null.</exception>
     /// <remarks>
     ///     The settings are passed through the configured settings processor before <see cref="DoExecuteAsync" /> runs.
-    ///     Exceptions raised by the settings processor or by <see cref="DoExecuteAsync" /> do not propagate: they are passed to the configured
+    ///     Exceptions raised while writing the banner, by the settings processor or by <see cref="DoExecuteAsync" /> do not propagate: they are passed to the configured
     ///     <see cref="IExceptionHandler" />, whose result becomes the exit code. An <see cref="OperationCanceledException" /> is the
     ///     exception to that rule: it is treated as a requested outcome and returns <see cref="ExitCode.Cancelled" /> without reaching
     ///     the handler.
@@ -46,12 +46,14 @@ public abstract class AsyncAppCommand<TSettings>(CommandArgumentsRootProcessor s
         context.NotNull();
         settings.NotNull();
 
-        output.MarkupLineInterpolated($"Executing command [bold underline]{settings.GetType().Name}[/]");
-        output.WriteLine();
-        output.WriteLine("Processing arguments...");
-
         try
         {
+            // Inside the try: a failing output (for example a broken console stream) is a fault like any other and
+            // must reach the exception handler rather than escape the command.
+            output.MarkupLineInterpolated($"Executing command [bold underline]{settings.GetType().Name}[/]");
+            output.WriteLine();
+            output.WriteLine("Processing arguments...");
+
             settingsProcessor.ProcessArguments(settings);
 
             return (int)await DoExecuteAsync(context, settings, cancellationToken).ConfigureAwait(false);
