@@ -402,6 +402,8 @@ jobs:
       - name: Dry run summary
         if: success() && inputs.dry_run == true
         env:
+          # Same strictness as the real publish: the listing fails if any .snupkg is missing.
+          SYMBOLS_REQUIRED: true
           NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
           NUGET_VERSION: ${{ steps.version.outputs.nuget_version }}
         run: |

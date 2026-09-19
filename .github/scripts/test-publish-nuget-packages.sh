@@ -97,6 +97,14 @@ if grep -q "MOCK DOTNET:" missing_symbols.log; then
 fi
 echo "  missing symbols failure OK"
 
+echo "Testing --list with required symbols (dry-run path)..."
+if SYMBOLS_REQUIRED=true bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list > list_missing.log 2>&1; then
+    echo "::error::--list should fail when a required symbol package is missing" >&2
+    cat list_missing.log >&2
+    exit 1
+fi
+echo "  --list required-symbols failure OK"
+
 # Fix ProjectB for next tests or just test --dir
 rm -rf src/ProjectB
 

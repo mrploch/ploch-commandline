@@ -99,16 +99,6 @@ if [[ -z "$packages_found" ]]; then
   exit 1
 fi
 
-if [[ "$LIST_ONLY" == "true" ]]; then
-  echo "$packages_found"
-  exit 0
-fi
-
-if [[ -z "$NUGET_PUSH_TOKEN" ]]; then
-  echo "NUGET_PUSH_TOKEN must be set when not using --list." >&2
-  exit 1
-fi
-
 mapfile -t packages <<< "$packages_found"
 
 if [[ "$SYMBOLS_REQUIRED" == "true" ]]; then
@@ -142,6 +132,18 @@ else
     echo "::warning::Symbol package discovery failed; publishing without symbol packages."
     symbols_found=''
   fi
+fi
+
+# --list runs only after the symbol checks, so a dry run with SYMBOLS_REQUIRED=true validates
+# exactly what a real publish would, and fails on the same missing .snupkg.
+if [[ "$LIST_ONLY" == "true" ]]; then
+  echo "$packages_found"
+  exit 0
+fi
+
+if [[ -z "$NUGET_PUSH_TOKEN" ]]; then
+  echo "NUGET_PUSH_TOKEN must be set when not using --list." >&2
+  exit 1
 fi
 
 for pkg in "${packages[@]}"; do

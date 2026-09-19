@@ -71,6 +71,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # Fixture tests for the publish script used by this workflow and by release.yml. They mock
+      # dotnet, so they need no build output and run before anything is published.
+      - name: Test the NuGet publish script
+        run: bash .github/scripts/test-publish-nuget-packages.sh
+
       - name: Restore .NET tools
         run: dotnet tool restore
 
