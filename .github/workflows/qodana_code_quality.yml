@@ -61,8 +61,8 @@ jobs:
                 # the analysis root, and matches these paths the same way (#58). The solution-relative
                 # form is what excludes the test projects; the workspace-relative one is kept only
                 # until a CI run proves which of the two is honoured.
-                - tests/**
-                - ploch-commandline/tests/**
+                - tests/
+                - ploch-commandline/tests/
                 - mrploch-development
           QODANA
 
