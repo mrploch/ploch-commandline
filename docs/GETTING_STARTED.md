@@ -132,7 +132,9 @@ build a delegate runs in. As with any `IHostBuilder`, host configuration
 `ConfigureContainer`. So an application configuration source always overrides a host
 configuration source for the same key, whatever order you called them in.
 
-The builder's own defaults sit outside that sequence. `appsettings.json` is loaded before any
+The builder's own defaults sit outside that sequence. The standard host sources —
+`appsettings.json`, `appsettings.{Environment}.json`, user secrets in Development, environment
+variables and the command-line arguments, each overriding the one before — are loaded before any
 source you add, and the services bundles are configured before any service you register, so you
 can override both. The application's `CancellationTokenSource` is registered after every service
 delegate, so no `ConfigureServices` call can replace it. Your commands always receive the

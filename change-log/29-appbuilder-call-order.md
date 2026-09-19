@@ -28,7 +28,16 @@
   Commands always received the builder's own token, so a replaced registration
   only ever handed them a source that cancelled nothing.
 
-  The builder's other defaults are unchanged: `appsettings.json` is still added
-  before any caller configuration source and services bundles are still
-  configured before any caller service registration, so both remain
-  overridable.
+  Services bundles are still configured before any caller service registration,
+  so they remain overridable.
+
+### Fixed
+
+- **Breaking:** `AppBuilder` no longer adds `appsettings.json` a second time on
+  top of `Host.CreateDefaultBuilder`'s own sources (#82). The duplicate landed
+  above `appsettings.{Environment}.json`, environment variables and the
+  command-line arguments, so a key present in `appsettings.json` overrode all
+  three. Standard .NET precedence now applies: the command line overrides
+  environment variables, which override `appsettings.{Environment}.json`, which
+  overrides `appsettings.json`. Sources added with `ConfigureAppConfiguration`
+  still come after all of them.

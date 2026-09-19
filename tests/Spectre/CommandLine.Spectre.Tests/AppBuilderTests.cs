@@ -39,6 +39,9 @@ public sealed class AppBuilderTests : IDisposable
     /// <summary>Expected marker order when calls of every kind are interleaved.</summary>
     private static readonly string[] InterleavedServiceCalls = ["services-1", "host-1", "services-2", "host-2"];
 
+    /// <summary>Expected markers once a call recorded during replay has taken effect.</summary>
+    private static readonly string[] LateOnly = ["late"];
+
     private readonly IAnsiConsole _originalConsole = AnsiConsole.Console;
     private readonly RecordingConsole _console = new();
 
@@ -396,7 +399,7 @@ public sealed class AppBuilderTests : IDisposable
         // it. The file lives in a private content root rather than the test working directory, so no other test - in
         // this collection or one running in parallel - can see it, and a crashed run cannot leave it behind there.
         var contentRoot = Directory.CreateTempSubdirectory("ploch-appbuilder-").FullName;
-        File.WriteAllText(Path.Combine(contentRoot, "appsettings.json"),
+        File.WriteAllText(Path.Join(contentRoot, "appsettings.json"),
                           """{ "probe": { "key": "from-appsettings", "other": "from-appsettings" } }""");
 
         try
@@ -413,6 +416,67 @@ public sealed class AppBuilderTests : IDisposable
         {
             Directory.Delete(contentRoot, recursive: true);
         }
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_let_command_line_arguments_override_the_appsettings_file()
+    {
+        // Host.CreateDefaultBuilder layers the command line above appsettings.json. The builder used to add
+        // appsettings.json a second time on top of that, silently inverting the precedence (issue #82).
+        var contentRoot = Directory.CreateTempSubdirectory("ploch-appbuilder-").FullName;
+        File.WriteAllText(Path.Join(contentRoot, "appsettings.json"),
+                          """{ "probe": { "key": "from-appsettings", "other": "from-appsettings" } }""");
+
+        try
+        {
+            var recorder = new ProbeRecorder();
+            ProbeCommand.Recorder = recorder;
+            using var cancellationTokenSource = new CancellationTokenSource();
+            var builder = new AppBuilder(new ConsoleAppInfo("--probe:key=from-command-line") { Name = "Probe App" }, cancellationTokenSource)
+                .ConfigureHost(host => host.UseContentRoot(contentRoot));
+
+            recorder.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe")).Run("probe");
+
+            recorder.ExitCode.Should().Be(0);
+            recorder.SecondConfigurationValue.Should().Be("from-appsettings", "appsettings.json is still loaded");
+            recorder.ConfigurationValue.Should().Be("from-command-line", "the command line outranks appsettings.json");
+        }
+        finally
+        {
+            Directory.Delete(contentRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_defer_a_call_made_from_inside_a_host_delegate_to_the_next_build()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var calledBack = false;
+        builder.ConfigureHost(_ =>
+                              {
+                                  if (calledBack)
+                                  {
+                                      return;
+                                  }
+
+                                  // Re-entrant: records a new operation while the builder is replaying its list.
+                                  calledBack = true;
+                                  builder.ConfigureServices(services => services.AddSingleton(new Marker { Name = "late" }));
+                              });
+
+        var firstRun = new ProbeRecorder();
+        ProbeCommand.Recorder = firstRun;
+        firstRun.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe")).Run("probe");
+
+        var secondRun = new ProbeRecorder();
+        ProbeCommand.Recorder = secondRun;
+        secondRun.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe")).Run("probe");
+
+        firstRun.ExitCode.Should().Be(0, "modifying the operation list mid-replay must not break the build in progress");
+        firstRun.MarkerNames.Should().BeEmpty("a call recorded during replay is not part of the build already in progress");
+        secondRun.ExitCode.Should().Be(0);
+        secondRun.MarkerNames.Should().Equal(LateOnly, "the recorded call applies to the next build");
     }
 
     [Fact]
@@ -444,10 +508,14 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureServices_should_not_be_able_to_replace_the_cancellation_token_source_the_builder_was_created_with()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        using var impostor = new CancellationTokenSource();
 
-        var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddSingleton(impostor))
-                                                         .ConfigureHost(host => host.ConfigureServices(services => services.AddSingleton(impostor))),
+        // The impostors are created by factories, so the container that would resolve them owns them, rather than being
+        // test-scoped instances captured by delegates. If either registration won, resolution would return a fresh
+        // source, which is not the one asserted below.
+        var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddSingleton(_ => new CancellationTokenSource()))
+                                                         .ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                           services.AddSingleton(_ =>
+                                                                                                               new CancellationTokenSource()))),
                                        cancellationTokenSource);
 
         recorder.ExitCode.Should().Be(0);
@@ -663,15 +731,16 @@ public sealed class AppBuilderTests : IDisposable
                           + "leave one that neither stops nor terminates the application");
     }
 
+    /// <summary>Adds an in-memory source supplying <c>probe:key</c>, the value the probe command reports.</summary>
+    private static void AddProbeKey(IConfigurationBuilder configuration, string value) =>
+        configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["probe:key"] = value });
+
     /// <summary>
     ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
     ///     The probe reports back through a static slot rather than a registered service, so that the helper's own
     ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly
     ///     the registrations the test made.
     /// </summary>
-    private static void AddProbeKey(IConfigurationBuilder configuration, string value) =>
-        configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["probe:key"] = value });
-
     private static ProbeRecorder RunProbeCommand(Action<AppBuilder> configure, CancellationTokenSource? cancellationTokenSource = null)
     {
         // Only the source this helper creates is disposed here. A caller-supplied one belongs to the test that

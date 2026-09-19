@@ -262,7 +262,9 @@ public class AppBuilder : IDisposable
     ///         runs after every service delegate.
     ///     </para>
     ///     <para>
-    ///         The builder's own defaults sit outside that sequence. <c>appsettings.json</c> is added before any caller
+    ///         The builder's own defaults sit outside that sequence. The default host configuration sources —
+    ///         <c>appsettings.json</c>, <c>appsettings.{Environment}.json</c>, user secrets in Development, environment
+    ///         variables and the command-line arguments, in ascending precedence — are added before any caller
     ///         application configuration source, and the registered services bundles are configured before any caller
     ///         service registration, so a caller can override both. The application's
     ///         <see cref="CancellationTokenSource" /> is registered after every caller service delegate, so no
@@ -280,9 +282,10 @@ public class AppBuilder : IDisposable
         var builder = Host.CreateDefaultBuilder(_appInfo.Args?.ToArray());
 
         // Defaults a caller may override go first: IHostBuilder runs delegates of the same kind in the order they were
-        // added, so anything recorded after these takes precedence over them.
-        builder.ConfigureAppConfiguration(configurationBuilder =>
-                                              configurationBuilder.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true));
+        // added, so anything recorded after these takes precedence over them. Configuration needs nothing here:
+        // CreateDefaultBuilder has already added appsettings.json, appsettings.{Environment}.json, user secrets,
+        // environment variables and the command line, in that precedence order. Adding appsettings.json again would
+        // put it above environment variables and command-line arguments (issue #82).
         builder.ConfigureServices((context, services) => InitializeBundles(services, context));
 
         // The caller's calls, replayed in the order they were made, whichever fluent method made them. The replay runs

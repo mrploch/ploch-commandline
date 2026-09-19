@@ -87,3 +87,7 @@ have been retired.
 - `IOutput.Write` threw `InvalidCastException` whenever the registered writer for
   the message expected a type a `string` could not be cast to — writing an
   `Exception` through `Write` always crashed.
+- **Breaking:** `AppBuilder` added `appsettings.json` a second time on top of
+  `Host.CreateDefaultBuilder`'s sources, so its keys overrode
+  `appsettings.{Environment}.json`, environment variables and command-line
+  arguments. Standard .NET configuration precedence now applies.
