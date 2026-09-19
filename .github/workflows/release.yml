@@ -11,13 +11,29 @@ on:
         description: 'Next development version after release (e.g. 1.1). Leave empty to auto-increment the minor version.'
         required: false
         type: string
+      dry_run:
+        description: 'Rehearse the release without publishing anything. Builds, tests, packs, and exchanges the OIDC token, then stops before the tag push, the nuget.org pushes, the GitHub Release and the bookkeeping PRs.'
+        required: false
+        default: false
+        type: boolean
+      mrploch_development_ref:
+        description: 'Commit SHA or tag of mrploch-development to build against.'
+        required: false
+        default: '909e070a1aabb59acb4304935ade6dc00b5e456f'
+        type: string
 
 env:
   DOTNET_VERSION: '10.0.x'
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
   packages: write
+  id-token: write
+  pull-requests: write
 
 jobs:
   release:
@@ -48,6 +64,38 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Validate mrploch_development_ref input
+        working-directory: .
+        env:
+          MRPLOCH_DEVELOPMENT_REF: ${{ inputs.mrploch_development_ref }}
+        run: |
+          REF="$MRPLOCH_DEVELOPMENT_REF"
+          if [[ ! "$REF" =~ ^[0-9a-f]{40}$ ]]; then
+            # Not a full SHA. Check if it's a valid tag.
+            TAG_SHA=$(git ls-remote --tags https://github.com/mrploch/mrploch-development.git "refs/tags/$REF" | cut -f1)
+            if [ -z "$TAG_SHA" ]; then
+              echo "::error::mrploch_development_ref must be a 40-character commit SHA or an existing tag."
+              exit 1
+            fi
+          fi
+
+      - name: Validate NuGet Trusted Publishing configuration
+        working-directory: .
+        env:
+          NUGET_USER: ${{ vars.NUGET_USER }}
+        run: |
+          if [ -z "$NUGET_USER" ]; then
+            echo "::error::Repository/organization variable NUGET_USER is not set. It must contain the nuget.org account name (profile name, NOT the email address) that owns the trusted publishing policy."
+            exit 1
+          fi
+          case "$NUGET_USER" in
+            *@*)
+              echo "::error::NUGET_USER looks like an email address. It must be the nuget.org profile name that owns the trusted publishing policy."
+              exit 1
+              ;;
+          esac
+          echo "NuGet Trusted Publishing user: $NUGET_USER"
 
       # Validate GH_TOKEN early - it is needed later for pushing commits and tags.
       # The default GITHUB_TOKEN cannot trigger subsequent workflows, so a PAT is required.
@@ -99,7 +147,7 @@ jobs:
       # GH_TOKEN (PAT) is configured separately before push steps, because it is the
       # only token that can trigger subsequent workflows when pushing commits.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: ploch-commandline
           fetch-depth: 0
@@ -112,16 +160,16 @@ jobs:
       # version files from it.
 
       - name: Checkout mrploch-development (shared build config)
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: mrploch/mrploch-development
-          ref: main
+          ref: ${{ inputs.mrploch_development_ref }}
           path: mrploch-development
           fetch-depth: 0
 
       # Projects resolve $(TargetFrameworkVersion) to net10.0 from mrploch-development/dependencies.
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -200,12 +248,57 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-test-results
           path: |
             ploch-commandline/**/TestResults/*.xml
             ploch-commandline/**/TestResults/*.trx
+
+      - name: Pack release artifacts
+        if: success()
+        run: dotnet pack ./Ploch.CommandLine.Spectre.slnx --no-build -c Release -o "$RUNNER_TEMP/packages"
+
+      - name: Build and test the SampleApp against the packed packages
+        if: success()
+        env:
+          NUGET_VERSION: ${{ steps.version.outputs.nuget_version }}
+        run: |
+          set -euo pipefail
+          SAMPLE="samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx"
+          if [ ! -f "$SAMPLE" ]; then
+            echo "::warning::Sample app not found at $SAMPLE. Skipping verification."
+            exit 0
+          fi
+          
+          CONFIG=$(mktemp)
+          GPF=$(mktemp -d)
+          {
+            echo '<?xml version="1.0" encoding="utf-8"?>'
+            echo '<configuration>'
+            echo '  <config>'
+            echo "    <add key=\"globalPackagesFolder\" value=\"$GPF\" />"
+            echo '  </config>'
+            echo '  <packageSources>'
+            echo '    <clear />'
+            echo "    <add key=\"local\" value=\"$RUNNER_TEMP/packages\" />"
+            echo '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />'
+            echo '  </packageSources>'
+            echo '  <packageSourceMapping>'
+            echo '    <packageSource key="local">'
+            echo '      <package pattern="Ploch.CommandLine.*" />'
+            echo '    </packageSource>'
+            echo '    <packageSource key="nuget.org">'
+            echo '      <package pattern="*" />'
+            echo '    </packageSource>'
+            echo '  </packageSourceMapping>'
+            echo '</configuration>'
+          } > "$CONFIG"
+
+          echo "Restoring and building SampleApp against generated packages..."
+          dotnet restore "$SAMPLE" --configfile "$CONFIG" -p:UsePlochProjectReferences=false -p:PlochPackagesVersion="$NUGET_VERSION"
+          dotnet build "$SAMPLE" --no-restore -c Release -p:UsePlochProjectReferences=false -p:PlochPackagesVersion="$NUGET_VERSION"
+          dotnet test "$SAMPLE" --no-build -c Release -p:UsePlochProjectReferences=false -p:PlochPackagesVersion="$NUGET_VERSION"
 
       # Tag is created BEFORE publishing packages intentionally.
       # Rationale: orphaned packages on NuGet.org cannot be deleted (only unlisted),
@@ -213,7 +306,7 @@ jobs:
       # Retry-safe: re-uses an existing tag if it already points at HEAD.
       - name: Create and push tag
         id: tag
-        if: success()
+        if: success() && inputs.dry_run != true
         run: |
           NUGET_VERSION="${{ steps.version.outputs.nuget_version }}"
           TAG="v${NUGET_VERSION}"
@@ -232,33 +325,120 @@ jobs:
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      # Exclude ./tests/ and ./samples/ structurally rather than by matching the name "Test":
-      # `find -path` matches the whole path and `*` spans `/`, so a name-based filter silently
-      # drops legitimate packages (ploch-common hit exactly this in its issue #278).
+      # Authenticate via OIDC to obtain a short-lived API key.
+      # This runs even on dry_run to verify the Trusted Publishing configuration is correct.
+      - name: Authenticate to NuGet.org via Trusted Publishing (OIDC)
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       - name: Publish NuGet packages to NuGet.org
-        if: success()
+        if: success() && inputs.dry_run != true
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_PUSH_TOKEN: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          SYMBOLS_REQUIRED: true
+        run: bash .github/scripts/publish-nuget-packages.sh --dir "$RUNNER_TEMP/packages" https://api.nuget.org/v3/index.json
+
+      - name: Verify the published packages are resolvable from nuget.org
+        if: ${{ !cancelled() && inputs.dry_run != true }}
+        continue-on-error: true
+        env:
+          NUGET_VERSION: ${{ steps.version.outputs.nuget_version }}
         run: |
-          PKGS=$(find . -name '*.nupkg' -not -path './tests/*' -not -path './samples/*')
-          if [ -z "$PKGS" ]; then
-            echo "::error::No .nupkg files were produced by the build."
-            exit 1
-          fi
-          echo "$PKGS" | while IFS= read -r pkg; do
-            echo "Publishing $pkg"
-            dotnet nuget push "$pkg" --source https://api.nuget.org/v3/index.json --skip-duplicate -k "$NUGET_API_KEY"
+          set -euo pipefail
+          MISSING=""
+          COUNT=0
+          PKGS=$(bash .github/scripts/publish-nuget-packages.sh --list --dir "$RUNNER_TEMP/packages")
+          for FILE in $PKGS; do
+            [ -e "$FILE" ] || continue
+            BASE=$(basename "$FILE" .nupkg)
+            ID="${BASE%.$NUGET_VERSION}"
+            if [ "$ID" = "$BASE" ]; then
+              echo "::warning::Could not derive an id from ${BASE} at ${NUGET_VERSION}; skipping."
+              continue
+            fi
+            COUNT=$((COUNT + 1))
+            FOUND=""
+            for ATTEMPT in 1 2 3 4 5 6; do
+              if curl -sf "https://api.nuget.org/v3-flatcontainer/$(echo "$ID" | tr '[:upper:]' '[:lower:]')/index.json" 2>/dev/null | grep -qi "\"$NUGET_VERSION\""; then
+                FOUND="yes"
+                break
+              fi
+              echo "  ${ID} not indexed yet (attempt ${ATTEMPT}/6); waiting 30s."
+              sleep 30
+            done
+            if [ -n "$FOUND" ]; then
+              echo "  OK      ${ID} ${NUGET_VERSION}"
+            else
+              echo "  MISSING ${ID} ${NUGET_VERSION}"
+              MISSING="${MISSING} ${ID}"
+            fi
           done
 
-      - name: Publish symbol packages to NuGet.org
-        if: success()
+          if [ -n "$MISSING" ]; then
+            echo "::warning::Pushed but not resolvable from nuget.org after ~3 minutes:${MISSING}. Usually catalogue lag; if it persists, the release is PARTIAL."
+            {
+              echo "### Publish verification incomplete"
+              echo
+              echo "These ids were pushed but were not resolvable from nuget.org within ~3 minutes:"
+              echo
+              for ID in $MISSING; do echo "- \`${ID}\` ${NUGET_VERSION}"; done
+              echo
+              echo "This is usually indexing lag. Re-check on nuget.org before announcing the release, and do not re-run the workflow to 'fix' it - the publish steps are not idempotent."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$COUNT" -gt 0 ]; then
+            echo "All ${COUNT} published package(s) are resolvable from nuget.org."
+          else
+            echo "::warning::No packages were found to verify."
+            exit 0
+          fi
+
+      - name: Dry run summary
+        if: success() && inputs.dry_run == true
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          NUGET_VERSION: ${{ steps.version.outputs.nuget_version }}
         run: |
-          find . -name '*.snupkg' -not -path './tests/*' -not -path './samples/*' | while IFS= read -r pkg; do
-            echo "Publishing symbols $pkg"
-            dotnet nuget push "$pkg" --source https://api.nuget.org/v3/index.json --skip-duplicate -k "$NUGET_API_KEY"
-          done
+          set -euo pipefail
+          if [ -z "${NUGET_API_KEY}" ]; then
+            echo "::error::Trusted Publishing returned an EMPTY key. A real release would have failed at the push. Check that the nuget.org policy names this repository and the workflow file release.yml, with a blank environment."
+            exit 1
+          fi
+          echo "OIDC token exchange succeeded: nuget.org issued a key of ${#NUGET_API_KEY} characters."
+
+          PKGS=$(bash .github/scripts/publish-nuget-packages.sh --list --dir "$RUNNER_TEMP/packages")
+          if [ -z "$PKGS" ]; then
+            echo "::error::No .nupkg files were produced."
+            exit 1
+          fi
+          {
+            echo "### Dry Run Complete"
+            echo "This was a dry run. The OIDC token exchange with nuget.org was successful, but **nothing was published** and **no tag was created**."
+            echo ""
+            echo "The following packages WOULD have been pushed:"
+            for pkg in $PKGS; do
+              echo "- \`$(basename "$pkg")\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record dependency versions
+        if: success()
+        run: |
+          SHA=$(git -C mrploch-development rev-parse HEAD)
+          {
+            echo "### Build Configuration"
+            echo ""
+            echo "Built against \`mrploch-development\` at commit \`${SHA}\`."
+            echo ""
+            echo "#### Resolved Ploch Dependencies"
+            echo '```text'
+            dotnet list ./Ploch.CommandLine.Spectre.slnx package | grep -i 'Ploch\.' | sed 's/^[ \t]*//;s/[ \t]*$//' | awk '!seen[$0]++' || echo "None found"
+            echo '```'
+          } > /tmp/versions.md
+          cat /tmp/versions.md >> "$GITHUB_STEP_SUMMARY"
 
       # Generate release notes BEFORE archiving change-log entries,
       # so only the current release's entries are included.
@@ -290,17 +470,43 @@ jobs:
             echo '```bash'
             echo "dotnet add package Ploch.CommandLine.Spectre --version ${NUGET_VERSION}"
             echo '```'
+            echo ""
+            cat /tmp/versions.md
           } > /tmp/release-notes.md
 
       - name: Create GitHub Release
-        if: success()
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        id: release
+        if: success() && inputs.dry_run != true
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: "Release ${{ steps.version.outputs.nuget_version }}"
           body_path: /tmp/release-notes.md
           draft: false
           prerelease: false
+
+      - name: Verify the GitHub release is published
+        if: ${{ always() && steps.tag.outputs.tag != '' && steps.release.outcome != 'skipped' && inputs.dry_run != true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ! IS_DRAFT=$(gh release view "$TAG" --repo "$REPO" --json isDraft --jq '.isDraft' 2>"$RUNNER_TEMP/gh-release-view.err"); then
+            LOOKUP_ERROR=$(cat "$RUNNER_TEMP/gh-release-view.err")
+            DRAFT_FLAG=$(gh api "repos/$REPO/releases" --paginate --jq ".[] | select(.tag_name==\"$TAG\") | .draft" || true)
+            if [ "$DRAFT_FLAG" = "true" ]; then
+              echo "::error title=Release left as a draft::Release $TAG exists but is still a draft. The NuGet packages for this version are already public. Re-run this workflow to publish the draft, or publish it manually from the Releases page."
+              exit 1
+            fi
+            echo "::error title=Release lookup failed::Could not read the GitHub release for tag $TAG. gh reported: ${LOOKUP_ERROR:-<no output>}. If the NuGet packages for this version were already published, verify the release manually or re-run this workflow."
+            exit 1
+          fi
+          if [ "$IS_DRAFT" != "false" ]; then
+            echo "::error title=Release left as a draft::Release $TAG exists but is still a draft (isDraft=$IS_DRAFT). The NuGet packages for this version are already public. Re-run this workflow to publish the draft, or publish it manually from the Releases page."
+            exit 1
+          fi
+          echo "Release $TAG is published (isDraft=false)."
 
       - name: Compute next development version
         id: next
@@ -322,7 +528,7 @@ jobs:
         run: dotnet nbgv set-version "${NEXT_DEV_VERSION}-prerelease"
 
       - name: Archive consumed change-log entries
-        if: success()
+        if: success() && inputs.dry_run != true
         run: |
           # Same exclusion as the notes step: archiving README.md would delete the folder's
           # own documentation on the first release.
@@ -336,12 +542,52 @@ jobs:
 
       # Idempotent commit: only commit if there are staged changes
       - name: Commit and push next development version
-        if: success()
+        if: success() && inputs.dry_run != true
         env:
           NEXT_DEV_VERSION: ${{ steps.next.outputs.next_version }}
+          RELEASED_VERSION: ${{ steps.version.outputs.nuget_version }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git add version.json
           git add change-log/ || true
-          git diff --cached --quiet && echo "No changes to commit" || \
-            git commit -m "chore(release): Bump version to ${NEXT_DEV_VERSION}-prerelease for development"
-          git push origin main
+          
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git commit -m "chore(release): Bump version to ${NEXT_DEV_VERSION}-prerelease after ${RELEASED_VERSION}"
+          
+          BRANCH="chore/post-release-${RELEASED_VERSION}"
+          REPO_URL=$(git config --get remote.origin.url)
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@${REPO_URL#https://}"
+          
+          REMOTE_SHA=$(git ls-remote origin "refs/heads/${BRANCH}" | cut -f1)
+          if [ -n "$REMOTE_SHA" ]; then
+            git push --force-with-lease="refs/heads/${BRANCH}:${REMOTE_SHA}" origin "HEAD:refs/heads/${BRANCH}"
+          else
+            git push origin "HEAD:refs/heads/${BRANCH}"
+          fi
+          git remote set-url origin "$REPO_URL"
+
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty' || true)
+          if [ -n "$EXISTING" ]; then
+            echo "Pull request #${EXISTING} was already open for ${BRANCH}; it now carries the update."
+          else
+            BODY=$(printf '%s\n' \
+              "Post-release bookkeeping for **${RELEASED_VERSION}**, opened automatically by the release workflow." \
+              "" \
+              "- \`version.json\` bumped to \`${NEXT_DEV_VERSION}-prerelease\`" \
+              "- Consumed \`change-log/*.md\` entries moved into \`change-log/archive/\`" \
+              "" \
+              "This arrives as a pull request rather than a direct push because branch protection requires one.")
+            if PR_URL=$(gh pr create \
+                 --base main \
+                 --head "$BRANCH" \
+                 --title "chore(release): Bump version to ${NEXT_DEV_VERSION}-prerelease after ${RELEASED_VERSION}" \
+                 --body "$BODY"); then
+              echo "Opened ${PR_URL}"
+            else
+              echo "::warning::Could not open a pull request. Check permissions or open it manually."
+            fi
+          fi
