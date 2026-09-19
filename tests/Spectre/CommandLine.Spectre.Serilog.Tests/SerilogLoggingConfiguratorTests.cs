@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,8 @@ namespace Ploch.CommandLine.Spectre.Serilog.Tests;
 /// </summary>
 public sealed class SerilogLoggingConfiguratorTests : IDisposable
 {
+    private const decimal SampleAmount = 1234.5m;
+
     private const string Template = "REGISTERED|{Level:u3}|{Message:lj}{NewLine}";
 
     private readonly string _logDirectory = Path.Join(Path.GetTempPath(), "ploch-commandline-serilog-tests", Guid.NewGuid().ToString("N"));
@@ -64,6 +67,43 @@ public sealed class SerilogLoggingConfiguratorTests : IDisposable
         }
 
         ReadLogFile("registered.log").Should().Contain("REGISTERED|INF|a registered message", "the template the caller passed must survive registration");
+    }
+
+    [Fact]
+    public void AddSerilog_should_pass_the_supplied_culture_through_to_the_log_files()
+    {
+        var culture = CultureInfo.GetCultureInfo("de-DE");
+        var expected = string.Format(culture, "amount {0:N2}", SampleAmount);
+
+        // The ambient culture is invariant, so a German rendering can only have come from the supplied culture.
+        AmbientCulture.Run(CultureInfo.InvariantCulture.Name, () => WriteThroughRegisteredLogger("formatted", culture));
+
+        expected.Should().NotBe(string.Format(CultureInfo.InvariantCulture, "amount {0:N2}", SampleAmount));
+        ReadLogFile("formatted.log").Should().Contain(expected, "the culture the caller passed must reach the file sinks");
+        ReadLogFile("formatted-errors.log").Should().Contain(expected, "the culture applies to the error log as well");
+    }
+
+    [Fact]
+    public void AddSerilog_should_write_invariant_values_when_no_culture_is_supplied()
+    {
+        var expected = string.Format(CultureInfo.InvariantCulture, "amount {0:N2}", SampleAmount);
+
+        AmbientCulture.Run("de-DE", () => WriteThroughRegisteredLogger("invariant"));
+
+        ReadLogFile("invariant.log").Should().Contain(expected, "log files default to the invariant culture");
+        ReadLogFile("invariant-errors.log").Should().Contain(expected, "the error log defaults to the invariant culture as well");
+    }
+
+    /// <summary>Registers Serilog through <c>AddSerilog</c> and writes one warning, which reaches both log files.</summary>
+    private void WriteThroughRegisteredLogger(string logName, CultureInfo? culture = null)
+    {
+        var services = new ServiceCollection();
+        services.AddSerilog(new ConfigurationBuilder().Build(), logName, _logDirectory, Template, culture);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger>();
+        logger.Warning("amount {Amount:N2}", SampleAmount);
+        (logger as IDisposable)?.Dispose();
     }
 
     private string ReadLogFile(string fileName)

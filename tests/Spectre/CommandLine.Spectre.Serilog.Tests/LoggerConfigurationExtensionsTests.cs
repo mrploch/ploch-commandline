@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -13,6 +14,10 @@ namespace Ploch.CommandLine.Spectre.Serilog.Tests;
 /// </summary>
 public sealed class LoggerConfigurationExtensionsTests : IDisposable
 {
+    private const decimal SampleAmount = 1234.5m;
+
+    private static readonly DateTime SampleTimestamp = new(2026, 9, 19, 14, 30, 45, DateTimeKind.Unspecified);
+
     private readonly string _logDirectory = Path.Join(Path.GetTempPath(), "ploch-commandline-serilog-tests", Guid.NewGuid().ToString("N"));
 
     public LoggerConfigurationExtensionsTests() => Directory.CreateDirectory(_logDirectory);
@@ -179,6 +184,45 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
         }
     }
 
+    /// <summary>
+    ///     Log files are machine-read and aggregated, so their values must not follow the locale of the machine that
+    ///     wrote them. The test runs under a culture whose decimal separator and date layout differ from the
+    ///     invariant culture, and asserts both files carry the invariant rendering.
+    /// </summary>
+    [Theory]
+    [InlineData("pl-PL")]
+    [InlineData("de-DE")]
+    public void ConfigureSerilog_should_format_values_invariantly_in_both_log_files_by_default(string currentCultureName)
+    {
+        var logName = $"invariant-{currentCultureName}";
+
+        AmbientCulture.Run(currentCultureName, () => WriteCultureSensitiveEvent(logName));
+
+        var expected = ExpectedRendering(CultureInfo.InvariantCulture);
+        var localised = ExpectedRendering(CultureInfo.GetCultureInfo(currentCultureName));
+        localised.Should().NotBe(expected, "the test culture must render these values differently for the test to prove anything");
+
+        ReadLogFile($"{logName}.log").Should().Contain(expected).And.NotContain(localised);
+        ReadLogFile($"{logName}-errors.log").Should().Contain(expected).And.NotContain(localised);
+    }
+
+    [Fact]
+    public void ConfigureSerilog_should_honour_a_supplied_culture_in_both_log_files()
+    {
+        const string logName = "supplied-provider";
+        var provider = CultureInfo.GetCultureInfo("de-DE");
+
+        // The current culture is invariant, so a German rendering can only have come from the supplied culture.
+        AmbientCulture.Run(CultureInfo.InvariantCulture.Name, () => WriteCultureSensitiveEvent(logName, provider));
+
+        var expected = ExpectedRendering(provider);
+        expected.Should().NotBe(ExpectedRendering(CultureInfo.InvariantCulture));
+        ReadLogFile($"{logName}.log").Should().Contain(expected);
+        ReadLogFile($"{logName}-errors.log").Should().Contain(expected);
+    }
+
+    private static string ExpectedRendering(IFormatProvider provider) => string.Format(provider, "amount {0:N2} on {1:d}", SampleAmount, SampleTimestamp);
+
     private static IConfiguration BuildConfiguration(params (string Key, string Value)[] settings) =>
         new ConfigurationBuilder().AddInMemoryCollection(settings.ToDictionary(setting => setting.Key, setting => (string?)setting.Value)).Build();
 
@@ -191,6 +235,15 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
         logger.Write(LogEventLevel.Warning, "a warning message");
         logger.Write(LogEventLevel.Error, "an error message");
         logger.Write(LogEventLevel.Fatal, "a fatal message");
+    }
+
+    /// <summary>Writes one warning, so the event reaches both the main log and the errors log.</summary>
+    private void WriteCultureSensitiveEvent(string logName, CultureInfo? culture = null)
+    {
+        using var logger = new LoggerConfiguration().ConfigureSerilog(logName: logName, logPath: _logDirectory, culture: culture)
+                                                    .CreateLogger();
+
+        logger.Warning("amount {Amount:N2} on {When:d}", SampleAmount, SampleTimestamp);
     }
 
     /// <summary>Reads a log file while the sink may still hold it open.</summary>

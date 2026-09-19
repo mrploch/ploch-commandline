@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Globalization;
+using Microsoft.Extensions.Configuration;
 using Ploch.Common.DependencyInjection;
 
 namespace Ploch.CommandLine.Spectre.Serilog;
@@ -42,6 +43,12 @@ public static class SerilogLoggingConfigurator
     ///     base directory will be used. Both main and error log files will be created in this directory.
     /// </param>
     /// <param name="template">An optional Serilog output template applied to the rolling log file.</param>
+    /// <param name="culture">
+    ///     Optional culture used to format values in both log files (the main log and the error log). When
+    ///     <see langword="null" />, the files are written with <see cref="CultureInfo.InvariantCulture" />, so their
+    ///     contents do not depend on the locale of the machine. Pass <see cref="CultureInfo.CurrentCulture" /> for
+    ///     locale-formatted values. Console output is not affected.
+    /// </param>
     /// <returns>
     ///     The same <see cref="IServiceCollection" /> instance to enable method chaining for
     ///     additional service registrations.
@@ -84,10 +91,11 @@ public static class SerilogLoggingConfigurator
                                                 IConfiguration? configuration = null,
                                                 string? logName = null,
                                                 string? logPath = null,
-                                                string? template = null)
+                                                string? template = null,
+                                                CultureInfo? culture = null)
     {
         // Registered exactly once, via the bundle. Previously this also called services.AddSerilog(...)
         // directly, which configured the logger a second time and silently dropped the output template.
-        return services.AddServicesBundle(new SerilogConfigurationBundle(template, logName, logPath), configuration);
+        return services.AddServicesBundle(new SerilogConfigurationBundle(template, logName, logPath, culture), configuration);
     }
 }
