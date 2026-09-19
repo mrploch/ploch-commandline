@@ -12,7 +12,7 @@ internal static class AmbientCulture
     public static void Run(string cultureName, Action action)
     {
         var originalCulture = CultureInfo.CurrentCulture;
-        var originalUICulture = CultureInfo.CurrentUICulture;
+        var originalUserInterfaceCulture = CultureInfo.CurrentUICulture;
 
         try
         {
@@ -23,7 +23,7 @@ internal static class AmbientCulture
         finally
         {
             CultureInfo.CurrentCulture = originalCulture;
-            CultureInfo.CurrentUICulture = originalUICulture;
+            CultureInfo.CurrentUICulture = originalUserInterfaceCulture;
         }
     }
 }

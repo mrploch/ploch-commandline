@@ -189,6 +189,7 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
     ///     wrote them. The test runs under a culture whose decimal separator and date layout differ from the
     ///     invariant culture, and asserts both files carry the invariant rendering.
     /// </summary>
+    /// <param name="currentCultureName">The non-invariant culture the log events are written under.</param>
     [Theory]
     [InlineData("pl-PL")]
     [InlineData("de-DE")]
@@ -238,6 +239,8 @@ public sealed class LoggerConfigurationExtensionsTests : IDisposable
     }
 
     /// <summary>Writes one warning, so the event reaches both the main log and the errors log.</summary>
+    /// <param name="logName">The base name of the log files.</param>
+    /// <param name="culture">The culture passed to the configuration, or <see langword="null" /> for the default.</param>
     private void WriteCultureSensitiveEvent(string logName, CultureInfo? culture = null)
     {
         using var logger = new LoggerConfiguration().ConfigureSerilog(logName: logName, logPath: _logDirectory, culture: culture)

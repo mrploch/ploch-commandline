@@ -95,6 +95,8 @@ public sealed class SerilogLoggingConfiguratorTests : IDisposable
     }
 
     /// <summary>Registers Serilog through <c>AddSerilog</c> and writes one warning, which reaches both log files.</summary>
+    /// <param name="logName">The base name of the log files.</param>
+    /// <param name="culture">The culture passed to the registration, or <see langword="null" /> for the default.</param>
     private void WriteThroughRegisteredLogger(string logName, CultureInfo? culture = null)
     {
         var services = new ServiceCollection();
