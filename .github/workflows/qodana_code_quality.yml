@@ -57,6 +57,11 @@ jobs:
           exclude:
             - name: All
               paths:
+                # Qodana for .NET reports result locations relative to the solution directory, not to
+                # the analysis root, and matches these paths the same way (#58). The solution-relative
+                # form is what excludes the test projects; the workspace-relative one is kept only
+                # until a CI run proves which of the two is honoured.
+                - tests/**
                 - ploch-commandline/tests/**
                 - mrploch-development
           QODANA
@@ -75,7 +80,6 @@ jobs:
           # qodana.sarif.json is what the committed baseline is refreshed from (see
           # .qodana/README.md).
           upload-result: true
-          env-vars: GH_PACKAGES_TOKEN
         env:
           # Scoped to this step, not the job (least privilege, raised by the CodeRabbit reviewer
           # on PR #52). Note that the linter runs in its own container and does not currently

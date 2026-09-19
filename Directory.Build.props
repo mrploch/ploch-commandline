@@ -104,7 +104,8 @@
     <UsePlochProjectReferences Condition="'$(UsePlochProjectReferences)' == ''">false</UsePlochProjectReferences>
   </PropertyGroup>
 
-  <!-- Nerdbank.GitVersioning and SourceLink for all projects. -->
+  <!-- Nerdbank.GitVersioning for all projects. SourceLink needs no package reference: the .NET 8+ SDK
+       includes it and reads the PublishRepositoryUrl / EmbedUntrackedSources settings above. -->
   <ItemGroup>
     <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
   </ItemGroup>
