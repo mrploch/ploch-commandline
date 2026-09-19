@@ -349,7 +349,10 @@ jobs:
           set -euo pipefail
           MISSING=""
           COUNT=0
-          PKGS=$(bash .github/scripts/publish-nuget-packages.sh --list --dir "$RUNNER_TEMP/packages")
+          if ! PKGS=$(bash .github/scripts/publish-nuget-packages.sh --list --dir "$RUNNER_TEMP/packages"); then
+            echo "::error::No packages found."
+            exit 1
+          fi
           for FILE in $PKGS; do
             [ -e "$FILE" ] || continue
             BASE=$(basename "$FILE" .nupkg)
@@ -409,8 +412,7 @@ jobs:
           fi
           echo "OIDC token exchange succeeded: nuget.org issued a key of ${#NUGET_API_KEY} characters."
 
-          PKGS=$(bash .github/scripts/publish-nuget-packages.sh --list --dir "$RUNNER_TEMP/packages")
-          if [ -z "$PKGS" ]; then
+          if ! PKGS=$(bash .github/scripts/publish-nuget-packages.sh --list --dir "$RUNNER_TEMP/packages"); then
             echo "::error::No .nupkg files were produced."
             exit 1
           fi
@@ -427,7 +429,7 @@ jobs:
       - name: Record dependency versions
         if: success()
         run: |
-          SHA=$(git -C mrploch-development rev-parse HEAD)
+          SHA=$(git -C ../mrploch-development rev-parse HEAD)
           {
             echo "### Build Configuration"
             echo ""
@@ -559,16 +561,12 @@ jobs:
           git commit -m "chore(release): Bump version to ${NEXT_DEV_VERSION}-prerelease after ${RELEASED_VERSION}"
           
           BRANCH="chore/post-release-${RELEASED_VERSION}"
-          REPO_URL=$(git config --get remote.origin.url)
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@${REPO_URL#https://}"
-          
           REMOTE_SHA=$(git ls-remote origin "refs/heads/${BRANCH}" | cut -f1)
           if [ -n "$REMOTE_SHA" ]; then
             git push --force-with-lease="refs/heads/${BRANCH}:${REMOTE_SHA}" origin "HEAD:refs/heads/${BRANCH}"
           else
             git push origin "HEAD:refs/heads/${BRANCH}"
           fi
-          git remote set-url origin "$REPO_URL"
 
           EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty' || true)
           if [ -n "$EXISTING" ]; then
@@ -588,6 +586,7 @@ jobs:
                  --body "$BODY"); then
               echo "Opened ${PR_URL}"
             else
-              echo "::warning::Could not open a pull request. Check permissions or open it manually."
+              echo "::error::Could not open a pull request. Branch $BRANCH has been pushed. Open it manually: gh pr create --base main --head $BRANCH"
+              exit 1
             fi
           fi

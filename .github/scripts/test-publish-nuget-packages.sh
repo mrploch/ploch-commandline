@@ -80,4 +80,44 @@ if grep -qi "Debug" output.log; then
     exit 1
 fi
 
+echo "Testing missing symbols failure..."
+mkdir -p src/ProjectB/bin/Release
+touch src/ProjectB/bin/Release/ProjectB.1.0.0.nupkg
+
+if bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" "https://mock.feed" > missing_symbols.log 2>&1; then
+    echo "::error::Script should have failed due to missing symbols"
+    cat missing_symbols.log
+    exit 1
+fi
+
+if grep -q "MOCK DOTNET:" missing_symbols.log; then
+    echo "::error::Script pushed packages despite missing symbols!"
+    cat missing_symbols.log
+    exit 1
+fi
+echo "  missing symbols failure OK"
+
+# Fix ProjectB for next tests or just test --dir
+rm -rf src/ProjectB
+
+echo "Testing --dir functionality with exclusions..."
+mkdir -p mock_dir/Tests/ProjectBTests mock_dir/bin/Debug
+touch mock_dir/Tests/ProjectBTests/ProjectBTests.1.0.0.nupkg
+touch mock_dir/ProjectA.1.0.0.nupkg
+touch mock_dir/ProjectA.1.0.0.snupkg
+touch mock_dir/bin/Debug/ProjectA.1.0.0.nupkg
+
+list_dir_output=$(bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list --dir mock_dir)
+if echo "$list_dir_output" | grep -qi "test"; then
+    echo "::error::--dir list output contains test packages"
+    echo "$list_dir_output"
+    exit 1
+fi
+if echo "$list_dir_output" | grep -qi "Debug"; then
+    echo "::error::--dir list output contains Debug packages"
+    echo "$list_dir_output"
+    exit 1
+fi
+echo "  --dir functionality OK"
+
 echo "Test passed!"

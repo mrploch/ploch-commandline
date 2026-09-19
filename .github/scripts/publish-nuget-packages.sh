@@ -26,6 +26,10 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --dir)
+      if [[ $# -lt 2 ]]; then
+        echo "Usage: publish-nuget-packages.sh [--list] [--dir <dir>] [<feed-url>]" >&2
+        exit 1
+      fi
       SEARCH_DIR="$2"
       shift 2
       ;;
@@ -75,9 +79,9 @@ SYMBOLS_REQUIRED="${SYMBOLS_REQUIRED:-false}"
 find_packages() {
   local pattern="$1"
   if [[ "$SEARCH_DIR" == "." ]]; then
-    find "$SEARCH_DIR" -type f -name "$pattern" -ipath '*/bin/Release/*' -not -ipath './tests/*' -not -ipath './samples/*' | sort
+    find "$SEARCH_DIR" -type f -name "$pattern" -ipath '*/bin/Release/*' -not -ipath '*/bin/Debug/*' -not -ipath '*/tests/*' -not -ipath '*/samples/*' | sort
   else
-    find "$SEARCH_DIR" -type f -name "$pattern" | sort
+    find "$SEARCH_DIR" -type f -name "$pattern" -not -ipath '*/bin/Debug/*' -not -ipath '*/tests/*' -not -ipath '*/samples/*' | sort
   fi
 }
 
@@ -107,24 +111,43 @@ fi
 
 mapfile -t packages <<< "$packages_found"
 
+if [[ "$SYMBOLS_REQUIRED" == "true" ]]; then
+  if ! symbols_found=$(find_packages '*.snupkg'); then
+    echo "::error::Symbol package discovery failed." >&2
+    exit 1
+  fi
+
+  if [[ -z "$symbols_found" ]]; then
+    echo "::error::SYMBOLS_REQUIRED is true, but no .snupkg files were found." >&2
+    exit 1
+  fi
+
+  missing_symbols=()
+  for pkg in "${packages[@]}"; do
+    pkg_base="${pkg%.nupkg}"
+    if [[ ! -f "${pkg_base}.snupkg" ]]; then
+      missing_symbols+=("${pkg_base}.snupkg")
+    fi
+  done
+
+  if [[ ${#missing_symbols[@]} -gt 0 ]]; then
+    echo "::error::SYMBOLS_REQUIRED is true, but the following matching .snupkg files are missing:" >&2
+    for missing in "${missing_symbols[@]}"; do
+      echo "  $missing" >&2
+    done
+    exit 1
+  fi
+else
+  if ! symbols_found=$(find_packages '*.snupkg'); then
+    echo "::warning::Symbol package discovery failed; publishing without symbol packages."
+    symbols_found=''
+  fi
+fi
+
 for pkg in "${packages[@]}"; do
   echo "Publishing $pkg"
   dotnet nuget push "$pkg" --source "$FEED_URL" --skip-duplicate -k "$NUGET_PUSH_TOKEN"
 done
-
-if ! symbols_found=$(find_packages '*.snupkg'); then
-  if [[ "$SYMBOLS_REQUIRED" == "true" ]]; then
-    echo "::error::Symbol package discovery failed." >&2
-    exit 1
-  fi
-  echo "::warning::Symbol package discovery failed; publishing without symbol packages."
-  symbols_found=''
-fi
-
-if [[ -z "$symbols_found" && "$SYMBOLS_REQUIRED" == "true" ]]; then
-  echo "::error::SYMBOLS_REQUIRED is true, but no .snupkg files were found." >&2
-  exit 1
-fi
 
 if [[ -n "$symbols_found" ]]; then
   mapfile -t symbols <<< "$symbols_found"
