@@ -99,7 +99,7 @@ jobs:
       # GH_TOKEN (PAT) is configured separately before push steps, because it is the
       # only token that can trigger subsequent workflows when pushing commits.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: ploch-commandline
           fetch-depth: 0
@@ -112,7 +112,7 @@ jobs:
       # version files from it.
 
       - name: Checkout mrploch-development (shared build config)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: mrploch/mrploch-development
           ref: main
