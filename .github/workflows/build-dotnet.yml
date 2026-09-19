@@ -70,6 +70,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # Fixture tests for the publish script used by this workflow and by release.yml. They mock
+      # dotnet, so they need no build output and run before anything is published.
+      - name: Test the NuGet publish script
+        run: bash .github/scripts/test-publish-nuget-packages.sh
+
       - name: Restore .NET tools
         run: dotnet tool restore
 
@@ -283,6 +288,8 @@ jobs:
       # available package sources". `nuget push` accepts a URL, so no source is needed.
       - name: Publish NuGet packages to GitHub Packages
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          NUGET_PUSH_TOKEN: ${{ env.GH_PACKAGES_TOKEN }}
         run: bash .github/scripts/publish-nuget-packages.sh https://nuget.pkg.github.com/mrploch/index.json
 
       # Publish PR packages to GitHub Packages for testing/validation.
@@ -295,6 +302,8 @@ jobs:
       # a validation package for each one would just fill the feed with noise.
       - name: Publish PR packages to GitHub Packages
         if: success() && github.event_name == 'pull_request' && github.base_ref == 'main'
+        env:
+          NUGET_PUSH_TOKEN: ${{ env.GH_PACKAGES_TOKEN }}
         run: |
           if [ -z "$GH_PACKAGES_TOKEN" ]; then
             echo "::warning::GH_PACKAGES_TOKEN not available, skipping PR package publish"
