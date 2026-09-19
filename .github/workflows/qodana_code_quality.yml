@@ -15,18 +15,22 @@ jobs:
       pull-requests: write
       checks: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}  # to check out the actual pull request commit, not the merge commit
           fetch-depth: 0  # a full history is required for pull request analysis
           path: ploch-commandline
+          # The analyser runs in a container that mounts this workspace. Do not leave the job token
+          # in .git/config where it could read it: Qodana only needs the local history.
+          persist-credentials: false
 
       # mrploch-development is required for shared build configuration and version files.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: mrploch/mrploch-development
           ref: main
           path: mrploch-development
+          persist-credentials: false
           fetch-depth: 0
       # Qodana mounts only the analysis root into its container, so the analysis root has to be the
       # workspace - otherwise ../mrploch-development sits outside /data and shared files are
