@@ -51,6 +51,13 @@ have been retired.
   `ConfigureAppConfiguration` are additive — every delegate is applied, in the
   order it was added — matching the `IHostBuilder` methods they wrap. They
   previously kept only the last delegate.
+- **Breaking:** those three methods share one sequence, applied to the host in
+  the order the calls were made. `ConfigureHost` delegates previously ran after
+  every `ConfigureServices` and `ConfigureAppConfiguration` delegate whatever
+  the call order, so a later `ConfigureServices` registration could lose to an
+  earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
+  now registered after every caller service delegate, including those added
+  through `ConfigureHost`.
 
 ### Removed
 
