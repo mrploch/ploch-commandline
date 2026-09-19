@@ -28,23 +28,13 @@ jobs:
     steps:
       # Reproduce the workspace layout here - every mrploch repo cloned next to the others.
       # mrploch-development is required: Directory.Packages.props imports the shared version
-      # files from it. The ploch-common clone below is now belt-and-braces: in the default
-      # package mode the docfx metadata pass resolves Ploch dependencies from nuget.org, so the
-      # old MSB3202-on-every-ploch-common-project rationale no longer applies. Whether it can
-      # be dropped is #51.
+      # files from it. In the default package mode the docfx metadata pass resolves Ploch
+      # dependencies from nuget.org.
       - name: Checkout
         uses: actions/checkout@v4
         with:
           path: ploch-commandline
           fetch-depth: 0 # NBGV needs full history to compute version height
-
-      - name: Checkout ploch-common (sibling project references)
-        uses: actions/checkout@v4
-        with:
-          repository: mrploch/ploch-common
-          ref: main
-          path: ploch-common
-          fetch-depth: 0
 
       - name: Checkout mrploch-development (shared build config)
         uses: actions/checkout@v4
