@@ -86,6 +86,9 @@ Each branch has its own help — `sample user --help`, `sample config --help`, a
 ```text
 $ sample info
 
+Executing command InfoCommandSettings
+
+Processing arguments...
 === Application & System Information ===
 
 ╭──────────────────────┬────────────────────────────────────────────╮
@@ -221,6 +224,9 @@ $ cat logs/sample.log
 ```text
 $ sample config show
 
+Executing command ConfigShowCommandSettings
+
+Processing arguments...
 Application Configuration Settings
 
 Configuration
@@ -247,6 +253,9 @@ Configuration
 ```text
 $ sample config get SampleAppSettings:Environment
 
+Executing command ConfigGetCommandSettings
+
+Processing arguments...
 SampleAppSettings:Environment: Development
 ```
 
@@ -257,6 +266,9 @@ and saying otherwise would be a lie the next `config get` would expose:
 ```text
 $ sample config set SampleAppSettings:MaxBatchSize 250
 
+Executing command ConfigSetCommandSettings
+
+Processing arguments...
 Would set 'SampleAppSettings:MaxBatchSize' = '250' in the 'user' scope.
 Preview only - this sample has no writable configuration store, so nothing is persisted.
 
@@ -266,6 +278,9 @@ Preview only - this sample has no writable configuration store, so nothing is pe
 ```text
 $ sample config set SampleAppSettings:MaxBatchSize 250 -s machine
 
+Executing command ConfigSetCommandSettings
+
+Processing arguments...
 Unsupported scope 'machine'. Supported scopes: user, system.
 
 [exit code 2]

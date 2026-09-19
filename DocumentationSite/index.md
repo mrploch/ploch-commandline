@@ -46,25 +46,27 @@ public class GreetSettings : CommandSettings
 }
 
 public class GreetCommand(
+    CommandArgumentsRootProcessor settingsProcessor,
     ICommandSettingsValidator<GreetSettings> validator,
     IExceptionHandler exceptionHandler,
     IOutput output)
-    : AppCommand<GreetSettings>(validator, exceptionHandler)
+    : AppCommand<GreetSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
     protected override ExitCode DoExecute(
         CommandContext context, GreetSettings settings, CancellationToken cancellationToken)
     {
         var greeting = $"Hello, {settings.Name}!";
-        output.WriteLine(settings.Loud ? greeting.ToUpperInvariant() : greeting);
+        Output.WriteLine(settings.Loud ? greeting.ToUpperInvariant() : greeting);
 
         return ExitCode.Success;
     }
 }
 ```
 
-`AppCommand<TSettings>` takes only the validator and the exception handler. Anything else
-the command needs — an `IOutput`, a use case, your own services — is an ordinary constructor
-parameter resolved from the container, as `IOutput` is here.
+`AppCommand<TSettings>` takes the settings processor, the validator, the exception handler
+and an `IOutput`, which it exposes as the `Output` property. Anything else the command
+needs — a use case, your own services — is an ordinary constructor parameter resolved
+from the container.
 
 Wire it up in `Program.cs`:
 
@@ -91,6 +93,9 @@ return executor.Run(args);
 
 ```console
 $ greeter greet Alice --loud
+Executing command GreetSettings
+
+Processing arguments...
 HELLO, ALICE!
 ```
 
@@ -130,12 +135,12 @@ exception to the configured `IExceptionHandler`. Cancellation is handled separat
 failure: an `OperationCanceledException` returns `ExitCode.Cancelled` and never reaches the
 exception handler.
 
-The settings-processing pipeline is run by the **asynchronous** bases only.
-`AsyncAppCommand<TSettings>` and `UseCaseAsyncCommand<...>` take a
-`CommandArgumentsRootProcessor` and call it before your implementation;
-`AppCommand<TSettings>` does not take one and validates then executes directly. A
-synchronous command that needs the pipeline should take the processor itself, or derive
-from `AsyncAppCommand<TSettings>` instead.
+Every base class also runs the settings-processing pipeline: `AppCommand<TSettings>`,
+`AsyncAppCommand<TSettings>` and `UseCaseAsyncCommand<...>` all take a
+`CommandArgumentsRootProcessor` and call it before your implementation, after printing
+the `Executing command …` / `Processing arguments…` preamble. The synchronous and
+asynchronous bases do the same framework work; only the shape of your implementation
+differs.
 
 ### Exit codes
 

@@ -90,10 +90,10 @@ public class ConfigSetCommandTests
                   .Callback<FormattableString>(message => written.Add(message.ToString()))
                   .Returns(() => outputMock.Object);
 
-        return new ConfigSetCommand(_validatorMock.Object, _exceptionHandlerMock.Object, outputMock.Object);
+        return new ConfigSetCommand(new CommandArgumentsRootProcessor([]), _validatorMock.Object, _exceptionHandlerMock.Object, outputMock.Object);
     }
 
     private static CommandContext CreateContext() => new([], Mock.Of<IRemainingArguments>(), "set", null);
 
-    private ConfigSetCommand CreateCommand() => new(_validatorMock.Object, _exceptionHandlerMock.Object, _outputMock.Object);
+    private ConfigSetCommand CreateCommand() => new(new CommandArgumentsRootProcessor([]), _validatorMock.Object, _exceptionHandlerMock.Object, _outputMock.Object);
 }
