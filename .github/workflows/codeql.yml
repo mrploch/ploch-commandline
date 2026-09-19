@@ -60,8 +60,8 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
-      # Pinned to the v4 major rather than a commit SHA, unlike every other action in this
-      # repository. github/codeql-action is published by GitHub itself, and the action ships the
+      # Pinned to the v4 major rather than a commit SHA, although the repository convention is
+      # to pin actions by SHA. github/codeql-action is published by GitHub itself, and the action ships the
       # CodeQL bundle: pinning it to a SHA freezes the query set, so the scanner would quietly
       # stop learning about new vulnerability classes. Staying current is the point of the tool.
       - name: Perform CodeQL Analysis
