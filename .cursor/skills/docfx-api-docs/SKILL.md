@@ -243,7 +243,7 @@ and edit markdown in another terminal — DocFX watches content but **not** `doc
 
 ## Cleanup script
 
-`DocumentationSite/Clean-DocFx-Common.ps1` (or equivalent):
+`DocumentationSite/Clean-DocFx.ps1` (or equivalent):
 
 ```powershell
 cd $PSScriptRoot
