@@ -732,6 +732,8 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     /// <summary>Adds an in-memory source supplying <c>probe:key</c>, the value the probe command reports.</summary>
+    /// <param name="configuration">The configuration builder to add the source to.</param>
+    /// <param name="value">The value the source supplies for <c>probe:key</c>.</param>
     private static void AddProbeKey(IConfigurationBuilder configuration, string value) =>
         configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["probe:key"] = value });
 
