@@ -9,16 +9,17 @@ namespace Ploch.CommandLine.Spectre.SampleApp.Commands.Config;
 /// <summary>
 ///     Command to display the application's own configuration, formatted as a tree.
 /// </summary>
-public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettings> validator,
+public class ConfigShowCommand(CommandArgumentsRootProcessor settingsProcessor,
+                               ICommandSettingsValidator<ConfigShowCommandSettings> validator,
                                IExceptionHandler exceptionHandler,
                                IOutput output,
-                               IConfiguration configuration) : AppCommand<ConfigShowCommandSettings>(validator, exceptionHandler)
+                               IConfiguration configuration) : AppCommand<ConfigShowCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
     /// <inheritdoc />
     protected override ExitCode DoExecute(CommandContext? context, ConfigShowCommandSettings settings, CancellationToken cancellationToken)
     {
-        output.MarkupLineInterpolated($"[bold cyan]Application Configuration Settings[/]");
-        output.WriteLine();
+        Output.MarkupLineInterpolated($"[bold cyan]Application Configuration Settings[/]");
+        Output.WriteLine();
 
         var root = new Tree("[bold yellow]Configuration[/]");
         var rendered = 0;
@@ -43,13 +44,13 @@ public class ConfigShowCommand(ICommandSettingsValidator<ConfigShowCommandSettin
 
         if (rendered == 0)
         {
-            output.MarkupLineInterpolated($"[yellow]No configuration section matched '{settings.Section}'.[/]");
-            output.MarkupLineInterpolated($"[dim]Known sections: {string.Join(", ", ConfigurationDisclosurePolicy.ApplicationSections)}[/]");
+            Output.MarkupLineInterpolated($"[yellow]No configuration section matched '{settings.Section}'.[/]");
+            Output.MarkupLineInterpolated($"[dim]Known sections: {string.Join(", ", ConfigurationDisclosurePolicy.ApplicationSections)}[/]");
 
             return ExitCode.InvalidInput;
         }
 
-        output.Write(root);
+        Output.Write(root);
 
         return ExitCode.Success;
     }

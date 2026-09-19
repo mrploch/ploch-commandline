@@ -86,6 +86,9 @@ Each branch has its own help — `sample user --help`, `sample config --help`, a
 ```text
 $ sample info
 
+Executing command InfoCommandSettings
+
+Processing arguments...
 === Application & System Information ===
 
 ╭──────────────────────┬────────────────────────────────────────────╮
@@ -221,6 +224,9 @@ $ cat logs/sample.log
 ```text
 $ sample config show
 
+Executing command ConfigShowCommandSettings
+
+Processing arguments...
 Application Configuration Settings
 
 Configuration
@@ -247,6 +253,9 @@ Configuration
 ```text
 $ sample config get SampleAppSettings:Environment
 
+Executing command ConfigGetCommandSettings
+
+Processing arguments...
 SampleAppSettings:Environment: Development
 ```
 
@@ -257,6 +266,9 @@ and saying otherwise would be a lie the next `config get` would expose:
 ```text
 $ sample config set SampleAppSettings:MaxBatchSize 250
 
+Executing command ConfigSetCommandSettings
+
+Processing arguments...
 Would set 'SampleAppSettings:MaxBatchSize' = '250' in the 'user' scope.
 Preview only - this sample has no writable configuration store, so nothing is persisted.
 
@@ -266,6 +278,9 @@ Preview only - this sample has no writable configuration store, so nothing is pe
 ```text
 $ sample config set SampleAppSettings:MaxBatchSize 250 -s machine
 
+Executing command ConfigSetCommandSettings
+
+Processing arguments...
 Unsupported scope 'machine'. Supported scopes: user, system.
 
 [exit code 2]
@@ -394,6 +409,13 @@ $ cat exports-2026-08-22/SpectreDemo.json
 }
 ```
 
+The export also shows what writing a file safely takes when the output directory is controlled by the
+exporting user, even if its parent is shared (a private subdirectory under `/tmp`, a CI workspace). A name such as `../outside` is rejected; the manifest is written
+to a fresh temporary file opened with `FileMode.CreateNew` and then renamed over the destination, so a
+symbolic link planted at `SpectreDemo.json` is replaced rather than followed; and an output directory that
+is itself a symbolic link is refused. Re-exporting still overwrites the previous manifest. The XML docs on
+`ExportProjectUseCase` spell out what the guard does and does not cover.
+
 ## Exit codes
 
 | Code | Source | Meaning |
@@ -439,5 +461,5 @@ samples/SampleApp/
 dotnet test samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -p:UsePlochProjectReferences=true
 ```
 
-28 tests: command exit codes, token expansion, cancellation handling, input validation, the export
-artefact, use case invocation and validator rules. They use xUnit v3, FluentAssertions and Moq.
+46 tests: command exit codes, token expansion, cancellation handling, input validation, the export
+artefact and its symbolic-link safety, use case invocation and validator rules. They use xUnit v3, FluentAssertions and Moq.

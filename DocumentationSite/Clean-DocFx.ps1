@@ -4,14 +4,16 @@
 
 .DESCRIPTION
     Deletes the rendered site and the API metadata DocFX regenerates from the
-    Ploch.CommandLine.Spectre projects. api/toc.yml is authored by hand and is kept.
+    Ploch.CommandLine.Spectre projects. That includes api/toc.yml: it is generated
+    by the metadata pass (api/.gitignore ignores every *.yml) and lists every API
+    type, so keeping it would keep entries for types that no longer exist.
 
     Run this when renamed or removed public types leave stale pages behind: DocFX
     overwrites the metadata it regenerates but does not delete files whose source
     symbol no longer exists.
 
 .EXAMPLE
-    ./Clean-DocFx-Common.ps1 -WhatIf
+    ./Clean-DocFx.ps1 -WhatIf
 
     Lists what would be removed without deleting anything.
 #>
@@ -34,10 +36,10 @@ try
 
     if (Test-Path -Path 'api')
     {
-        # toc.yml is hand-authored; everything else under api/ is DocFX metadata output. The glob is
-        # resolved inside the guard because PowerShell expands it before Remove-Item can react to a
-        # missing directory.
-        Remove-Item -Path 'api/*.yml' -Exclude 'toc.yml' -Force
+        # Every *.yml under api/ is DocFX metadata output, toc.yml included; only index.md is
+        # authored. The glob is resolved inside the guard because PowerShell expands it before
+        # Remove-Item can react to a missing directory.
+        Remove-Item -Path 'api/*.yml' -Force
 
         if (Test-Path -Path 'api/.manifest')
         {

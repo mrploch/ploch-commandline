@@ -69,6 +69,6 @@ public class ConfigGetCommandTests
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
-        return new ConfigGetCommand(_validatorMock.Object, _exceptionHandlerMock.Object, outputMock.Object, configuration);
+        return new ConfigGetCommand(new CommandArgumentsRootProcessor([]), _validatorMock.Object, _exceptionHandlerMock.Object, outputMock.Object, configuration);
     }
 }

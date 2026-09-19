@@ -17,7 +17,9 @@ namespace Ploch.CommandLine.Spectre.Tests;
 /// <remarks>
 ///     The three "combine every delegate" tests were characterisation tests pinning the builder's original
 ///     last-call-wins behaviour; issue #22 made the three configuration methods additive, matching
-///     <see cref="IHostBuilder" /> and <c>AddServicesBundle</c>, and the tests now pin that instead.
+///     <see cref="IHostBuilder" /> and <c>AddServicesBundle</c>, and the tests now pin that instead. The
+///     "take precedence ... when called after it" tests pin issue #29: calls of all three kinds share one sequence and
+///     are replayed in call order, so the later call wins whichever method made it.
 /// </remarks>
 [Collection(GlobalConsoleState.Name)]
 public sealed class AppBuilderTests : IDisposable
@@ -27,6 +29,18 @@ public sealed class AppBuilderTests : IDisposable
 
     /// <summary>Expected marker order when the two overloads of the same method are mixed.</summary>
     private static readonly string[] WithoutThenWithContext = ["without-context", "with-context"];
+
+    /// <summary>Expected marker order when <c>ConfigureHost</c> is called before <c>ConfigureServices</c>.</summary>
+    private static readonly string[] FromHostThenFromServices = ["from-host", "from-services"];
+
+    /// <summary>Expected marker order when <c>ConfigureServices</c> is called before <c>ConfigureHost</c>.</summary>
+    private static readonly string[] FromServicesThenFromHost = ["from-services", "from-host"];
+
+    /// <summary>Expected marker order when calls of every kind are interleaved.</summary>
+    private static readonly string[] InterleavedServiceCalls = ["services-1", "host-1", "services-2", "host-2"];
+
+    /// <summary>Expected markers once a call recorded during replay has taken effect.</summary>
+    private static readonly string[] LateOnly = ["late"];
 
     private readonly IAnsiConsole _originalConsole = AnsiConsole.Console;
     private readonly RecordingConsole _console = new();
@@ -327,6 +341,199 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     [Fact]
+    public void ConfigureServices_should_take_precedence_over_ConfigureHost_when_called_after_it()
+    {
+        var recorder = RunProbeCommand(builder => builder
+                                                  .ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                    services.AddSingleton(new Marker
+                                                                                                        { Name = "from-host" })))
+                                                  .ConfigureServices(services => services.AddSingleton(new Marker { Name = "from-services" })));
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.Marker!.Name.Should().Be("from-services", "the registration made by the later call is the last one, so it wins");
+        recorder.MarkerNames.Should().Equal(FromHostThenFromServices, "the builder replays the calls in the order they were made");
+    }
+
+    [Fact]
+    public void ConfigureHost_should_take_precedence_over_ConfigureServices_when_called_after_it()
+    {
+        var recorder = RunProbeCommand(builder => builder
+                                                  .ConfigureServices(services => services.AddSingleton(new Marker { Name = "from-services" }))
+                                                  .ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                    services.AddSingleton(new Marker
+                                                                                                        { Name = "from-host" }))));
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.Marker!.Name.Should().Be("from-host", "the registration made by the later call is the last one, so it wins");
+        recorder.MarkerNames.Should().Equal(FromServicesThenFromHost, "the builder replays the calls in the order they were made");
+    }
+
+    [Fact]
+    public void ConfigureAppConfiguration_should_take_precedence_over_ConfigureHost_when_called_after_it()
+    {
+        var recorder = RunProbeCommand(builder => builder
+                                                  .ConfigureHost(host => host.ConfigureAppConfiguration(configuration =>
+                                                                                                            AddProbeKey(configuration, "from-host")))
+                                                  .ConfigureAppConfiguration(configuration => AddProbeKey(configuration, "from-configuration")));
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.ConfigurationValue.Should().Be("from-configuration", "the source added by the later call is the last one, so it wins");
+    }
+
+    [Fact]
+    public void ConfigureHost_should_take_precedence_over_ConfigureAppConfiguration_when_called_after_it()
+    {
+        var recorder = RunProbeCommand(builder => builder
+                                                  .ConfigureAppConfiguration(configuration => AddProbeKey(configuration, "from-configuration"))
+                                                  .ConfigureHost(host => host.ConfigureAppConfiguration(configuration =>
+                                                                                                            AddProbeKey(configuration, "from-host"))));
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.ConfigurationValue.Should().Be("from-host", "the source added by the later call is the last one, so it wins");
+    }
+
+    [Fact]
+    public void ConfigureAppConfiguration_should_override_the_default_appsettings_file()
+    {
+        // appsettings.json is loaded by default; a source the caller adds must come after it so the caller can override
+        // it. The file lives in a private content root rather than the test working directory, so no other test - in
+        // this collection or one running in parallel - can see it, and a crashed run cannot leave it behind there.
+        var contentRoot = Directory.CreateTempSubdirectory("ploch-appbuilder-").FullName;
+        File.WriteAllText(Path.Join(contentRoot, "appsettings.json"),
+                          """{ "probe": { "key": "from-appsettings", "other": "from-appsettings" } }""");
+
+        try
+        {
+            var recorder = RunProbeCommand(builder => builder.ConfigureHost(host => host.UseContentRoot(contentRoot))
+                                                             .ConfigureAppConfiguration(configuration =>
+                                                                                            AddProbeKey(configuration, "from-configuration")));
+
+            recorder.ExitCode.Should().Be(0);
+            recorder.SecondConfigurationValue.Should().Be("from-appsettings", "the default appsettings.json source is still loaded");
+            recorder.ConfigurationValue.Should().Be("from-configuration", "sources the caller adds come after the default appsettings.json");
+        }
+        finally
+        {
+            Directory.Delete(contentRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_let_command_line_arguments_override_the_appsettings_file()
+    {
+        // Host.CreateDefaultBuilder layers the command line above appsettings.json. The builder used to add
+        // appsettings.json a second time on top of that, silently inverting the precedence (issue #82).
+        var contentRoot = Directory.CreateTempSubdirectory("ploch-appbuilder-").FullName;
+        File.WriteAllText(Path.Join(contentRoot, "appsettings.json"),
+                          """{ "probe": { "key": "from-appsettings", "other": "from-appsettings" } }""");
+
+        try
+        {
+            var recorder = new ProbeRecorder();
+            ProbeCommand.Recorder = recorder;
+            using var cancellationTokenSource = new CancellationTokenSource();
+            var builder = new AppBuilder(new ConsoleAppInfo("--probe:key=from-command-line") { Name = "Probe App" }, cancellationTokenSource)
+                .ConfigureHost(host => host.UseContentRoot(contentRoot));
+
+            recorder.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe")).Run("probe");
+
+            recorder.ExitCode.Should().Be(0);
+            recorder.SecondConfigurationValue.Should().Be("from-appsettings", "appsettings.json is still loaded");
+            recorder.ConfigurationValue.Should().Be("from-command-line", "the command line outranks appsettings.json");
+        }
+        finally
+        {
+            Directory.Delete(contentRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_defer_a_call_made_from_inside_a_host_delegate_to_the_next_build()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var calledBack = false;
+        builder.ConfigureHost(_ =>
+                              {
+                                  if (calledBack)
+                                  {
+                                      return;
+                                  }
+
+                                  // Re-entrant: records a new operation while the builder is replaying its list.
+                                  calledBack = true;
+                                  builder.ConfigureServices(services => services.AddSingleton(new Marker { Name = "late" }));
+                              });
+
+        var firstRun = new ProbeRecorder();
+        ProbeCommand.Recorder = firstRun;
+        firstRun.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe")).Run("probe");
+
+        var secondRun = new ProbeRecorder();
+        ProbeCommand.Recorder = secondRun;
+        secondRun.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe")).Run("probe");
+
+        firstRun.ExitCode.Should().Be(0, "modifying the operation list mid-replay must not break the build in progress");
+        firstRun.MarkerNames.Should().BeEmpty("a call recorded during replay is not part of the build already in progress");
+        secondRun.ExitCode.Should().Be(0);
+        secondRun.MarkerNames.Should().Equal(LateOnly, "the recorded call applies to the next build");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_apply_every_call_of_every_kind_in_call_order()
+    {
+        var recorder = RunProbeCommand(builder => builder
+                                                  .ConfigureServices(services => services.AddSingleton(new Marker { Name = "services-1" }))
+                                                  .ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                    services.AddSingleton(new Marker
+                                                                                                        { Name = "host-1" })))
+                                                  .ConfigureAppConfiguration(configuration => AddProbeKey(configuration, "configuration-1"))
+                                                  .ConfigureServices((_, services) => services.AddSingleton(new Marker { Name = "services-2" }))
+                                                  .ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                    services.AddSingleton(new Marker
+                                                                                                        { Name = "host-2" })))
+                                                  .ConfigureAppConfiguration((_, configuration) =>
+                                                                                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                                                                                     {
+                                                                                         ["probe:other"] = "configuration-2"
+                                                                                     })));
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.MarkerNames.Should().Equal(InterleavedServiceCalls, "every call is kept and replayed in the order it was made");
+        recorder.ConfigurationValue.Should().Be("configuration-1");
+        recorder.SecondConfigurationValue.Should().Be("configuration-2");
+    }
+
+    [Fact]
+    public void ConfigureServices_should_not_be_able_to_replace_the_cancellation_token_source_the_builder_was_created_with()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        // The impostors are created by factories, so the container that would resolve them owns them, rather than being
+        // test-scoped instances captured by delegates. If either registration won, resolution would return a fresh
+        // source, which is not the one asserted below.
+        var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddSingleton(_ => new CancellationTokenSource()))
+                                                         .ConfigureHost(host => host.ConfigureServices(services =>
+                                                                                                           services.AddSingleton(_ =>
+                                                                                                               new CancellationTokenSource()))),
+                                       cancellationTokenSource);
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.CancellationTokenSource.Should()
+                .BeSameAs(cancellationTokenSource, "the builder registers its own source after every caller registration");
+    }
+
+    [Fact]
+    public void ConfigureServices_should_run_after_the_registered_services_bundles()
+    {
+        var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddSingleton(new Marker { Name = "from-services" }))
+                                                         .AddServicesBundle<MarkerServicesBundle>());
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.Marker!.Name.Should().Be("from-services", "bundles are the defaults a caller's own registrations override");
+    }
+
+    [Fact]
     public void ConfigureServices_should_reject_a_null_delegate()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -523,6 +730,12 @@ public sealed class AppBuilderTests : IDisposable
                  .BeFalse("the source is gone, so there is nothing to cancel - suppressing the press as well would "
                           + "leave one that neither stops nor terminates the application");
     }
+
+    /// <summary>Adds an in-memory source supplying <c>probe:key</c>, the value the probe command reports.</summary>
+    /// <param name="configuration">The configuration builder to add the source to.</param>
+    /// <param name="value">The value the source supplies for <c>probe:key</c>.</param>
+    private static void AddProbeKey(IConfigurationBuilder configuration, string value) =>
+        configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["probe:key"] = value });
 
     /// <summary>
     ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.

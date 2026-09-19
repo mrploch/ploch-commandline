@@ -112,6 +112,34 @@ as many times as you like and every delegate runs, in the order you added them. 
 behaviour as the `IHostBuilder` methods underneath, so registration can be split across helper
 methods without one call quietly replacing another.
 
+The three methods share **one** sequence, replayed in call order when the application is built, so
+the chain reads the way it runs. When two calls register the same service, the later call wins,
+whether it used `ConfigureServices` or `host.ConfigureServices` inside `ConfigureHost`. The same
+goes for application configuration sources that supply the same key, whether added with
+`ConfigureAppConfiguration` or `host.ConfigureAppConfiguration`:
+
+```csharp
+AppBuilder.Create(args)
+          .ConfigureHost(host => host.ConfigureServices(s => s.AddSingleton<IClock, FakeClock>()))
+          .ConfigureServices(s => s.AddSingleton<IClock, SystemClock>()); // IClock resolves to SystemClock
+```
+
+Swap the two calls and `IClock` resolves to `FakeClock`.
+
+Call order decides precedence between calls of the same kind only, not which phase of the host
+build a delegate runs in. As with any `IHostBuilder`, host configuration
+(`ConfigureHostConfiguration`) runs first, then application configuration, then services, then
+`ConfigureContainer`. So an application configuration source always overrides a host
+configuration source for the same key, whatever order you called them in.
+
+The builder's own defaults sit outside that sequence. The standard host sources —
+`appsettings.json`, `appsettings.{Environment}.json`, user secrets in Development, environment
+variables and the command-line arguments, each overriding the one before — are loaded before any
+source you add, and the services bundles are configured before any service you register, so you
+can override both. The application's `CancellationTokenSource` is registered after every service
+delegate, so no `ConfigureServices` call can replace it. Your commands always receive the
+builder's own token either way.
+
 ## 4. Your first command: settings and AppCommand
 
 A command is a pair: a **settings** class describing the command line, and a **command** class
@@ -142,13 +170,14 @@ using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
 using Spectre.Console.Cli;
 
-public class InfoCommand(ICommandSettingsValidator<InfoCommandSettings> validator,
+public class InfoCommand(CommandArgumentsRootProcessor settingsProcessor,
+                         ICommandSettingsValidator<InfoCommandSettings> validator,
                          IExceptionHandler exceptionHandler,
-                         IOutput output) : AppCommand<InfoCommandSettings>(validator, exceptionHandler)
+                         IOutput output) : AppCommand<InfoCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
     protected override ExitCode DoExecute(CommandContext? context, InfoCommandSettings settings, CancellationToken cancellationToken)
     {
-        output.MarkupLineInterpolated($"[bold cyan]Hello from My Tool[/]");
+        Output.MarkupLineInterpolated($"[bold cyan]Hello from My Tool[/]");
 
         return ExitCode.Success;
     }
@@ -158,14 +187,21 @@ public class InfoCommand(ICommandSettingsValidator<InfoCommandSettings> validato
 Note what the base class gives you and what you therefore never write in `DoExecute`:
 
 - **Validation** runs first, through the injected `ICommandSettingsValidator<TSettings>`.
+- **Settings processing** runs before `DoExecute`: the injected `CommandArgumentsRootProcessor`
+  passes the settings through every registered processor (token expansion, for example — see
+  step 9).
 - **Exceptions** never escape. Anything thrown goes to the injected `IExceptionHandler`, whose
   return value becomes the exit code.
 - **Cancellation** is separated from failure: an `OperationCanceledException` is not treated as a
   fault, it returns `ExitCode.Cancelled`.
 - **`ExitCode`, not `int`.** The base class casts for you.
 
-`AppCommand<TSettings>` has no `Output` property — use the `IOutput` you injected. Its asynchronous
-sibling, introduced in step 6, does expose `Output`.
+Before `DoExecute` runs, the base class prints a short `Executing command …` /
+`Processing arguments…` preamble through the injected `IOutput`.
+
+Render through the inherited `Output` property rather than the constructor parameter — capturing a
+parameter that is also passed to the base constructor stores it twice and the compiler warns about
+it (CS9107). The asynchronous sibling, introduced in step 6, takes the same dependencies.
 
 Register the command and run it:
 
@@ -179,6 +215,9 @@ config.AddCommand<InfoCommand>("info")
 ```text
 $ mytool info
 
+Executing command InfoCommandSettings
+
+Processing arguments...
 === Application & System Information ===
 
 ╭──────────────────────┬────────────────────────────────────────────╮
@@ -237,9 +276,10 @@ private static readonly string[] ApplicationSections = ["SampleAppSettings", "Lo
 
 ## 6. Asynchronous commands and dependency injection
 
-`AsyncAppCommand<TSettings>` is the asynchronous base class. It takes two more dependencies than
+`AsyncAppCommand<TSettings>` is the asynchronous base class. It takes the same dependencies as
 `AppCommand<TSettings>` — a `CommandArgumentsRootProcessor` (which pre-processes settings, e.g.
-token expansion) and an `IOutput`, exposed to you as the `Output` property.
+token expansion), the validator, the exception handler and an `IOutput`, exposed to you as the
+`Output` property — and does the same work around your implementation.
 
 ```csharp
 public class UserAddCommand(CommandArgumentsRootProcessor settingsProcessor,
@@ -286,8 +326,8 @@ Creating new user account for Alice Smith...
 ╰──────────────────────────────────╯
 ```
 
-The `Executing command …` / `Processing arguments…` preamble comes from `AsyncAppCommand`, not from
-the command body.
+The `Executing command …` / `Processing arguments…` preamble comes from the base class (both
+`AsyncAppCommand` and `AppCommand` print it), not from the command body.
 
 ### Render through IOutput, and escape what the user typed
 
@@ -495,7 +535,7 @@ itself; see [Exit codes](#11-exit-codes).
 ## 9. Token expansion in settings
 
 Mark a string setting with `[SupportsTokens]` and the `CommandArgumentsRootProcessor` rewrites its
-value before `DoExecuteAsync` runs. `{date}` and `{datetime}` are resolved out of the box.
+value before `DoExecute` / `DoExecuteAsync` runs. `{date}` and `{datetime}` are resolved out of the box.
 
 ```csharp
 [CommandOption("-o|--output-path <PATH>")]
@@ -522,8 +562,8 @@ File processed successfully!
 Saved result to: ./out-2026-08-22/result.dat
 ```
 
-Token expansion only happens for commands whose base class runs the settings processor — the
-asynchronous ones. `AppCommand<TSettings>` does not take a processor.
+Token expansion happens for every command whose base class runs the settings processor —
+`AppCommand<TSettings>`, `AsyncAppCommand<TSettings>` and `UseCaseAsyncCommand<...>` all do.
 
 ## 10. Use cases and Ardalis.Result
 
@@ -719,6 +759,11 @@ Levels come from the `Serilog` section of `appsettings.json`:
   }
 }
 ```
+
+Both log files are written with `CultureInfo.InvariantCulture`, so numbers and dates in them read the
+same on every machine, whatever its locale. If you prefer locale-formatted values in the files, pass
+`culture: System.Globalization.CultureInfo.CurrentCulture` to `AddSerilog`. Console output is not
+affected.
 
 Inject `ILogger<TCommand>` into a command and use it for the operator's record, keeping `IOutput`
 for what the user reads:

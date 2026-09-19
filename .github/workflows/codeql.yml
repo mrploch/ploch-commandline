@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # build-mode: none analyses the source directly, with no compilation.
       #
@@ -55,16 +55,16 @@ jobs:
       # Carrying that setup a second time buys nothing here: buildless extraction is supported
       # for C# and needs none of it, so the scan cannot break when the sibling layout changes.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
-      # Pinned to the v3 major rather than a commit SHA, unlike the third-party actions in this
-      # repository. github/codeql-action is published by GitHub itself, and the action ships the
+      # Pinned to the v4 major rather than a commit SHA, although the repository convention is
+      # to pin actions by SHA. github/codeql-action is published by GitHub itself, and the action ships the
       # CodeQL bundle: pinning it to a SHA freezes the query set, so the scanner would quietly
       # stop learning about new vulnerability classes. Staying current is the point of the tool.
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"

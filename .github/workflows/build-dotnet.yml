@@ -36,7 +36,7 @@ jobs:
       # fetch-depth: 0 is required twice over - Nerdbank.GitVersioning computes the version
       # height from the full commit history, and SonarCloud needs the blame data for new-code
       # attribution. A shallow clone breaks both.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -51,8 +51,7 @@ jobs:
       # ploch-common is required by exactly ONE step - "Build sample application", which runs
       # -p:UsePlochProjectReferences=true so a library change cannot break the sample silently.
       # The main solution restore no longer needs it: in the default package mode the Ploch
-      # dependencies come from nuget.org, so the old MSB3202-on-every-ploch-common-project
-      # rationale no longer applies. Whether this clone should go away entirely is #51.
+      # dependencies come from nuget.org.
       #
       # ploch-common is cloned in full because it uses Nerdbank.GitVersioning too, and NBGV
       # cannot compute a version height from a shallow clone.
@@ -62,14 +61,19 @@ jobs:
         run: git clone --depth 1 https://github.com/mrploch/mrploch-development.git ../mrploch-development
 
       # Setup Java (required for SonarScanner)
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'zulu'
           java-version: '17'
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 10.0.x
+
+      # Fixture tests for the publish script used by this workflow and by release.yml. They mock
+      # dotnet, so they need no build output and run before anything is published.
+      - name: Test the NuGet publish script
+        run: bash .github/scripts/test-publish-nuget-packages.sh
 
       - name: Restore .NET tools
         run: dotnet tool restore
@@ -205,6 +209,8 @@ jobs:
       # refuted independently by the Codex reviewer; refutation confirmed by measurement.
       - name: Build sample application
         run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false
+      - name: Test sample application
+        run: dotnet test ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release --no-build -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false --logger "trx;LogFileName=${{ runner.temp }}/sample-test-results/SampleTestResults.trx" --results-directory "${{ runner.temp }}/sample-test-results"
 
       # The main ruleset has a code_coverage rule, which reads coverage GitHub itself holds -
       # SonarCloud's and Codacy's copies are invisible to it. actions/upload-code-coverage takes a
@@ -222,7 +228,7 @@ jobs:
       # Skips itself on fork pull requests, where the token cannot write coverage.
       - name: Upload coverage to GitHub Code Quality
         if: always()
-        uses: actions/upload-code-coverage@v1
+        uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34 # v1.4.2
         with:
           file: ./CoverageReport/Cobertura.xml
           language: C#
@@ -231,20 +237,20 @@ jobs:
       - name: Run codacy-coverage-reporter
         if: always()
         continue-on-error: true
-        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1
+        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: '**/CoverageResults/coverage*.opencover.xml'
       - name: Upload Test Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
           path: |
             **/TestResults/*.xml
             **/TestResults/*.trx
       - name: Test Report
-        uses: phoenix-actions/test-reporting@1e9b578818d03d6df50ce8e60d024a000bf3ab63 # v8
+        uses: phoenix-actions/test-reporting@7317eea6e13c47348dd0bb318669485157c518d6 # v16
         id: test-report
         if: always()
         continue-on-error: true
@@ -254,7 +260,7 @@ jobs:
           reporter: dotnet-trx
       - name: Upload Coverage Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: code-coverage
           path: |
@@ -282,6 +288,8 @@ jobs:
       # available package sources". `nuget push` accepts a URL, so no source is needed.
       - name: Publish NuGet packages to GitHub Packages
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          NUGET_PUSH_TOKEN: ${{ env.GH_PACKAGES_TOKEN }}
         run: bash .github/scripts/publish-nuget-packages.sh https://nuget.pkg.github.com/mrploch/index.json
 
       # Publish PR packages to GitHub Packages for testing/validation.
@@ -294,6 +302,8 @@ jobs:
       # a validation package for each one would just fill the feed with noise.
       - name: Publish PR packages to GitHub Packages
         if: success() && github.event_name == 'pull_request' && github.base_ref == 'main'
+        env:
+          NUGET_PUSH_TOKEN: ${{ env.GH_PACKAGES_TOKEN }}
         run: |
           if [ -z "$GH_PACKAGES_TOKEN" ]; then
             echo "::warning::GH_PACKAGES_TOKEN not available, skipping PR package publish"

@@ -28,26 +28,16 @@ jobs:
     steps:
       # Reproduce the workspace layout here - every mrploch repo cloned next to the others.
       # mrploch-development is required: Directory.Packages.props imports the shared version
-      # files from it. The ploch-common clone below is now belt-and-braces: in the default
-      # package mode the docfx metadata pass resolves Ploch dependencies from nuget.org, so the
-      # old MSB3202-on-every-ploch-common-project rationale no longer applies. Whether it can
-      # be dropped is #51.
+      # files from it. In the default package mode the docfx metadata pass resolves Ploch
+      # dependencies from nuget.org.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: ploch-commandline
           fetch-depth: 0 # NBGV needs full history to compute version height
 
-      - name: Checkout ploch-common (sibling project references)
-        uses: actions/checkout@v4
-        with:
-          repository: mrploch/ploch-common
-          ref: main
-          path: ploch-common
-          fetch-depth: 0
-
       - name: Checkout mrploch-development (shared build config)
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: mrploch/mrploch-development
           ref: main
@@ -58,7 +48,7 @@ jobs:
       # mrploch-development/dependencies. Install the SDK explicitly rather than relying on
       # whichever SDKs the runner image happens to ship.
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 10.0.x
 
@@ -78,10 +68,10 @@ jobs:
         run: dotnet docfx DocumentationSite/docfx.json
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ploch-commandline/DocumentationSite/_site
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

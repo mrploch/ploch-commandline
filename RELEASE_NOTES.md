@@ -51,6 +51,13 @@ have been retired.
   `ConfigureAppConfiguration` are additive — every delegate is applied, in the
   order it was added — matching the `IHostBuilder` methods they wrap. They
   previously kept only the last delegate.
+- **Breaking:** those three methods share one sequence, applied to the host in
+  the order the calls were made. `ConfigureHost` delegates previously ran after
+  every `ConfigureServices` and `ConfigureAppConfiguration` delegate whatever
+  the call order, so a later `ConfigureServices` registration could lose to an
+  earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
+  now registered after every caller service delegate, including those added
+  through `ConfigureHost`.
 
 ### Removed
 
@@ -80,3 +87,7 @@ have been retired.
 - `IOutput.Write` threw `InvalidCastException` whenever the registered writer for
   the message expected a type a `string` could not be cast to — writing an
   `Exception` through `Write` always crashed.
+- **Breaking:** `AppBuilder` added `appsettings.json` a second time on top of
+  `Host.CreateDefaultBuilder`'s sources, so its keys overrode
+  `appsettings.{Environment}.json`, environment variables and command-line
+  arguments. Standard .NET configuration precedence now applies.

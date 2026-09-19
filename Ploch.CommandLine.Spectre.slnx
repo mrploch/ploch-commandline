@@ -4,7 +4,6 @@
   </Folder>
   <Folder Name="/repository/config/">
     <File Path=".codacy.yml" />
-    <File Path=".dockerignore" />
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />

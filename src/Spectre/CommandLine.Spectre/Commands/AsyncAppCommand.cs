@@ -34,17 +34,26 @@ public abstract class AsyncAppCommand<TSettings>(CommandArgumentsRootProcessor s
     /// <param name="cancellationToken">A token that is forwarded to <see cref="DoExecuteAsync" /> so implementations can honour cancellation.</param>
     /// <returns>An integer representing the exit code of the command execution.</returns>
     /// <exception cref="ArgumentNullException">Thrown when context or settings is null.</exception>
+    /// <remarks>
+    ///     The settings are passed through the configured settings processor before <see cref="DoExecuteAsync" /> runs.
+    ///     Exceptions raised while writing the banner, by the settings processor or by <see cref="DoExecuteAsync" /> do not propagate: they are passed to the configured
+    ///     <see cref="IExceptionHandler" />, whose result becomes the exit code. An <see cref="OperationCanceledException" /> is the
+    ///     exception to that rule: it is treated as a requested outcome and returns <see cref="ExitCode.Cancelled" /> without reaching
+    ///     the handler.
+    /// </remarks>
     public override async Task<int> ExecuteAsync(CommandContext context, TSettings settings, CancellationToken cancellationToken)
     {
         context.NotNull();
         settings.NotNull();
 
-        output.MarkupLineInterpolated($"Executing command [bold underline]{settings.GetType().Name}[/]");
-        output.WriteLine();
-        output.WriteLine("Processing arguments...");
-
         try
         {
+            // Inside the try: a failing output (for example a broken console stream) is a fault like any other and
+            // must reach the exception handler rather than escape the command.
+            output.MarkupLineInterpolated($"Executing command [bold underline]{settings.GetType().Name}[/]");
+            output.WriteLine();
+            output.WriteLine("Processing arguments...");
+
             settingsProcessor.ProcessArguments(settings);
 
             return (int)await DoExecuteAsync(context, settings, cancellationToken).ConfigureAwait(false);
