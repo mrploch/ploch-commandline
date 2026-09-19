@@ -80142,8 +80142,8 @@
       "versionControlProvenance": [
         {
           "repositoryUri": "https://github.com/mrploch/ploch-commandline.git",
-          "revisionId": "3ba84437301dc413f71cc3dc1b46ef25c7a3444f",
-          "branch": "refactor/24-clear-sonarcloud-findings",
+          "revisionId": "b149b215fca33d1cc15eeaab89ece927f85b58c9",
+          "branch": "ci/51-drop-clones-run-sample-tests",
           "properties": {
             "repoUrl": "https://github.com/mrploch/ploch-commandline.git",
             "lastAuthorName": "",
@@ -87994,10 +87994,10 @@
         }
       ],
       "automationDetails": {
-        "id": "QDNETC/qodana/2026-09-14",
-        "guid": "0de56468-bd6a-46e0-838d-0a1ac756ac14",
+        "id": "QDNETC/qodana/2026-09-19",
+        "guid": "289da268-97a6-4f85-a97f-432b342378c7",
         "properties": {
-          "jobUrl": "https://github.com/mrploch/ploch-commandline/actions/runs/34836278816"
+          "jobUrl": "https://github.com/mrploch/ploch-commandline/actions/runs/35415409894"
         }
       },
       "newlineSequences": [

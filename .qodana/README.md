@@ -14,7 +14,7 @@ ever be `neutral` (#55).
 ## The file is generated, never hand-edited
 
 The baseline must come from a CI run. The scan runs inside the Qodana container against the CI
-workspace, which holds `ploch-commandline`, `ploch-common` and `mrploch-development` side by side,
+workspace, which holds `ploch-commandline` and `mrploch-development` side by side,
 with packages restored the way CI restores them. Result locations in the report are relative to
 the solution directory inside that container. A local run differs in both respects, so a locally
 generated baseline is not guaranteed to match, and every problem could look new.
