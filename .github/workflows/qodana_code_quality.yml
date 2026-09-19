@@ -60,7 +60,7 @@ jobs:
           exclude:
             - name: All
               paths:
-                - ploch-commandline/tests
+                - ploch-commandline/tests/**
                 - ploch-common
                 - mrploch-development
           QODANA
@@ -79,6 +79,7 @@ jobs:
           # qodana.sarif.json is what the committed baseline is refreshed from (see
           # .qodana/README.md).
           upload-result: true
+          env-vars: GH_PACKAGES_TOKEN
         env:
           # Scoped to this step, not the job (least privilege, raised by the CodeRabbit reviewer
           # on PR #52). Note that the linter runs in its own container and does not currently
