@@ -81,11 +81,16 @@ package_owner() {
     # A declaration whose Version is an MSBuild property reference is only half local: the
     # id is pinned here, but the number it resolves to lives in a PropertyGroup that may
     # well be in a shared file. Say so rather than sending the reader to the wrong place.
-    if [[ "$declaration" == *'Version="$('* || "$declaration" == *"Version='\$("* ]]; then
-      echo 'this repository (via an MSBuild property)'
-    else
-      echo 'this repository'
-    fi
+    # A `case` pattern rather than a quoted comparison: the marker contains `$(`, and in
+    # single quotes ShellCheck reads that as an expansion someone forgot to enable
+    # (SC2016). Here the backslashes make it unambiguously literal. Both quote styles are
+    # matched because MSBuild accepts either.
+    case "$declaration" in
+      *Version=\"\$\(* | *Version=\'\$\(*)
+        echo 'this repository (via an MSBuild property)' ;;
+      *)
+        echo 'this repository' ;;
+    esac
   elif grep -rhiqE "$pattern" "$shared_versions"; then
     echo 'mrploch-development'
   else
