@@ -40,12 +40,12 @@ keep the build clean rather than suppressing it.
 The sample application is a separate, deliberately standalone solution and needs its own command
 line — see [`samples/SampleApp/README.md`](samples/SampleApp/README.md).
 
-## You do not need a GitHub Packages token
+## The main solution needs no GitHub Packages token
 
 `nuget.config` maps `Ploch.*` to two feeds: `nuget.org` and the `github` feed
 (`nuget.pkg.github.com/mrploch`), which authenticates with the `GH_PACKAGES_TOKEN` environment
-variable. **That variable is optional.** Every Ploch version this repository's `main` branch
-references is a stable release present on nuget.org, so a build with no token restores fine.
+variable. **For the main solution that variable is optional.** Every Ploch version the main
+solution references is a stable release present on nuget.org, so a build with no token restores.
 
 You will see warnings from the unauthenticated feed and they are expected:
 
@@ -54,17 +54,32 @@ warning : Your request could not be authenticated by the GitHub Packages service
   Response status code does not indicate success: 401 (Unauthorized).
 ```
 
-NuGet retries, falls back to nuget.org, and restore succeeds. Verified on 2026-09-21 with the
-variable unset and an empty packages folder: exit code 0.
+NuGet retries, falls back to nuget.org, and restore succeeds. Measured on 2026-09-20 (UTC) with
+the variable unset, `--no-cache` and an empty packages folder: exit code 0.
 
-Setting `GH_PACKAGES_TOKEN` (a personal access token with `read:packages`) silences those
-warnings and saves a round-trip, but it changes nothing else. Do not put a token in any tracked
-file — export it in your shell.
+**Best-effort, not guaranteed.** The GitHub Packages source stays eligible while unauthenticated.
+NuGet queries sources concurrently and rethrows a terminal protocol failure from one of them
+rather than ignoring it, so if that feed exhausts its retries before nuget.org returns the match,
+restore can fail with `NU1301` even though the package is on nuget.org. That is a race, not a
+certainty — the measurement above is one sample of it. If you hit it, retry, or set a token
+(a personal access token with `read:packages`), which removes the race. Do not put a token in any
+tracked file — export it in your shell.
+
+**The sample application is a separate case.** `samples/SampleApp` is a standalone solution with
+its own `Directory.Packages.props`, and it deliberately pins a *prerelease* build of this
+repository's own `Ploch.CommandLine.*` packages, which exist only on GitHub Packages. Its default
+(package) mode therefore does need a token. Build it the way CI does — with
+`-p:UsePlochProjectReferences=true`, which needs no feed access at all. See
+[`samples/SampleApp/README.md`](samples/SampleApp/README.md).
 
 ## Ploch dependencies are always stable (policy)
 
-> `main` must never reference a **prerelease** `Ploch.*` version. Prerelease consumption is
-> opt-in local work only.
+> The **main solution** must never reference a **prerelease** `Ploch.*` version. Prerelease
+> consumption is opt-in local work only.
+
+The policy is about the main solution's `ploch-common` dependencies. `samples/SampleApp` is
+outside it by design — it is a separate central-package root pinning a prerelease build of this
+repository's *own* packages, which is a different thing and is documented in its own files.
 
 The versions come from `../mrploch-development/dependencies/Ploch.Packages.props`, which CI reads
 from that repository's moving `main` branch — so this policy has to be honoured *there* as well

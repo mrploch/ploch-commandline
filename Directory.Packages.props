@@ -1,6 +1,16 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      Forbid per-project VersionOverride. Without this, a project could override a central
+      version with a prerelease one and VerifyPlochPackageVersionsAreStable - which inspects
+      central PackageVersion items - would still report success, because the override lives in
+      another project's PackageReference. Disabling the feature closes that route mechanically
+      instead of asking one target to see every project. Nothing in this repository uses
+      VersionOverride today, so this is a no-op except as a guard. Raised by the Copilot
+      reviewer on PR #85.
+    -->
+    <CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>
   </PropertyGroup>
   <Import Project="../mrploch-development/dependencies/MicrosoftExtensions.Net9.Packages.props" />
   <ItemGroup>

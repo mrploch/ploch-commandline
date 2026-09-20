@@ -37,10 +37,16 @@ dotnet build Ploch.CommandLine.Spectre.slnx
 dotnet test  Ploch.CommandLine.Spectre.slnx
 ```
 
-**No GitHub Packages token is required.** `main` only ever references stable `Ploch.*` versions,
-and those are on nuget.org, so a build with `GH_PACKAGES_TOKEN` unset restores successfully — the
-`401 (Unauthorized)` warnings from the unauthenticated GitHub Packages feed are expected and
-harmless. That "stable versions only" rule is a policy, enforced by a check in CI.
+**The main solution needs no GitHub Packages token.** It only ever references stable `Ploch.*`
+versions, and those are on nuget.org, so a build with `GH_PACKAGES_TOKEN` unset normally restores
+successfully — the `401 (Unauthorized)` warnings from the unauthenticated GitHub Packages feed are
+expected. That "stable versions only" rule is a policy, enforced by a check in CI.
+
+Tokenless restore is best-effort rather than guaranteed: the GitHub Packages source stays eligible
+while unauthenticated, and NuGet can surface its failure as `NU1301` before nuget.org answers. If
+you hit that, retry, or set a token. The
+[sample application](samples/SampleApp/README.md) is a separate case — it pins a prerelease build
+of this repository's own packages and does need a token in its default mode.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the reasoning, the escape hatch for working against
 unreleased `ploch-common` code, and the rest of the contributor setup.
