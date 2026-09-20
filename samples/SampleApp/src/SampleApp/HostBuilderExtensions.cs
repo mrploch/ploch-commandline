@@ -22,9 +22,12 @@ public static class HostBuilderExtensions
     ///     The directory the application was deployed to, normally <see cref="AppContext.BaseDirectory" />.
     /// </param>
     /// <returns><paramref name="hostBuilder" />, so the call chains.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="hostBuilder" /> is <see langword="null" />.</exception>
+    /// <exception cref="ArgumentNullException">
+    ///     Thrown when <paramref name="hostBuilder" /> or <paramref name="deploymentDirectory" /> is
+    ///     <see langword="null" />.
+    /// </exception>
     /// <exception cref="ArgumentException">
-    ///     Thrown when <paramref name="deploymentDirectory" /> is <see langword="null" />, empty or white space.
+    ///     Thrown when <paramref name="deploymentDirectory" /> is empty or white space.
     /// </exception>
     /// <exception cref="FileNotFoundException">
     ///     Thrown when <paramref name="deploymentDirectory" /> holds no <c>appsettings.json</c>. A missing configuration
@@ -56,7 +59,7 @@ public static class HostBuilderExtensions
         ArgumentNullException.ThrowIfNull(hostBuilder);
         ArgumentException.ThrowIfNullOrWhiteSpace(deploymentDirectory);
 
-        var settingsFile = Path.Combine(deploymentDirectory, SettingsFileName);
+        var settingsFile = Path.Join(deploymentDirectory, SettingsFileName);
         if (!File.Exists(settingsFile))
         {
             throw new FileNotFoundException($"The application settings file '{SettingsFileName}' was not found in the deployment directory.", settingsFile);

@@ -30,14 +30,14 @@ If you already package registrations as a `ServicesBundle` from
 
 ## Configuration
 
-`appsettings.json`, `appsettings.{Environment}.json`, user secrets, environment
-variables and the command-line arguments are already loaded, in that ascending
-order of precedence, exactly as they are in a web host. `ConfigureAppConfiguration`
-exposes the standard `IConfigurationBuilder` for anything you want to add on top
-of them:
+`appsettings.json`, `appsettings.{Environment}.json`, user secrets (in the
+`Development` environment only), environment variables and the command-line
+arguments are already loaded, in that ascending order of precedence, exactly as
+they are in a web host. `ConfigureAppConfiguration` exposes the standard
+`IConfigurationBuilder` for anything you want to add on top of them:
 
 ```csharp
-.ConfigureAppConfiguration(configuration => configuration.AddIniFile("overrides.ini", optional: true))
+.ConfigureAppConfiguration(configuration => configuration.AddJsonFile("machine-overrides.json", optional: true))
 ```
 
 Sources are ordered and the last one added wins, so a source added here overrides

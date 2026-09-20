@@ -253,7 +253,8 @@ Add an `appsettings.json` and copy it to the output directory:
 There is a trap here that only shows up once you install the tool. The host resolves relative
 configuration paths against its **content root**, which defaults to the current working directory,
 and a CLI is run from wherever the user happens to be — so `appsettings.json` silently fails to load
-and every setting reads back as `null`.
+and every setting that only that file supplies reads back as `null`. Nothing tells you: the source is
+optional, and the environment variables and the command line still work, so the tool half-works.
 
 The fix is to move the content root, not to add a second source:
 
@@ -273,8 +274,9 @@ lookups to the directory the application was deployed to, and changes nothing el
 ```
 
 does find the file, but configuration sources are ordered and the last one added wins. The host has
-already layered `appsettings.json`, `appsettings.{Environment}.json`, user secrets, the environment
-variables and the command-line arguments, in ascending precedence. Appending the file puts it back
+already layered `appsettings.json`, `appsettings.{Environment}.json`, user secrets (in the
+`Development` environment only), the environment variables and the command-line arguments, in
+ascending precedence. Appending the file puts it back
 on **top** of all of them, so `--MySection:BatchSize=5` is silently overridden by the value in the
 file it was meant to override. `AppBuilder` itself carried exactly this bug until it was fixed in
 [#82](https://github.com/mrploch/ploch-commandline/issues/82).
