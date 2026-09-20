@@ -74,20 +74,26 @@ package_owner() {
   # Package ids are full of dots, which are regex wildcards, so escape them.
   local id="${1//./\\.}"
   local pattern="(PackageVersion|GlobalPackageReference)[[:space:]]+Include[[:space:]]*=[[:space:]]*[\"']${id}[\"']"
-  local declaration
+  local declaration property
 
   declaration="$(grep -hiE "$pattern" "$local_version_file" 2>/dev/null | head -n 1 || true)"
   if [[ -n "$declaration" ]]; then
     # A declaration whose Version is an MSBuild property reference is only half local: the
-    # id is pinned here, but the number it resolves to lives in a PropertyGroup that may
-    # well be in a shared file. Say so rather than sending the reader to the wrong place.
+    # id is pinned here, but the number it resolves to lives in a PropertyGroup that can
+    # be anywhere in the import graph, including a shared file, and can itself be another
+    # property reference (Ploch.Common.Apps.Shared is pinned here as
+    # $(PlochAppsSharedVersion), which defaults to the shared $(PlochCommonPackagesVersion)).
+    # Chasing that chain in shell would be fragile, so the property is named instead - the
+    # actionable pointer - rather than claiming a location that may be wrong.
+    #
     # A `case` pattern rather than a quoted comparison: the marker contains `$(`, and in
     # single quotes ShellCheck reads that as an expansion someone forgot to enable
     # (SC2016). Here the backslashes make it unambiguously literal. Both quote styles are
     # matched because MSBuild accepts either.
     case "$declaration" in
       *Version=\"\$\(* | *Version=\'\$\(*)
-        echo 'this repository (via an MSBuild property)' ;;
+        property="$(sed -nE 's/.*Version[[:space:]]*=[[:space:]]*["'"'"']\$\(([^)]+)\).*/\1/p' <<<"$declaration")"
+        echo "pinned here as \`\$($property)\` — change that property" ;;
       *)
         echo 'this repository' ;;
     esac

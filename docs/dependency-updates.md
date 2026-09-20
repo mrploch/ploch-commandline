@@ -130,8 +130,11 @@ be applied by hand (in this repository for the local pins, in `mrploch-developme
 the shared ones). To make that concrete, every row carries a **"Bump in"** column,
 resolved from the `Directory.Packages.props` MSBuild itself would apply to that solution
 — the nearest one at or above it, so the sample's standalone pins are never confused with
-the main solution's. A version pinned here but resolved through an MSBuild property is
-labelled as such rather than being claimed outright.
+the main solution's. A version pinned here but resolved through an MSBuild property names
+that property rather than claiming a location: the chain can cross into a shared file
+(`Ploch.Common.Apps.Shared` is pinned here as `$(PlochAppsSharedVersion)`, which defaults
+to the shared `$(PlochCommonPackagesVersion)`), and the property name is the pointer
+someone can actually act on.
 
 ## When the shared versions move to `mrploch-development`
 
