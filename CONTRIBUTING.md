@@ -1,8 +1,10 @@
 # Contributing to Ploch.CommandLine
 
 Thanks for considering a contribution. This file covers what you need to build the repository,
-and one policy — **Ploch dependencies are always stable** — that exists specifically so that a
-pull request from a fork builds exactly like one from this repository.
+and one policy — **Ploch dependencies are always stable** — that exists so that a pull request
+from a fork is not *guaranteed* to fail. It does not buy full parity with a run in this
+repository: those have a GitHub Packages token and a fork never can, so a tokenless restore stays
+best-effort (see below). What the policy removes is the deterministic failure.
 
 ## Repository layout: clone the siblings
 
