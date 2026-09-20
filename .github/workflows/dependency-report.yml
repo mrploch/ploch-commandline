@@ -1,0 +1,66 @@
+# Weekly NuGet dependency report.
+#
+# This workflow exists because Dependabot's `nuget` ecosystem cannot work in this
+# repository: Directory.Packages.props imports shared version files from the sibling
+# repository mrploch/mrploch-development, Dependabot checks out one repository only, and
+# MSBuild evaluation therefore fails with MSB4019 before any package is inspected. See
+# docs/dependency-updates.md for the full reasoning and the options that were rejected.
+#
+# A workflow can do the one thing Dependabot cannot: clone the sibling first, exactly as
+# build-dotnet.yml does, and let the .NET SDK evaluate the real two-repository graph.
+name: Dependency report
+
+on:
+  # Monday morning, shortly after the github-actions Dependabot run, so both dependency
+  # signals for the week arrive together.
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+  # Also runs on a change to the report itself or to the files it reports on, so such a
+  # change is exercised by the pull request that makes it rather than a week later.
+  pull_request:
+    paths:
+      - '.github/workflows/dependency-report.yml'
+      - '.github/scripts/dependency-report.sh'
+      - 'Directory.Packages.props'
+      - 'nuget.config'
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Report outdated and vulnerable packages
+    runs-on: ubuntu-latest
+
+    env:
+      SOLUTION_PATH: ./Ploch.CommandLine.Spectre.slnx
+      # Consumed by nuget.config's packageSourceCredentials entry for the MrPloch
+      # GitHub Packages feed, so restore can resolve Ploch.* packages.
+      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+    steps:
+      # fetch-depth: 0 because Nerdbank.GitVersioning is referenced by every project and
+      # computes the version height from the full commit history, so restoring a shallow
+      # clone fails.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The whole point of this workflow. Directory.Packages.props imports
+      # ../mrploch-development/dependencies/*.Packages.props, so the sibling has to exist
+      # beside the checkout before anything can be evaluated.
+      - name: Clone mrploch-development (shared package versions)
+        run: git clone --depth 1 https://github.com/mrploch/mrploch-development.git ../mrploch-development
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore "$SOLUTION_PATH"
+
+      # Writes the report to the run's job summary and fails only on a vulnerable package.
+      - name: Report outdated and vulnerable packages
+        run: bash .github/scripts/dependency-report.sh "$SOLUTION_PATH"

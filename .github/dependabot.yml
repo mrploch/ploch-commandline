@@ -1,14 +1,24 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
+# Dependabot version updates.
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
+#
+# NuGet is deliberately absent. Dependabot checks out one repository, and this one's
+# MSBuild graph spans two: Directory.Packages.props imports the shared version files
+# from the sibling repository mrploch/mrploch-development via relative paths such as
+# "../mrploch-development/dependencies/MicrosoftExtensions.Net9.Packages.props". With no
+# sibling on disk, evaluation fails with MSB4019 before any package is looked at, so
+# every scheduled nuget run failed and no update - security or otherwise - was ever
+# raised.
+#
+# NuGet updates for this repository are handled by .github/workflows/dependency-report.yml,
+# which clones the sibling first (exactly as build-dotnet.yml does) and then reports
+# outdated and vulnerable packages from the real, complete graph.
+#
+# The full reasoning, and the options rejected along the way, are in
+# docs/dependency-updates.md.
 version: 2
 updates:
-  - package-ecosystem: "nuget" # See documentation for possible values
-    directory: "/" # Location of package manifests
-    schedule:
-      interval: "weekly"
+  # The GitHub Actions ecosystem is unaffected: it reads the workflow YAML and never
+  # evaluates MSBuild, so it needs nothing outside this repository.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
