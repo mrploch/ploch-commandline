@@ -94,7 +94,9 @@ runs weekly (and on demand) and:
 
 - clones the sibling, restores the solution, and runs `dotnet list package --outdated`
   and `dotnet list package --vulnerable --include-transitive`;
-- writes both lists to the run's job summary;
+- writes both lists, deduplicated and labelled with where each version has to be changed,
+  to the run's job summary **and** to the log — the summary is what a person reads, but
+  only the log can be retrieved through the API afterwards;
 - **fails the job** when a vulnerable package is found, and only then.
 
 The severity split is deliberate. A merely outdated package is information, and failing

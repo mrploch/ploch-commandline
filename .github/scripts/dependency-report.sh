@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 #
-# Reports outdated and vulnerable NuGet packages for the solution passed as $1, and
-# writes a deduplicated summary to $GITHUB_STEP_SUMMARY (stdout when that is unset, so
-# the script can be run locally unchanged).
+# Reports outdated and vulnerable NuGet packages for the solution passed as $1, writing a
+# deduplicated summary to stdout and, when running under Actions, to $GITHUB_STEP_SUMMARY
+# as well. Both, deliberately: the summary is what a person reads, but only the log is
+# retrievable through the API afterwards, so a report living solely in the summary could
+# never be checked after the fact.
 #
 # Exits non-zero only when a vulnerable package is found. An outdated package is
 # information; see docs/dependency-updates.md for why that distinction is deliberate.
@@ -12,9 +14,9 @@
 set -euo pipefail
 
 solution="${1:?usage: dependency-report.sh <solution-path>}"
-summary="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+report="$work/report.md"
 
 # Every project in the solution reports the same centrally managed package, so the raw
 # output repeats each id once per project per framework. The reports below collapse that
@@ -46,8 +48,10 @@ package_owner() {
   fi
 }
 
-echo '# NuGet dependency report' >>"$summary"
-echo >>"$summary"
+{
+  echo '# NuGet dependency report'
+  echo
+} >>"$report"
 
 # --- Outdated ------------------------------------------------------------------------
 dotnet list "$solution" package --outdated --no-restore \
@@ -72,7 +76,7 @@ jq -r "$flatten
     done <"$work/outdated.tsv"
   fi
   echo
-} >>"$summary"
+} >>"$report"
 
 # --- Vulnerable ----------------------------------------------------------------------
 # Transitive packages are included deliberately: a vulnerability reached through a
@@ -103,9 +107,14 @@ jq -r "$flatten
     done <"$work/vulnerable.tsv"
   fi
   echo
-} >>"$summary"
+} >>"$report"
+
+cat "$report"
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+  cat "$report" >>"$GITHUB_STEP_SUMMARY"
+fi
 
 if [[ -s "$work/vulnerable.tsv" ]]; then
-  echo "::error::$(wc -l <"$work/vulnerable.tsv" | tr -d ' ') vulnerable NuGet package(s) found — see the job summary."
+  echo "::error::$(wc -l <"$work/vulnerable.tsv" | tr -d ' ') vulnerable NuGet package(s) found — see the report above."
   exit 1
 fi
