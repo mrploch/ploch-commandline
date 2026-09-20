@@ -40,12 +40,14 @@ keep the build clean rather than suppressing it.
 The sample application is a separate, deliberately standalone solution and needs its own command
 line — see [`samples/SampleApp/README.md`](samples/SampleApp/README.md).
 
-## The main solution needs no GitHub Packages token
+## Building the main solution without a token is best-effort
 
 `nuget.config` maps `Ploch.*` to two feeds: `nuget.org` and the `github` feed
 (`nuget.pkg.github.com/mrploch`), which authenticates with the `GH_PACKAGES_TOKEN` environment
 variable. **For the main solution that variable is optional.** Every Ploch version the main
-solution references is a stable release present on nuget.org, so a build with no token restores.
+solution references is a stable release present on nuget.org, so a build with no token is expected
+to restore — usually it does, and it is not guaranteed to. The caveat is spelled out below; read it
+before concluding that a failed restore means you have done something wrong.
 
 You will see warnings from the unauthenticated feed and they are expected:
 
@@ -54,8 +56,9 @@ warning : Your request could not be authenticated by the GitHub Packages service
   Response status code does not indicate success: 401 (Unauthorized).
 ```
 
-NuGet retries, falls back to nuget.org, and restore succeeds. Measured on 2026-09-20 (UTC) with
-the variable unset, `--no-cache` and an empty packages folder: exit code 0.
+NuGet retries and falls back to nuget.org. Measured on 2026-09-20 (UTC) with the variable unset,
+`--no-cache` and an empty packages folder: exit code 0. That is one dated measurement, not a
+guarantee — see below.
 
 **Best-effort, not guaranteed.** The GitHub Packages source stays eligible while unauthenticated.
 NuGet queries sources concurrently and rethrows a terminal protocol failure from one of them
