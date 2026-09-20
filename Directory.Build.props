@@ -104,6 +104,43 @@
     <UsePlochProjectReferences Condition="'$(UsePlochProjectReferences)' == ''">false</UsePlochProjectReferences>
   </PropertyGroup>
 
+  <!--
+    Stable-only Ploch dependency policy - enforcement. See CONTRIBUTING.md ("Ploch dependencies
+    are always stable") for the policy itself and Directory.Packages.props for where the
+    versions come from. Issue #54 / PLO-523.
+
+    In short: `main` must never resolve a PRERELEASE Ploch.* version. Prereleases are published
+    to GitHub Packages only, that feed needs %GH_PACKAGES_TOKEN%, and GitHub withholds
+    repository secrets from pull requests opened from forks - so a prerelease version turns
+    every fork pull request, and every tokenless local build, into a hard
+    `error NU1301 ... 401 (Unauthorized)` that names a secret the contributor cannot be given -
+    measured 2026-09-21. The same prerelease would also make the release
+    build pack a stable package with a prerelease dependency, which is the #47 / NU5104 defect.
+
+    This target is the guard. It is NOT hooked to Build or Restore: it costs nothing until it
+    is named explicitly, so no developer build gets slower and no environment-dependent
+    behaviour is introduced. build-dotnet.yml runs it once per build, before restore. Run it
+    yourself with:
+
+      dotnet msbuild src/Spectre/CommandLine.Spectre/Ploch.CommandLine.Spectre.csproj -t:VerifyPlochPackageVersionsAreStable
+
+    It deliberately inspects the resolved PackageVersion items rather than the shared
+    $(PlochCommonPackagesVersion) / $(PlochDataPackagesVersion) properties, so it still fires
+    for a version pinned by any other route.
+  -->
+  <Target Name="VerifyPlochPackageVersionsAreStable">
+    <ItemGroup>
+      <PrereleasePlochPackageVersion Include="@(PackageVersion)"
+                                     Condition="$([System.String]::Copy('%(Identity)').StartsWith('Ploch.')) AND $([System.String]::Copy('%(Version)').Contains('-'))" />
+    </ItemGroup>
+    <Error Condition="'@(PrereleasePlochPackageVersion)' != ''"
+           Code="PLOCH0001"
+           Text="Prerelease Ploch package version(s) referenced: @(PrereleasePlochPackageVersion->'%(Identity) %(Version)', '; '). This repository's main branch must only reference STABLE Ploch versions - prereleases live on GitHub Packages, which fork pull requests cannot authenticate against (issue #54). Fix the version in mrploch-development/dependencies/Ploch.Packages.props, or, if you genuinely need the unreleased sources, build locally with -p:UsePlochProjectReferences=true instead of pinning a prerelease." />
+    <Message Condition="'@(PrereleasePlochPackageVersion)' == ''"
+             Importance="high"
+             Text="All referenced Ploch.* package versions are stable." />
+  </Target>
+
   <!-- Nerdbank.GitVersioning for all projects. SourceLink needs no package reference: the .NET 8+ SDK
        includes it and reads the PublishRepositoryUrl / EmbedUntrackedSources settings above. -->
   <ItemGroup>

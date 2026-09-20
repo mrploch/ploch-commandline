@@ -23,3 +23,24 @@ It builds on top of the [Spectre.Console](https://spectreconsole.net/) library, 
 - logging
 - configuration
 - output formatting
+
+## Building this repository
+
+Clone `mrploch-development` as a sibling directory first — `Directory.Packages.props` imports the
+shared package versions from it, so restore fails without it:
+
+```bash
+git clone https://github.com/mrploch/ploch-commandline.git
+git clone https://github.com/mrploch/mrploch-development.git
+cd ploch-commandline
+dotnet build Ploch.CommandLine.Spectre.slnx
+dotnet test  Ploch.CommandLine.Spectre.slnx
+```
+
+**No GitHub Packages token is required.** `main` only ever references stable `Ploch.*` versions,
+and those are on nuget.org, so a build with `GH_PACKAGES_TOKEN` unset restores successfully — the
+`401 (Unauthorized)` warnings from the unauthenticated GitHub Packages feed are expected and
+harmless. That "stable versions only" rule is a policy, enforced by a check in CI.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the reasoning, the escape hatch for working against
+unreleased `ploch-common` code, and the rest of the contributor setup.
