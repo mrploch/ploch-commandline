@@ -92,12 +92,32 @@ the real, complete MSBuild graph.
 [`.github/workflows/dependency-report.yml`](../.github/workflows/dependency-report.yml)
 runs weekly (and on demand) and:
 
-- clones the sibling, restores the solution, and runs `dotnet list package --outdated`
-  and `dotnet list package --vulnerable --include-transitive`;
+- clones the sibling, restores, and runs `dotnet list package --outdated` and
+  `dotnet list package --vulnerable --include-transitive`;
+- covers **both** solutions — the main one and `samples/SampleApp`, which is standalone
+  by design, keeps its own `Directory.Packages.props`, and would otherwise be left
+  entirely unwatched;
 - writes both lists, deduplicated and labelled with where each version has to be changed,
   to the run's job summary **and** to the log — the summary is what a person reads, but
   only the log can be retrieved through the API afterwards;
 - **fails the job** when a vulnerable package is found, and only then.
+
+Three details are load-bearing and easy to undo by accident:
+
+- **The restore downgrades `NU1903`/`NU1904` for this run only.** `Directory.Build.props`
+  sets `TreatWarningsAsErrors` with `WarningsNotAsErrors` limited to `NU1901;NU1902`, so a
+  high or critical audit advisory is fatal. That is correct for a build — such a finding
+  should stop a release — but here it would abort restore before the report could name the
+  package, turning the one case this workflow exists for into a bare "restore failed". The
+  script still fails the run, with the actionable table attached.
+- **`--include-transitive` is on the vulnerability query only.** Combined with `--outdated`
+  it aborts the SDK on the sample solution (`error: Sequence contains no matching element`,
+  while either flag alone succeeds). A transitive package cannot be bumped directly anyway,
+  so nothing actionable is lost; a transitive *vulnerability* very much is, and is covered.
+- **There is no `pull_request` trigger.** This is a health check, not a merge gate. Running
+  it on pull requests would hand `GH_PACKAGES_TOKEN` to code the pull request itself
+  controls, and would fail outright for forks, which receive no secret. Validate a change
+  to the report by dispatching the workflow on the branch.
 
 The severity split is deliberate. A merely outdated package is information, and failing
 a scheduled job weekly for it trains everyone to ignore the notification — the precise
@@ -107,9 +127,11 @@ the notification.
 
 This reports rather than raises pull requests. That is the accepted cost: a bump has to
 be applied by hand (in this repository for the local pins, in `mrploch-development` for
-the shared ones). In exchange the report is accurate, covers both the shared and the
-local versions, and covers transitive packages — which Dependabot's version updates do
-not.
+the shared ones). To make that concrete, every row carries a **"Bump in"** column,
+resolved from the `Directory.Packages.props` MSBuild itself would apply to that solution
+— the nearest one at or above it, so the sample's standalone pins are never confused with
+the main solution's. A version pinned here but resolved through an MSBuild property is
+labelled as such rather than being claimed outright.
 
 ## When the shared versions move to `mrploch-development`
 
