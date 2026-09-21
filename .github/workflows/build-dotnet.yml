@@ -108,6 +108,26 @@ jobs:
           COMPUTED=$(dotnet nbgv get-version --variable NuGetPackageVersion)
           echo "PR NuGet package version: $COMPUTED"
 
+      # Enforce the stable-only Ploch dependency policy BEFORE restore, so a violation surfaces
+      # as one readable error instead of a wall of NU1301/401 noise (or, worse, a green build
+      # here and a broken one on the next fork pull request).
+      #
+      # Runs on every build, not only fork pull requests, on purpose. This job has the token, so
+      # a prerelease version would restore fine here and the breakage would only appear when an
+      # external contributor opened a pull request - the latent trap issue #54 describes. The
+      # same prerelease would also let the release build pack a stable package with a prerelease
+      # dependency (#47, NU5104). Failing loudly and immediately is the cheaper outcome.
+      #
+      # The version comes from mrploch-development at its moving `main`, so this step can fail
+      # on a change made in that repository with no commit in this one. That is intended: the
+      # error names the file to fix.
+      #
+      # Evaluation only - no restore, no build, a second or two. The target is defined in
+      # Directory.Build.props and is not attached to Build or Restore, so it costs developer
+      # builds nothing.
+      - name: Verify Ploch package versions are stable
+        run: dotnet msbuild ./src/Spectre/CommandLine.Spectre/Ploch.CommandLine.Spectre.csproj -t:VerifyPlochPackageVersionsAreStable -nologo -v:minimal
+
       # Restore
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_PATH }}
