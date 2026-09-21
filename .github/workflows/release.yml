@@ -207,6 +207,13 @@ jobs:
           echo "nuget_version=$NUGET_VERSION" >> $GITHUB_OUTPUT
           echo "NuGet package version: $NUGET_VERSION"
 
+      # A release must never pack a stable package that depends on a prerelease Ploch version -
+      # that is the #47 / NU5104 defect. The versions come from mrploch-development at the ref
+      # this run was given, so the build workflow's green tick on `main` is not evidence about
+      # this run. Re-check here, before restore. See CONTRIBUTING.md and issue #54.
+      - name: Verify Ploch package versions are stable
+        run: dotnet msbuild ./src/Spectre/CommandLine.Spectre/Ploch.CommandLine.Spectre.csproj -t:VerifyPlochPackageVersionsAreStable -nologo -v:minimal
+
       - name: Restore dependencies
         # Scoped to this step rather than the job, so the package credential is not exposed
         # to checkout, upload, release or other third-party actions (least privilege, raised

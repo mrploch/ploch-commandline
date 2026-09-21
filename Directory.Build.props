@@ -104,6 +104,60 @@
     <UsePlochProjectReferences Condition="'$(UsePlochProjectReferences)' == ''">false</UsePlochProjectReferences>
   </PropertyGroup>
 
+  <!--
+    Stable-only Ploch dependency policy - enforcement. See CONTRIBUTING.md ("Ploch dependencies
+    are always stable") for the policy itself and Directory.Packages.props for where the
+    versions come from. Issue #54 / PLO-523.
+
+    In short: the MAIN solution must never resolve a PRERELEASE Ploch.* version. Prereleases are
+    published to GitHub Packages only, that feed needs %GH_PACKAGES_TOKEN%, and GitHub withholds
+    repository secrets from pull requests opened from forks - so a prerelease version turns
+    every fork pull request, and every tokenless local build, into a hard
+    `error NU1301 ... 401 (Unauthorized)` that names a secret the contributor cannot be given -
+    measured 2026-09-20 (UTC). The same prerelease would also make the release build pack a
+    stable package with a prerelease dependency, which is the #47 / NU5104 defect.
+
+    SCOPE. This target validates the central package versions of the solution it is invoked on,
+    which is the whole of the policy's reach. samples/SampleApp is a separate, deliberately
+    standalone central-package root that this file never reaches, and it pins a PRERELEASE
+    Ploch.CommandLine.* build on purpose (see the comment on $(PlochPackagesVersion) in
+    samples/SampleApp/Directory.Packages.props): those are this repository's own CI builds of
+    its own packages, not ploch-common dependencies, and the sample is built in CI with
+    -p:UsePlochProjectReferences=true, which removes them entirely. Widening the target over
+    that root would report a violation of a rule that does not apply to it. Raised by the Codex
+    and Copilot reviewers on PR #85.
+
+    This target is the guard. It is NOT hooked to Build or Restore: it costs nothing until it
+    is named explicitly, so no developer build gets slower and no environment-dependent
+    behaviour is introduced. build-dotnet.yml and release.yml run it once, before restore. Run
+    it yourself with:
+
+      dotnet msbuild src/Spectre/CommandLine.Spectre/Ploch.CommandLine.Spectre.csproj -t:VerifyPlochPackageVersionsAreStable
+
+    It deliberately inspects the resolved PackageVersion items rather than the shared
+    $(PlochCommonPackagesVersion) / $(PlochDataPackagesVersion) properties, so it still fires
+    for a version pinned by any other route. The remaining route around a central version -
+    a per-project VersionOverride - is closed in Directory.Packages.props by setting
+    CentralPackageVersionOverrideEnabled=false, which is a build error rather than something
+    this target could see from one project. Raised by the Copilot reviewer on PR #85.
+
+    Package ids are compared case-insensitively because NuGet ids are case-insensitive: a
+    prerelease `ploch.common` would otherwise slip past a case-sensitive prefix test. Raised by
+    the Codacy and CodeRabbit reviewers on PR #85.
+  -->
+  <Target Name="VerifyPlochPackageVersionsAreStable">
+    <ItemGroup>
+      <PrereleasePlochPackageVersion Include="@(PackageVersion)"
+                                     Condition="$([MSBuild]::ValueOrDefault('%(Identity)', '').ToUpperInvariant().StartsWith('PLOCH.')) AND $([MSBuild]::ValueOrDefault('%(Version)', '').Contains('-'))" />
+    </ItemGroup>
+    <Error Condition="'@(PrereleasePlochPackageVersion)' != ''"
+           Code="PLOCH0001"
+           Text="Prerelease Ploch package version(s) referenced: @(PrereleasePlochPackageVersion->'%(Identity) %(Version)', '; '). The main solution must only reference STABLE Ploch versions - prereleases live on GitHub Packages, which fork pull requests cannot authenticate against (issue #54). Fix the version in mrploch-development/dependencies/Ploch.Packages.props, or, if you genuinely need the unreleased sources, build locally with -p:UsePlochProjectReferences=true instead of pinning a prerelease." />
+    <Message Condition="'@(PrereleasePlochPackageVersion)' == ''"
+             Importance="high"
+             Text="Every Ploch.* central package version reachable from $(MSBuildProjectName) is stable." />
+  </Target>
+
   <!-- Nerdbank.GitVersioning for all projects. SourceLink needs no package reference: the .NET 8+ SDK
        includes it and reads the PublishRepositoryUrl / EmbedUntrackedSources settings above. -->
   <ItemGroup>

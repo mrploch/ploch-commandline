@@ -1,6 +1,16 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      Forbid per-project VersionOverride. Without this, a project could override a central
+      version with a prerelease one and VerifyPlochPackageVersionsAreStable - which inspects
+      central PackageVersion items - would still report success, because the override lives in
+      another project's PackageReference. Disabling the feature closes that route mechanically
+      instead of asking one target to see every project. Nothing in this repository uses
+      VersionOverride today, so this is a no-op except as a guard. Raised by the Copilot
+      reviewer on PR #85.
+    -->
+    <CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>
   </PropertyGroup>
   <Import Project="../mrploch-development/dependencies/MicrosoftExtensions.Net9.Packages.props" />
   <ItemGroup>
@@ -12,6 +22,21 @@
     repository in the workspace resolves the same builds. This replaces a local
     `Ploch.Common 2.0.1` pin that was two major versions behind the packages this
     repository's own published package depends on (issues #46, #47).
+
+    POLICY: the versions this file imports must always be STABLE releases. `main` must never
+    reference a prerelease Ploch.* version - prerelease consumption is opt-in local work only,
+    via -p:UsePlochProjectReferences=true. The rule exists because prereleases are published to
+    GitHub Packages alone, that feed needs %GH_PACKAGES_TOKEN%, and GitHub withholds repository
+    secrets from pull requests opened from forks: a prerelease version here turns every fork
+    pull request into `error NU1301 ... 401 (Unauthorized)`, naming a secret an external
+    contributor cannot be given. It would also make the release build pack a stable package
+    with a prerelease dependency, which is the #47 / NU5104 defect.
+
+    This file is not the only thing that has to honour the policy: CI reads mrploch-development
+    at its moving `main`, so a bump there lands here with no commit in this repository. That is
+    why the policy is enforced by a check rather than by review -
+    VerifyPlochPackageVersionsAreStable in Directory.Build.props, run before restore in
+    build-dotnet.yml. Rationale and contributor guidance: CONTRIBUTING.md; issue #54 / PLO-523.
   -->
   <Import Project="../mrploch-development/dependencies/Ploch.Packages.props" />
   <!--
