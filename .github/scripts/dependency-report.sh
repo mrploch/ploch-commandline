@@ -83,8 +83,8 @@ canonical="(group_by(.id | ascii_downcase)
 # for the two solutions in this repository every project sits below its solution's version
 # file, so the solution directory is a faithful proxy.
 find_version_file() {
-  local directory
-  directory="$(cd "$(dirname "$1")" && pwd)"
+  local solution="$1" directory
+  directory="$(cd "$(dirname "$solution")" && pwd)"
   while [[ "$directory" != '/' && -n "$directory" ]]; do
     if [[ -f "$directory/Directory.Packages.props" ]]; then
       echo "$directory/Directory.Packages.props"
@@ -92,7 +92,7 @@ find_version_file() {
     fi
     directory="$(dirname "$directory")"
   done
-  echo "::error::no Directory.Packages.props found at or above $1." >&2
+  echo "::error::no Directory.Packages.props found at or above $solution." >&2
   return 1
 }
 
@@ -114,7 +114,8 @@ run_sdk() {
 
 # Records a check that could not run, in the report and in the failure count.
 report_unchecked() {
-  echo "**Not checked** — $1 See the job log for the SDK's own diagnostics." >>"$report"
+  local reason="$1"
+  echo "**Not checked** — $reason See the job log for the SDK's own diagnostics." >>"$report"
   echo >>"$report"
   failed_checks=$(( failed_checks + 1 ))
 }
@@ -122,7 +123,8 @@ report_unchecked() {
 # The file's text with XML comments removed and line breaks flattened, so a commented-out
 # declaration is invisible and an element split across lines reads as one.
 declarations_text() {
-  perl -0777 -pe 's/<!--.*?-->//gs' "$1" | tr '\r\n' '  '
+  local file="$1"
+  perl -0777 -pe 's/<!--.*?-->//gs' "$file" | tr '\r\n' '  '
 }
 
 # Every version element in the text, one per line. Quote-aware: a `>` inside an attribute
@@ -156,10 +158,11 @@ referenced_properties() {
 # The evaluated Version of every item declaring the package in an evaluation's output, one
 # per line.
 package_versions() {
-  jq -r --arg id "$2" '
+  local evaluation="$1" id="$2"
+  jq -r --arg id "$id" '
       [ (.Items.PackageVersion // [])[], (.Items.GlobalPackageReference // [])[]
         | select((.Identity | ascii_downcase) == ($id | ascii_downcase)) ]
-      | .[] | .Version // ""' "$1"
+      | .[] | .Version // ""' "$evaluation"
 }
 
 # The $(Property) that controls a local version, or nothing.
@@ -409,13 +412,15 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   cat "$report" >>"$GITHUB_STEP_SUMMARY"
 fi
 
+# The closing errors go to stderr with every other diagnostic, leaving stdout as the report
+# alone. Actions reads workflow commands from both streams, so the annotations still appear.
 status=0
 if (( vulnerable_total > 0 )); then
-  echo "::error::$vulnerable_total vulnerable NuGet package finding(s) — see the report above."
+  echo "::error::$vulnerable_total vulnerable NuGet package finding(s) — see the report above." >&2
   status=1
 fi
 if (( failed_checks > 0 )); then
-  echo "::error::$failed_checks dependency check(s) could not be run — see the errors above."
+  echo "::error::$failed_checks dependency check(s) could not be run — see the errors above." >&2
   status=1
 fi
 exit "$status"

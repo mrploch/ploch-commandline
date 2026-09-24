@@ -23,11 +23,12 @@ fail() {
 
 # Prints the rows of one table ("### <heading>") inside one solution's section.
 table() {
-  awk -v solution="## \`$2\`" -v heading="### $3" '
+  local report="$1" solution="$2" heading="$3"
+  awk -v solution="## \`$solution\`" -v heading="### $heading" '
     index($0, "## ") == 1 { in_solution = ($0 == solution); in_table = 0; next }
     in_solution && index($0, "### ") == 1 { in_table = ($0 == heading); next }
     in_solution && in_table && /^\| `/ { print }
-  ' <<<"$1"
+  ' <<<"$report"
 }
 
 # Asserts that exactly one row names the package and that it ends with the expected owner.
@@ -44,16 +45,20 @@ expect_row() {
 
 # Asserts that a complete row appears verbatim - versions, severity and link included.
 expect_line() {
-  grep -qxF "$2" <<<"$1" || fail "expected the row: $2"
+  local rows="$1" row="$2"
+  grep -qxF "$row" <<<"$rows" || fail "expected the row: $row"
 }
 
 # Asserts how many rows name a package (case-sensitively, as rendered).
 expect_count() {
-  local actual
-  actual="$(grep -cF "| \`$2\` |" <<<"$1" || true)"
-  [[ "$actual" -eq "$3" ]] || fail "expected $3 row(s) for $2, got $actual"
+  local rows="$1" id="$2" expected="$3" actual
+  actual="$(grep -cF "| \`$id\` |" <<<"$rows" || true)"
+  [[ "$actual" -eq "$expected" ]] || fail "expected $expected row(s) for $id, got $actual"
 }
 
+# The owner texts the report prints, and the MSBuild switch a probe overrides a property with.
+local_owner='this repository'
+probe_switch='-property:'
 transitive='transitive — bump the package that brings it in'
 transitive_unpinned="$transitive (its central pin is not applied: transitive pinning is off)"
 updated="unclear — an \`Update\` in the import graph sets its version; find the one MSBuild applies last"
@@ -420,8 +425,13 @@ chmod +x "$work/bin/dotnet"
 export PATH="$work/bin:$PATH" FIXTURES="$work/fixtures" CALLS="$work/calls.log"
 unset GITHUB_STEP_SUMMARY
 
+# Runs the report for one scenario. Its stdout - the report alone - is the function's output;
+# its stderr, where every diagnostic and the closing errors go, is kept in $diagnostics_log.
+diagnostics_log="$work/stderr.log"
 run_report() {
-  (cd "$work/repo" && SCENARIO="$1" bash "$script" ./Main.slnx ./samples/Sample/Sample.slnx)
+  local scenario="$1"
+  (cd "$work/repo" && SCENARIO="$scenario" bash "$script" ./Main.slnx ./samples/Sample/Sample.slnx) \
+    2>"$diagnostics_log"
 }
 
 # --- Scenario: findings -----------------------------------------------------------------
@@ -437,14 +447,14 @@ set -e
 main_outdated="$(table "$output" ./Main.slnx 'Outdated packages')"
 expect_row  "$main_outdated" Shared.Pkg   'mrploch-development'
 expect_row  "$main_outdated" Analyzer.Pkg 'mrploch-development'
-expect_row  "$main_outdated" Local.Pkg    'this repository'
+expect_row  "$main_outdated" Local.Pkg    "$local_owner"
 expect_row  "$main_outdated" Property.Pkg "pinned here as \`\$(PropertyPkgVersion)\` — change that property"
 expect_row  "$main_outdated" Spaced.Pkg   "pinned here as \`\$(SpacedPkgVersion)\` — change that property"
-expect_row  "$main_outdated" Cond.Pkg     'this repository'
+expect_row  "$main_outdated" Cond.Pkg     "$local_owner"
 expect_row  "$main_outdated" Multi.Pkg    "pinned here as \`\$(MultiPkgVersion)\` — change that property"
-expect_row  "$main_outdated" Equal.Pkg    'this repository'
+expect_row  "$main_outdated" Equal.Pkg    "$local_owner"
 expect_row  "$main_outdated" Gt.Pkg       "pinned here as \`\$(GtPkgVersion)\` — change that property"
-expect_row  "$main_outdated" Stale.Pkg    'this repository'
+expect_row  "$main_outdated" Stale.Pkg    "$local_owner"
 expect_row  "$main_outdated" Upd.Pkg      "$updated"
 expect_row  "$main_outdated" Imp.Pkg      "$updated"
 expect_row  "$main_outdated" SemiB.Pkg    "$updated"
@@ -454,8 +464,8 @@ expect_row  "$main_outdated" FamA.Pkg     "pinned here as \`\$(FamVersion)\` —
 expect_row  "$main_outdated" FamB.Pkg     "pinned here as \`\$(FamVersion)\` — change that property"
 expect_row  "$main_outdated" Reinc.Pkg    "pinned here as \`\$(ReincVersion)\` — change that property"
 expect_row  "$main_outdated" CondOnly.Pkg "pinned here as \`\$(CondOnlyVersion)\` — change that property"
-expect_row  "$main_outdated" Dup.Pkg      'this repository'
-expect_row  "$main_outdated" Flip.Pkg     'this repository'
+expect_row  "$main_outdated" Dup.Pkg      "$local_owner"
+expect_row  "$main_outdated" Flip.Pkg     "$local_owner"
 expect_line "$main_outdated" "| \`Shared.Pkg\` | 1.0.0 | 2.0.0 | mrploch-development |"
 expect_count "$main_outdated" shared.pkg 0
 
@@ -467,31 +477,33 @@ expect_line "$main_vulnerable" "| \`Shared.Pkg\` | 1.0.0 | High | [advisory](htt
 expect_line "$main_vulnerable" "| \`Shared.Pkg\` | 1.0.0 | High | [advisory](https://example.test/GHSA-shared) | $transitive_unpinned |"
 expect_line "$main_vulnerable" "| \`Shared.Pkg\` | 0.9.0 | High | [advisory](https://example.test/GHSA-shared) | $transitive_unpinned |"
 expect_row  "$main_vulnerable" Transitive.InShared "$transitive_unpinned"
-expect_line "$main_vulnerable" "| \`Local.Pkg\` | 1.0.0 | High | [advisory](https://example.test/GHSA-local-1) | this repository |"
-expect_line "$main_vulnerable" "| \`Local.Pkg\` | 1.0.0 | Moderate | [advisory](https://example.test/GHSA-local-2) | this repository |"
+expect_line "$main_vulnerable" "| \`Local.Pkg\` | 1.0.0 | High | [advisory](https://example.test/GHSA-local-1) | $local_owner |"
+expect_line "$main_vulnerable" "| \`Local.Pkg\` | 1.0.0 | Moderate | [advisory](https://example.test/GHSA-local-2) | $local_owner |"
 expect_line "$main_vulnerable" "| \`Property.Pkg\` | 3.0.0 | High | [advisory](https://example.test/GHSA-prop-1) | pinned here as \`\$(PropertyPkgVersion)\` — change that property |"
 expect_line "$main_vulnerable" "| \`Property.Pkg\` | 3.0.0 | Low | [advisory](https://example.test/GHSA-prop-2) | pinned here as \`\$(PropertyPkgVersion)\` — change that property |"
 
 sample_outdated="$(table "$output" ./samples/Sample/Sample.slnx 'Outdated packages')"
 sample_vulnerable="$(table "$output" ./samples/Sample/Sample.slnx 'Vulnerable packages')"
-expect_row "$sample_outdated"   Sample.Pkg          'this repository'
+expect_row "$sample_outdated"   Sample.Pkg          "$local_owner"
 expect_row "$sample_vulnerable" Transitive.InShared "$transitive"
-expect_row "$sample_vulnerable" Pinned.Transitive   'this repository'
+expect_row "$sample_vulnerable" Pinned.Transitive   "$local_owner"
 
 # 8 rows for the main solution (Shared.Pkg x3, Local.Pkg x2, Property.Pkg x2,
 # Transitive.InShared) and 2 for the sample.
-grep -qF '10 vulnerable NuGet package finding(s)' <<<"$output" \
+grep -qF '10 vulnerable NuGet package finding(s)' "$diagnostics_log" \
   || fail 'expected the vulnerability total (10) in the closing error'
+# The closing errors are diagnostics: stdout carries the report alone.
+grep -qF '::error::' <<<"$output" && fail 'expected no ::error:: line in the report on stdout'
 
 # Probes are cached per property: Property.Pkg appears in the outdated table and twice in
 # the vulnerable one, yet MSBuild is asked to confirm its property once.
-duplicate_probes="$(grep -- '-property:' "$CALLS" | sort | uniq -d)"
+duplicate_probes="$(grep -- "$probe_switch" "$CALLS" | sort | uniq -d)"
 [[ -z "$duplicate_probes" ]] || fail "expected each property probe to run once, repeated: $duplicate_probes"
-[[ "$(grep -c -- '-property:PropertyPkgVersion=' "$CALLS")" -eq 1 ]] \
+[[ "$(grep -c -- "${probe_switch}PropertyPkgVersion=" "$CALLS")" -eq 1 ]] \
   || fail "expected \$(PropertyPkgVersion) to be probed exactly once"
 # A probe is also shared between packages: $(FamVersion) pins FamA.Pkg and FamB.Pkg, and
 # one re-evaluation answers for both.
-[[ "$(grep -c -- '-property:FamVersion=' "$CALLS")" -eq 1 ]] \
+[[ "$(grep -c -- "${probe_switch}FamVersion=" "$CALLS")" -eq 1 ]] \
   || fail "expected \$(FamVersion) to be probed once for both packages it pins"
 
 # The SDK arguments the documentation calls load-bearing.
@@ -515,18 +527,18 @@ while read -r call; do
   [[ "$call" == *-getProperty:CentralPackageTransitivePinningEnabled* \
      && "$call" == *-getItem:PackageVersion* && "$call" == *-getItem:GlobalPackageReference* ]] \
     || fail "dotnet msbuild evaluation is missing a property or item type: $call"
-done < <(grep '^msbuild .*-getItem' "$CALLS" | grep -v -- '-property:')
+done < <(grep '^msbuild .*-getItem' "$CALLS" | grep -v -- "$probe_switch")
 [[ "$(grep -c '^msbuild .* -preprocess' "$CALLS")" -eq 2 ]] \
   || fail 'expected each solution to preprocess its version file exactly once'
 # A property is named only after MSBuild confirms it: each probe overrides exactly one
 # property, and one did run for a property the report then names.
 while read -r call; do
-  [[ "$(grep -o -- '-property:' <<<"$call" | grep -c .)" -eq 1 ]] \
+  [[ "$(grep -o -- "$probe_switch" <<<"$call" | grep -c .)" -eq 1 ]] \
     || fail "a probe must override exactly one property: $call"
 done < <(grep '^msbuild .*-property:' "$CALLS")
-grep -qF -- "-property:ReincVersion=" "$CALLS" \
+grep -qF -- "${probe_switch}ReincVersion=" "$CALLS" \
   || fail "expected MSBuild to be asked to confirm \$(ReincVersion) before it is named"
-main_evaluation="$(grep '^msbuild .*Directory\.Packages\.props.*-getItem' "$CALLS" | grep -v samples | grep -v -- '-property:' || true)"
+main_evaluation="$(grep '^msbuild .*Directory\.Packages\.props.*-getItem' "$CALLS" | grep -v samples | grep -v -- "$probe_switch" || true)"
 for property in PropertyPkgVersion SpacedPkgVersion InactiveVersion MultiPkgVersion \
                 GtPkgVersion StalePkgVersion UpdOldVersion ImpOldVersion ReincVersion; do
   [[ "$main_evaluation" == *"-getProperty:$property"* ]] \
@@ -557,7 +569,7 @@ grep -qxF 'None — every package is at its latest available version.' <<<"$outp
 echo 'Scenario: the SDK fails on the second solution'
 : >"$CALLS"
 set +e
-output="$(run_report broken 2>"$work/stderr.log")"
+output="$(run_report broken)"
 status=$?
 set -e
 
@@ -566,24 +578,24 @@ expect_line "$(table "$output" ./Main.slnx 'Vulnerable packages')" \
   "| \`Shared.Pkg\` | 1.0.0 | High | [advisory](https://example.test/GHSA-shared) | mrploch-development |"
 grep -qF '**Not checked** — listing vulnerable packages failed.' <<<"$output" \
   || fail 'expected the failed check to be marked in the report'
-grep -qF 'NU1301' "$work/stderr.log" || fail "expected the SDK's own diagnostics on stderr"
-grep -qF '1 dependency check(s) could not be run' <<<"$output" \
+grep -qF 'NU1301' "$diagnostics_log" || fail "expected the SDK's own diagnostics on stderr"
+grep -qF '1 dependency check(s) could not be run' "$diagnostics_log" \
   || fail 'expected the failed-check total in the closing error'
 
 # --- Scenario: SDK failure with nothing vulnerable ------------------------------------
 echo 'Scenario: a check fails and nothing is vulnerable'
 : >"$CALLS"
 set +e
-output="$(run_report failonly 2>/dev/null)"
+output="$(run_report failonly)"
 status=$?
 set -e
 
 [[ $status -eq 1 ]] || fail "expected a failed check alone to fail the run, got $status"
-grep -qF 'vulnerable NuGet package finding(s)' <<<"$output" \
+grep -qF 'vulnerable NuGet package finding(s)' "$diagnostics_log" \
   && fail 'expected no vulnerability error when nothing is vulnerable'
 grep -qF '**Not checked** — listing outdated packages failed.' <<<"$output" \
   || fail 'expected the failed outdated check to be marked in the report'
-grep -qF '1 dependency check(s) could not be run' <<<"$output" \
+grep -qF '1 dependency check(s) could not be run' "$diagnostics_log" \
   || fail 'expected the failed-check total in the closing error'
 # A failed outdated query must not cost the same solution its vulnerability check.
 grep -q '^list \./samples/Sample/Sample\.slnx package --vulnerable' "$CALLS" \
@@ -599,26 +611,26 @@ grep -qxF 'None.' <<<"$sample_vulnerable_section" \
 echo 'Scenario: a property probe cannot run'
 : >"$CALLS"
 set +e
-output="$(run_report probefail 2>"$work/stderr.log")"
+output="$(run_report probefail)"
 status=$?
 set -e
 [[ $status -eq 1 ]] || fail "expected only the vulnerability findings to fail the run, got $status"
-grep -qF 'dependency check(s) could not be run' <<<"$output" \
+grep -qF 'dependency check(s) could not be run' "$diagnostics_log" \
   && fail 'a failed probe is an enrichment failing, not a check that could not run'
 probefail_outdated="$(table "$output" ./Main.slnx 'Outdated packages')"
-expect_row "$probefail_outdated" Property.Pkg 'this repository'
-expect_row "$probefail_outdated" Reinc.Pkg    'this repository'
+expect_row "$probefail_outdated" Property.Pkg "$local_owner"
+expect_row "$probefail_outdated" Reinc.Pkg    "$local_owner"
 expect_row "$probefail_outdated" Shared.Pkg   'mrploch-development'
-grep -qF '::warning::could not test whether' "$work/stderr.log" \
+grep -qF '::warning::could not test whether' "$diagnostics_log" \
   || fail 'expected a warning when a property probe cannot run'
 # The SDK's own reason reaches the log, and only once per failed property: the work
 # directory holding it is deleted on exit.
-diagnostics="$(grep -cF 'MSB1006' "$work/stderr.log" || true)"
-reevaluations="$(grep -cF 'could not re-evaluate' "$work/stderr.log" || true)"
+diagnostics="$(grep -cF 'MSB1006' "$diagnostics_log" || true)"
+reevaluations="$(grep -cF 'could not re-evaluate' "$diagnostics_log" || true)"
 if (( diagnostics == 0 || diagnostics != reevaluations )); then
   fail "expected MSBuild's own diagnostics once per failed probe, got $diagnostics for $reevaluations"
 fi
-[[ "$(grep -cF "could not re-evaluate with \$(PropertyPkgVersion)" "$work/stderr.log")" -eq 1 ]] \
+[[ "$(grep -cF "could not re-evaluate with \$(PropertyPkgVersion)" "$diagnostics_log")" -eq 1 ]] \
   || fail 'expected the diagnostics of a failed probe to be shown once, not per package'
 
 # --- Scenario: missing sibling ----------------------------------------------------------
