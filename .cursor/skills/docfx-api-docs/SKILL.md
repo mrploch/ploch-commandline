@@ -221,7 +221,7 @@ jobs:
   "version": 1,
   "isRoot": true,
   "tools": {
-    "nbgv": { "version": "3.7.115", "commands": ["nbgv"] },
+    "nbgv": { "version": "3.10.94", "commands": ["nbgv"] },
     "docfx": { "version": "2.78.3", "commands": ["docfx"] }
   }
 }
