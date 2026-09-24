@@ -14,8 +14,8 @@
   </PropertyGroup>
   <Import Project="../mrploch-development/dependencies/MicrosoftExtensions.Net9.Packages.props" />
   <ItemGroup>
-    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.0" />
-    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.7.115" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
   <!--
     Ploch package versions (ploch-common, ploch-data) come from the shared file so every
