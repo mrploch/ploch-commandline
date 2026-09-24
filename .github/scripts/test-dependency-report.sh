@@ -56,7 +56,7 @@ expect_count() {
 
 transitive='transitive — bump the package that brings it in'
 transitive_unpinned="$transitive (its central pin is not applied: transitive pinning is off)"
-updated='unclear — an `Update` in the import graph sets its version; find the one MSBuild applies last'
+updated="unclear — an \`Update\` in the import graph sets its version; find the one MSBuild applies last"
 
 # --- Fake workspace ---------------------------------------------------------------------
 # workspace/
@@ -488,11 +488,11 @@ grep -qF '10 vulnerable NuGet package finding(s)' <<<"$output" \
 duplicate_probes="$(grep -- '-property:' "$CALLS" | sort | uniq -d)"
 [[ -z "$duplicate_probes" ]] || fail "expected each property probe to run once, repeated: $duplicate_probes"
 [[ "$(grep -c -- '-property:PropertyPkgVersion=' "$CALLS")" -eq 1 ]] \
-  || fail 'expected $(PropertyPkgVersion) to be probed exactly once'
+  || fail "expected \$(PropertyPkgVersion) to be probed exactly once"
 # A probe is also shared between packages: $(FamVersion) pins FamA.Pkg and FamB.Pkg, and
 # one re-evaluation answers for both.
 [[ "$(grep -c -- '-property:FamVersion=' "$CALLS")" -eq 1 ]] \
-  || fail 'expected $(FamVersion) to be probed once for both packages it pins'
+  || fail "expected \$(FamVersion) to be probed once for both packages it pins"
 
 # The SDK arguments the documentation calls load-bearing.
 grep -q '^list ' "$CALLS" || fail 'expected dotnet list to be called'
@@ -613,10 +613,12 @@ grep -qF '::warning::could not test whether' "$work/stderr.log" \
   || fail 'expected a warning when a property probe cannot run'
 # The SDK's own reason reaches the log, and only once per failed property: the work
 # directory holding it is deleted on exit.
-[[ "$(grep -cF 'MSB1006' "$work/stderr.log")" -eq "$(grep -cF 'could not re-evaluate' "$work/stderr.log")" ]] \
-  && grep -qF 'MSB1006' "$work/stderr.log" \
-  || fail "expected MSBuild's own diagnostics once per failed probe"
-[[ "$(grep -cF 'could not re-evaluate with $(PropertyPkgVersion)' "$work/stderr.log")" -eq 1 ]] \
+diagnostics="$(grep -cF 'MSB1006' "$work/stderr.log" || true)"
+reevaluations="$(grep -cF 'could not re-evaluate' "$work/stderr.log" || true)"
+if (( diagnostics == 0 || diagnostics != reevaluations )); then
+  fail "expected MSBuild's own diagnostics once per failed probe, got $diagnostics for $reevaluations"
+fi
+[[ "$(grep -cF "could not re-evaluate with \$(PropertyPkgVersion)" "$work/stderr.log")" -eq 1 ]] \
   || fail 'expected the diagnostics of a failed probe to be shown once, not per package'
 
 # --- Scenario: missing sibling ----------------------------------------------------------
