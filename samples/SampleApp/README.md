@@ -291,8 +291,13 @@ The host adds an environment-variable provider, so enumerating the configuration
 every environment variable of the process — tokens and API keys included. The allow-list is the
 point of the example.
 
-`Program.cs` also pins the configuration base path to `AppContext.BaseDirectory`, so the settings
-load no matter which directory the tool is invoked from.
+`Program.cs` also pins the host's **content root** to `AppContext.BaseDirectory`, through the
+`UseSettingsFromDeploymentDirectory` extension method in `HostBuilderExtensions.cs`, so the settings
+load no matter which directory the tool is invoked from. It deliberately does not add a second
+`appsettings.json` source to achieve that: configuration sources are ordered and the last one added
+wins, so appending the file would rank it above the environment variables and the command-line
+arguments the host had already layered on top of it. `HostBuilderExtensionsTests` pins both halves —
+the file is still found from an unrelated working directory, and the command line still overrides it.
 
 ### `file` — token expansion
 
@@ -461,5 +466,6 @@ samples/SampleApp/
 dotnet test samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -p:UsePlochProjectReferences=true
 ```
 
-46 tests: command exit codes, token expansion, cancellation handling, input validation, the export
-artefact and its symbolic-link safety, use case invocation and validator rules. They use xUnit v3, FluentAssertions and Moq.
+49 tests: command exit codes, token expansion, cancellation handling, input validation, the export
+artefact and its symbolic-link safety, configuration precedence, use case invocation and validator
+rules. They use xUnit v3, FluentAssertions and Moq.

@@ -1,7 +1,7 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Ploch.CommandLine.Spectre;
 using Ploch.CommandLine.Spectre.FluentValidation;
+using Ploch.CommandLine.Spectre.SampleApp;
 using Ploch.CommandLine.Spectre.SampleApp.Commands.Common;
 using Ploch.CommandLine.Spectre.SampleApp.Commands.Config;
 using Ploch.CommandLine.Spectre.SampleApp.Commands.Files;
@@ -22,11 +22,14 @@ var appBuilder = AppBuilder.Create(args)
                            .WithDescription("Showcase application demonstrating Ploch.CommandLine.Spectre features, " +
                                             "multi-level sub-commands, FluentValidation, tokens, and Clean Architecture use cases.")
 
-                           // The host resolves relative configuration file paths against the current working
-                           // directory. A CLI is invoked from wherever the user happens to be, so appsettings.json
-                           // is loaded from the directory the application was deployed to instead.
-                           .ConfigureAppConfiguration(configuration => configuration.SetBasePath(AppContext.BaseDirectory)
-                                                                                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true))
+                           // The host resolves relative configuration file paths against its content root, which
+                           // defaults to the current working directory. A CLI is invoked from wherever the user happens
+                           // to be, so the content root is pointed at the deployment directory instead. Moving the
+                           // content root rather than adding a second appsettings.json source is the whole point: the
+                           // host already loaded that file below the environment variables and the command line, and a
+                           // source added afterwards is appended on top of both, so the file would silently override
+                           // "--SampleAppSettings:MaxBatchSize=5". See HostBuilderExtensions.
+                           .ConfigureHost(host => host.UseSettingsFromDeploymentDirectory(AppContext.BaseDirectory))
                            .ConfigureServices((context, services) =>
                            {
                                // Serilog reads its minimum level from the "Serilog" section of appsettings.json and

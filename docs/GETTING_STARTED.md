@@ -251,17 +251,56 @@ Add an `appsettings.json` and copy it to the output directory:
 ```
 
 There is a trap here that only shows up once you install the tool. The host resolves relative
-configuration paths against the **current working directory**, and a CLI is run from wherever the
-user happens to be — so `appsettings.json` silently fails to load and every setting reads back as
-`null`. Anchor it to the deployment directory instead:
+configuration paths against its **content root**, which defaults to the current working directory,
+and a CLI is run from wherever the user happens to be — so `appsettings.json` silently fails to load
+and every setting that only that file supplies reads back as `null`. Nothing tells you: the source is
+optional, and the environment variables and the command line still work, so the tool half-works.
+
+The fix is to move the content root, not to add a second source:
 
 ```csharp
-.ConfigureAppConfiguration(configuration => configuration.SetBasePath(AppContext.BaseDirectory)
-                                                         .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true))
+.ConfigureHost(host => host.UseContentRoot(AppContext.BaseDirectory))
 ```
 
-`optional: false` is deliberate: a missing configuration file should fail loudly at start-up rather
-than produce a tool that behaves differently depending on the directory it was launched from.
+That one call anchors the host's own `appsettings.json` **and** `appsettings.{Environment}.json`
+lookups to the directory the application was deployed to, and changes nothing else.
+
+**Do not re-add `appsettings.json` yourself to reach that directory.** The obvious-looking
+
+```csharp
+// Wrong: fixes the path, breaks the precedence.
+.ConfigureAppConfiguration(configuration => configuration.SetBasePath(AppContext.BaseDirectory)
+                                                         .AddJsonFile("appsettings.json", optional: false))
+```
+
+does find the file, but configuration sources are ordered and the last one added wins. The host has
+already layered `appsettings.json`, `appsettings.{Environment}.json`, user secrets (in the
+`Development` environment only), the environment variables and the command-line arguments, in
+ascending precedence. Appending the file puts it back
+on **top** of all of them, so `--MySection:BatchSize=5` is silently overridden by the value in the
+file it was meant to override. `AppBuilder` itself carried exactly this bug until it was fixed in
+[#82](https://github.com/mrploch/ploch-commandline/issues/82).
+
+`UseContentRoot` costs you one thing: the host's own source is `optional: true`, so a missing file no
+longer throws. If you want the old fail-loud behaviour — and you probably do, since a tool that
+behaves differently depending on the directory it was launched from is worse than one that refuses to
+start — check for the file explicitly instead of relying on `optional: false`:
+
+```csharp
+.ConfigureHost(host =>
+{
+    var settingsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+    if (!File.Exists(settingsFile))
+    {
+        throw new FileNotFoundException("The application settings file was not found.", settingsFile);
+    }
+
+    host.UseContentRoot(AppContext.BaseDirectory);
+})
+```
+
+The sample application packages both halves as a single `UseSettingsFromDeploymentDirectory`
+extension method on `IHostBuilder`; see `samples/SampleApp/src/SampleApp/HostBuilderExtensions.cs`.
 
 Inject `IConfiguration` into a command like any other service.
 

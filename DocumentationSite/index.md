@@ -108,7 +108,10 @@ usual hosting extension points are available:
 
 - `WithName`, `WithVersion`, `WithDescription` — application metadata, also used to render the startup banner.
 - `ConfigureServices` — register services into the container that resolves your commands.
-- `ConfigureAppConfiguration` — add configuration sources such as `appsettings.json`.
+- `ConfigureAppConfiguration` — add configuration sources on top of the host's own ones. Each source
+  added here outranks `appsettings.json`, the environment variables and the command line, so do not
+  re-add `appsettings.json` through it; use `ConfigureHost(host => host.UseContentRoot(...))` when you
+  only need the file to be found somewhere else.
 - `ConfigureHost` — reach the underlying `IHostBuilder` directly.
 - `Dispose` — release the `Console.CancelKeyPress` handler and the `CancellationTokenSource` that
   `Create` installed. A builder constructed directly with your own source owns neither and leaves
