@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Use-case abstractions (IUseCase, IResultUseCase) and a base Spectre.Console.Cli command that runs a use case and renders its Ardalis.Result.</Description>
+    <Description>Use-case abstractions (IUseCase, IResultUseCase) and a base Spectre.Console.Cli command that runs an IResultUseCase and maps its Ardalis.Result to output and an exit code.</Description>
     <PackageTags>$(PackageTags);use-cases;ardalis-result</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFramework>$(TargetFrameworkVersion)</TargetFramework>
@@ -22,6 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include=".\README.md" Pack="true" PackagePath="\" />
+    <None Update="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>

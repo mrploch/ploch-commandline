@@ -1,10 +1,15 @@
 # Ploch.CommandLine.UseCases
 
 Use-case abstractions for command-line applications built with
-[Ploch.CommandLine.Spectre](https://www.nuget.org/packages/Ploch.CommandLine.Spectre): keep the work in a
-use case (`IUseCase<TRequest, TResponse>` or `IResultUseCase<TRequest, TResponse>`, which returns an
-[Ardalis.Result](https://github.com/ardalis/Result)) and let `UseCaseAsyncCommand` turn command settings
-into a request, run the use case and render the result.
+[Ploch.CommandLine.Spectre](https://www.nuget.org/packages/Ploch.CommandLine.Spectre). Keep the work in a
+use case: `IUseCase<TRequest, TResponse>` is the general abstraction, and
+`IResultUseCase<TRequest, TResponse>` is the variant whose response is an
+[Ardalis.Result](https://github.com/ardalis/Result).
+
+`UseCaseAsyncCommand` runs an **`IResultUseCase`** from a command: it turns the command settings into a
+request, runs the use case, reports a failed result's errors and validation errors, and maps the result
+to an exit code. On success it prints a completion message; override `ProcessSuccessResponse` to render
+the response value itself.
 
 ## Installation
 

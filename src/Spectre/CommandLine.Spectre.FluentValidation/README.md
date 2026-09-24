@@ -38,8 +38,10 @@ public class GreetSettingsValidator : AbstractValidator<GreetSettings>
 }
 ```
 
-Every `AbstractValidator<TSettings>` in the scanned assemblies is picked up; commands derived from
-`AppCommand<TSettings>` or `AsyncAppCommand<TSettings>` validate their settings automatically.
+Every **public** `AbstractValidator<TSettings>` in the scanned assemblies is picked up; commands derived
+from `AppCommand<TSettings>` or `AsyncAppCommand<TSettings>` validate their settings automatically.
+Internal validators are not scanned, so a settings type whose only validator is internal falls back to
+`CommandSettings.Validate()`.
 
 ## Documentation
 
