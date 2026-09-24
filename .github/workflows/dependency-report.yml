@@ -78,18 +78,37 @@ jobs:
       # the MrPloch GitHub Packages feed. It is set on this step and the report step only -
       # the two that query feeds - rather than on the job, so checkout, the sibling clone
       # and SDK setup never see it.
+      #
+      # Every solution is restored even when an earlier one fails, and the step fails only
+      # at the end: one solution's broken restore must not cost the other its report.
       - name: Restore
+        id: restore
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: |
+          status=0
           for solution in $SOLUTION_PATHS; do
-            dotnet restore "$solution" -p:WarningsNotAsErrors='NU1901%3BNU1902%3BNU1903%3BNU1904'
+            if ! dotnet restore "$solution" -p:WarningsNotAsErrors='NU1901%3BNU1902%3BNU1903%3BNU1904'; then
+              echo "::error::restore failed for $solution; its report sections will say 'Not checked'."
+              status=1
+            fi
           done
+          exit "$status"
 
       # Writes the report to the log and the job summary. Fails on a vulnerable package, or
       # when a check could not run at all; an outdated package alone never fails the run.
       # `dotnet list package --outdated` queries the feeds, hence the token here too.
+      #
+      # Runs after a FAILED restore as well, so the solutions that did restore are still
+      # reported and the one that did not is marked "Not checked" in place (its
+      # `dotnet list --no-restore` fails on the missing assets file, which the script reports).
+      # The job stays failed either way, because the restore step failed. It does not run when
+      # restore never ran - a failed checkout, clone or SDK setup - as nothing could be checked.
       - name: Report outdated and vulnerable packages
+        if: ${{ !cancelled() && (steps.restore.outcome == 'success' || steps.restore.outcome == 'failure') }}
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-        run: bash .github/scripts/dependency-report.sh $SOLUTION_PATHS
+        # SOLUTION_PATHS is a space-separated list; split it explicitly into arguments.
+        run: |
+          read -ra solutions <<<"$SOLUTION_PATHS"
+          bash .github/scripts/dependency-report.sh "${solutions[@]}"

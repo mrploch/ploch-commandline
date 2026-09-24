@@ -102,8 +102,10 @@ runs weekly (and on demand) and:
   only the log can be retrieved through the API afterwards;
 - **fails the job** when a vulnerable package is found, or when a check could not run at
   all — an SDK failure is reported in place, with its diagnostics in the log, and the
-  sections already rendered for other solutions are kept. An outdated package alone never
-  fails the run.
+  sections already rendered for other solutions are kept. The same holds for restore: every
+  solution is restored even if one fails, and the report still runs, marking the
+  unrestored solution "Not checked" while the job stays failed. An outdated package alone
+  never fails the run.
 
 Five details are load-bearing and easy to undo by accident:
 
