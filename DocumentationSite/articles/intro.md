@@ -63,8 +63,13 @@ configuration and routes framework logging through it:
 
 ```csharp
 .ConfigureServices((context, services) =>
-    services.AddSerilog(context.Configuration, logName: "sample", logPath: "logs"))
+    services.AddSerilog(context.Configuration,
+                        logName: "sample",
+                        logPath: Path.Combine(AppContext.BaseDirectory, "logs")))
 ```
+
+Anchor `logPath` to the application's directory, as above. A relative path such as `"logs"`
+resolves against the working directory the CLI was launched from, which can be anywhere.
 
 Commands then take `ILogger<T>` as a constructor parameter in the usual way.
 
