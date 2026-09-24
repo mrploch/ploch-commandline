@@ -174,9 +174,16 @@ jobs:
       # step precedes Build and Test, an external contributor's pull request would fail before a
       # single line was compiled, with an error about a token they cannot be given. Skipping keeps
       # the step blocking where it can actually run: every branch in this repository.
+      #
+      # Skipped for Dependabot too (PLO-622). GitHub gives Dependabot-triggered runs no repository
+      # secrets either, but a Dependabot branch lives IN this repository, so the fork check above
+      # is true for it and would not skip it. `github.actor` is the right test: it names whoever
+      # triggered the run, and a re-run keeps the original actor - and its restricted privileges.
       - name: SonarScanner Begin
         id: sonar-begin
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: >-
+          github.actor != 'dependabot[bot]' &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
@@ -255,9 +262,12 @@ jobs:
           "-targetdir:./CoverageReport"
           "-reporttypes:Cobertura"
 
-      # Skips itself on fork pull requests, where the token cannot write coverage.
+      # Skips itself on fork pull requests, where the token cannot write coverage. It does NOT skip
+      # Dependabot's: its own check (action.yml at this SHA) only compares the PR's head repository
+      # with this one, and a Dependabot branch is in this repository - yet a Dependabot run's token
+      # is read-only whatever `permissions:` says, so the upload would fail. Skip it here (PLO-622).
       - name: Upload coverage to GitHub Code Quality
-        if: always()
+        if: always() && github.actor != 'dependabot[bot]'
         uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34 # v1.4.2
         with:
           file: ./CoverageReport/Cobertura.xml
