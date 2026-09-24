@@ -112,3 +112,19 @@ jobs:
         run: |
           read -ra solutions <<<"$SOLUTION_PATHS"
           bash .github/scripts/dependency-report.sh "${solutions[@]}"
+
+      # The sample pins a published build of this repository's packages (PlochPackagesVersion in
+      # samples/SampleApp/Directory.Packages.props), exactly as an external consumer would. Neither
+      # build-dotnet.yml (project references) nor release.yml (freshly packed packages) ever
+      # compiles against that pin, so it once fell behind the library's API and stopped compiling
+      # without anyone noticing (PLO-583). The restore above already resolves the pin; this builds
+      # and tests against it, so a stale pin turns this weekly run red.
+      #
+      # Deliberately here and not on pull requests: a PR that changes the library's API is ahead
+      # of every published package until it merges, so a PR gate would fail on correct changes.
+      # It runs whenever the sample restored, even if the report step failed on a vulnerability.
+      - name: Build and test the sample against its pinned packages
+        if: ${{ !cancelled() && steps.restore.outcome == 'success' }}
+        run: |
+          dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release --no-restore
+          dotnet test ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release --no-build
