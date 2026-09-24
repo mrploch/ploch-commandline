@@ -1,6 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Description>FluentValidation integration for Ploch.CommandLine.Spectre: validates command settings with FluentValidation validators before a command runs.</Description>
+    <PackageTags>$(PackageTags);fluentvalidation;validation</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFramework>$(TargetFrameworkVersion)</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -25,4 +28,7 @@
     <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include=".\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>
