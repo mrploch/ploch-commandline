@@ -24,6 +24,14 @@ It builds on top of the [Spectre.Console](https://spectreconsole.net/) library, 
 - configuration
 - output formatting
 
+## Documentation
+
+- [Getting started](docs/GETTING_STARTED.md) — building your first application with `AppBuilder`.
+- [Dependency updates](docs/dependency-updates.md) — how NuGet and GitHub Actions
+  dependencies are kept current, and why NuGet is handled by a scheduled workflow rather
+  than by Dependabot.
+- [Release notes](RELEASE_NOTES.md) — what changed in each version.
+
 ## Building this repository
 
 Clone `mrploch-development` as a sibling directory first — `Directory.Packages.props` imports the

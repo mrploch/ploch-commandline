@@ -1,0 +1,114 @@
+# Weekly NuGet dependency report.
+#
+# This workflow exists because Dependabot's `nuget` ecosystem cannot work in this
+# repository: Directory.Packages.props imports shared version files from the sibling
+# repository mrploch/mrploch-development, Dependabot checks out one repository only, and
+# MSBuild evaluation therefore fails with MSB4019 before any package is inspected. See
+# docs/dependency-updates.md for the full reasoning and the options that were rejected.
+#
+# A workflow can do the one thing Dependabot cannot: clone the sibling first, exactly as
+# build-dotnet.yml does, and let the .NET SDK evaluate the real two-repository graph.
+#
+# There is deliberately no `pull_request` trigger. This is a scheduled health check, not a
+# merge gate, and running it on pull requests would hand GH_PACKAGES_TOKEN to code the
+# pull request itself controls while still failing outright for forks, which receive no
+# secret at all. A change to the report is covered by the fixture test that build-dotnet.yml
+# runs on every pull request (.github/scripts/test-dependency-report.sh); dispatching this
+# workflow on the branch shows the change against the real two-repository graph.
+name: Dependency report
+
+on:
+  # Monday morning, shortly after the github-actions Dependabot run, so both dependency
+  # signals for the week arrive together.
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Report outdated and vulnerable packages
+    runs-on: ubuntu-latest
+
+    env:
+      # Both solutions. samples/SampleApp is standalone by design - it has its own
+      # Directory.Packages.props and pins its versions exactly as an external consumer
+      # would - so it is invisible to the main solution's graph and would otherwise be
+      # left completely unwatched by the removal of the nuget Dependabot ecosystem.
+      SOLUTION_PATHS: >-
+        ./Ploch.CommandLine.Spectre.slnx
+        ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx
+
+    steps:
+      # fetch-depth: 0 because Nerdbank.GitVersioning is referenced by every project and
+      # computes the version height from the full commit history, so restoring a shallow
+      # clone fails. persist-credentials: false because nothing here pushes, and leaving
+      # the token in .git/config needlessly exposes it to restore-time MSBuild code.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The whole point of this workflow. Directory.Packages.props imports
+      # ../mrploch-development/dependencies/*.Packages.props, so the sibling has to exist
+      # beside the checkout before anything can be evaluated.
+      - name: Clone mrploch-development (shared package versions)
+        run: git clone --depth 1 https://github.com/mrploch/mrploch-development.git ../mrploch-development
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      # Directory.Build.props sets TreatWarningsAsErrors with WarningsNotAsErrors limited
+      # to NU1901;NU1902, so a high or critical NuGet audit advisory (NU1903/NU1904) is
+      # fatal. That is right for a build - such a finding should stop a release - but here
+      # it would abort restore before the report could say which package is affected and
+      # where to fix it, turning the one case this workflow exists for into a bare
+      # "restore failed". The advisories are downgraded for this restore only; the script
+      # still fails the run on them, with the actionable table attached.
+      #
+      # The semicolons are %3B-escaped: MSBuild splits an unescaped one as a switch
+      # separator and rejects the value with "MSB1006: Property is not valid. Switch:
+      # NU1902".
+      #
+      # GH_PACKAGES_TOKEN is consumed by nuget.config's packageSourceCredentials entry for
+      # the MrPloch GitHub Packages feed. It is set on this step and the report step only -
+      # the two that query feeds - rather than on the job, so checkout, the sibling clone
+      # and SDK setup never see it.
+      #
+      # Every solution is restored even when an earlier one fails, and the step fails only
+      # at the end: one solution's broken restore must not cost the other its report.
+      - name: Restore
+        id: restore
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+        run: |
+          status=0
+          for solution in $SOLUTION_PATHS; do
+            if ! dotnet restore "$solution" -p:WarningsNotAsErrors='NU1901%3BNU1902%3BNU1903%3BNU1904'; then
+              echo "::error::restore failed for $solution; its report sections will say 'Not checked'."
+              status=1
+            fi
+          done
+          exit "$status"
+
+      # Writes the report to the log and the job summary. Fails on a vulnerable package, or
+      # when a check could not run at all; an outdated package alone never fails the run.
+      # `dotnet list package --outdated` queries the feeds, hence the token here too.
+      #
+      # Runs after a FAILED restore as well, so the solutions that did restore are still
+      # reported and the one that did not is marked "Not checked" in place (its
+      # `dotnet list --no-restore` fails on the missing assets file, which the script reports).
+      # The job stays failed either way, because the restore step failed. It does not run when
+      # restore never ran - a failed checkout, clone or SDK setup - as nothing could be checked.
+      - name: Report outdated and vulnerable packages
+        if: ${{ !cancelled() && (steps.restore.outcome == 'success' || steps.restore.outcome == 'failure') }}
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+        # SOLUTION_PATHS is a space-separated list; split it explicitly into arguments.
+        run: |
+          read -ra solutions <<<"$SOLUTION_PATHS"
+          bash .github/scripts/dependency-report.sh "${solutions[@]}"

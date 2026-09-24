@@ -2,6 +2,8 @@
   href: index.md
 - name: Getting Started
   href: ../docs/GETTING_STARTED.md
+- name: Dependency Updates
+  href: ../docs/dependency-updates.md
 - name: Articles
   href: articles/
 - name: API Documentation
