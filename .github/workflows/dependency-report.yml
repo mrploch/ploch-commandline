@@ -12,7 +12,9 @@
 # There is deliberately no `pull_request` trigger. This is a scheduled health check, not a
 # merge gate, and running it on pull requests would hand GH_PACKAGES_TOKEN to code the
 # pull request itself controls while still failing outright for forks, which receive no
-# secret at all. A change to the report is validated by dispatching it on the branch.
+# secret at all. A change to the report is covered by the fixture test that build-dotnet.yml
+# runs on every pull request (.github/scripts/test-dependency-report.sh); dispatching this
+# workflow on the branch shows the change against the real two-repository graph.
 name: Dependency report
 
 on:
@@ -38,9 +40,6 @@ jobs:
       SOLUTION_PATHS: >-
         ./Ploch.CommandLine.Spectre.slnx
         ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx
-      # Consumed by nuget.config's packageSourceCredentials entry for the MrPloch
-      # GitHub Packages feed, so restore can resolve Ploch.* packages.
-      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
     steps:
       # fetch-depth: 0 because Nerdbank.GitVersioning is referenced by every project and
@@ -74,13 +73,23 @@ jobs:
       # The semicolons are %3B-escaped: MSBuild splits an unescaped one as a switch
       # separator and rejects the value with "MSB1006: Property is not valid. Switch:
       # NU1902".
+      #
+      # GH_PACKAGES_TOKEN is consumed by nuget.config's packageSourceCredentials entry for
+      # the MrPloch GitHub Packages feed. It is set on this step and the report step only -
+      # the two that query feeds - rather than on the job, so checkout, the sibling clone
+      # and SDK setup never see it.
       - name: Restore
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: |
           for solution in $SOLUTION_PATHS; do
             dotnet restore "$solution" -p:WarningsNotAsErrors='NU1901%3BNU1902%3BNU1903%3BNU1904'
           done
 
-      # Writes the report to the log and the job summary, and fails only on a vulnerable
-      # package.
+      # Writes the report to the log and the job summary. Fails on a vulnerable package, or
+      # when a check could not run at all; an outdated package alone never fails the run.
+      # `dotnet list package --outdated` queries the feeds, hence the token here too.
       - name: Report outdated and vulnerable packages
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: bash .github/scripts/dependency-report.sh $SOLUTION_PATHS

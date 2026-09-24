@@ -75,6 +75,16 @@ jobs:
       - name: Test the NuGet publish script
         run: bash .github/scripts/test-publish-nuget-packages.sh
 
+      # The dependency report runs weekly (dependency-report.yml), so a regression in its
+      # parsing or ownership attribution would otherwise surface only days after the change
+      # that caused it. Same mocked-dotnet approach; ubuntu-latest ships jq, which it needs.
+      # The job-level GH_PACKAGES_TOKEN is blanked here: the test mocks every feed access,
+      # so it has no use for the secret and should not be able to read it.
+      - name: Test the dependency report script
+        env:
+          GH_PACKAGES_TOKEN: ''
+        run: bash .github/scripts/test-dependency-report.sh
+
       - name: Restore .NET tools
         run: dotnet tool restore
 
