@@ -57,13 +57,19 @@ container, as are options types registered with `services.Configure<T>(...)`.
 
 ## Logging with Serilog
 
-Add the `Ploch.CommandLine.Spectre.Serilog` package and register its bundle. It
-configures Serilog against the application's configuration and routes framework
-logging through it:
+Add the `Ploch.CommandLine.Spectre.Serilog` package and call `AddSerilog` from
+`ConfigureServices`. It configures Serilog against the application's
+configuration and routes framework logging through it:
 
 ```csharp
-.AddServicesBundle<SerilogConfigurationBundle>()
+.ConfigureServices((context, services) =>
+    services.AddSerilog(context.Configuration,
+                        logName: "sample",
+                        logPath: Path.Combine(AppContext.BaseDirectory, "logs")))
 ```
+
+Anchor `logPath` to the application's directory, as above. A relative path such as `"logs"`
+resolves against the working directory the CLI was launched from, which can be anywhere.
 
 Commands then take `ILogger<T>` as a constructor parameter in the usual way.
 
