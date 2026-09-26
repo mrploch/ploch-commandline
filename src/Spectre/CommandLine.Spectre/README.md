@@ -23,6 +23,44 @@ It includes:
 - Configuration
 - Output formatting
 
+## Installation
+
+```bash
+dotnet add package Ploch.CommandLine.Spectre
+```
+
+## Quick example
+
+```csharp
+using Ploch.CommandLine.Spectre;
+using Ploch.CommandLine.Spectre.Commands;
+using Ploch.CommandLine.Spectre.Output;
+using Spectre.Console.Cli;
+
+// The builder owns the Ctrl+C handler, so dispose it once the run has returned.
+using var appBuilder = AppBuilder.Create(args).WithName("My Tool");
+
+var executor = appBuilder.ConfigureCommandApp(config => config.AddCommand<HelloCommand>("hello"));
+
+return executor.Run(args);
+
+public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
+                          ICommandSettingsValidator<CommandSettings> validator,
+                          IExceptionHandler exceptionHandler,
+                          IOutput output) : AppCommand<CommandSettings>(settingsProcessor, validator, exceptionHandler, output)
+{
+    protected override ExitCode DoExecute(CommandContext? context, CommandSettings settings, CancellationToken cancellationToken)
+    {
+        Output.MarkupLineInterpolated($"[bold cyan]Hello![/]");
+
+        return ExitCode.Success;
+    }
+}
+```
+
+`AppCommand<TSettings>` validates the settings, runs the registered argument processors, and turns
+exceptions and cancellation into exit codes, so `DoExecute` holds only the command's own work.
+
 ## Getting Started
 
 See the [Getting Started guide](https://github.com/mrploch/ploch-commandline/blob/main/docs/GETTING_STARTED.md),

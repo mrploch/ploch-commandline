@@ -1,6 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Description>Use-case abstractions (IUseCase, IResultUseCase) and a base Spectre.Console.Cli command that runs an IResultUseCase and maps its Ardalis.Result to output and an exit code.</Description>
+    <PackageTags>$(PackageTags);use-cases;ardalis-result</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFramework>$(TargetFrameworkVersion)</TargetFramework>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
@@ -18,4 +21,7 @@
     <PackageReference Include="Ardalis.Result" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

@@ -4,9 +4,10 @@
     <Authors>Kris Ploch</Authors>
     <Company>Ploch</Company>
     <Product>Ploch.CommandLine</Product>
-    <PackageProjectUrl>https://github.com/mrploch/ploch-commandline</PackageProjectUrl>
+    <PackageProjectUrl>https://commandline.github.ploch.dev/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/mrploch/ploch-commandline.git</RepositoryUrl>
     <Description>Build advanced console apps with ease.</Description>
+    <PackageTags>ploch;cli;console;command-line;spectre-console;dotnet</PackageTags>
     <Copyright>Kris Ploch $([System.DateTime]::Now.Year)</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>

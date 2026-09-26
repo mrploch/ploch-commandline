@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Description>Hosting, configuration, dependency injection, validation and output for Spectre.Console.Cli command-line applications.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFramework>$(TargetFrameworkVersion)</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -53,4 +55,7 @@
     <ProjectReference Include="..\CommandLine.Spectre.Serilog\Ploch.CommandLine.Spectre.Serilog.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>
