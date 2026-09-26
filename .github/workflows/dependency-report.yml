@@ -37,9 +37,8 @@ jobs:
       # Directory.Packages.props and pins its versions exactly as an external consumer
       # would - so it is invisible to the main solution's graph and would otherwise be
       # left completely unwatched by the removal of the nuget Dependabot ecosystem.
-      SOLUTION_PATHS: >-
-        ./Ploch.CommandLine.Spectre.slnx
-        ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx
+      MAIN_SOLUTION: ./Ploch.CommandLine.Spectre.slnx
+      SAMPLE_SOLUTION: ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx
 
     steps:
       # fetch-depth: 0 because Nerdbank.GitVersioning is referenced by every project and
@@ -76,24 +75,25 @@ jobs:
       #
       # GH_PACKAGES_TOKEN is consumed by nuget.config's packageSourceCredentials entry for
       # the MrPloch GitHub Packages feed. It is set on this step and the report step only -
-      # the two that query feeds - rather than on the job, so checkout, the sibling clone
+      # the steps that query feeds - rather than on the job, so checkout, the sibling clone
       # and SDK setup never see it.
       #
-      # Every solution is restored even when an earlier one fails, and the step fails only
-      # at the end: one solution's broken restore must not cost the other its report.
-      - name: Restore
-        id: restore
+      # One restore step per solution, each with its own outcome. The sample restore runs even
+      # when the main one failed, so one solution's broken restore never costs the other its
+      # report - and the sample check below can gate on the SAMPLE's restore alone, which a
+      # single combined step could not tell it (PLO-583 review). Either failure fails the job.
+      - name: Restore main solution
+        id: restore-main
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-        run: |
-          status=0
-          for solution in $SOLUTION_PATHS; do
-            if ! dotnet restore "$solution" -p:WarningsNotAsErrors='NU1901%3BNU1902%3BNU1903%3BNU1904'; then
-              echo "::error::restore failed for $solution; its report sections will say 'Not checked'."
-              status=1
-            fi
-          done
-          exit "$status"
+        run: dotnet restore "$MAIN_SOLUTION" -p:WarningsNotAsErrors='NU1901%3BNU1902%3BNU1903%3BNU1904'
+
+      - name: Restore sample solution
+        id: restore-sample
+        if: ${{ !cancelled() && (steps.restore-main.outcome == 'success' || steps.restore-main.outcome == 'failure') }}
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+        run: dotnet restore "$SAMPLE_SOLUTION" -p:WarningsNotAsErrors='NU1901%3BNU1902%3BNU1903%3BNU1904'
 
       # Writes the report to the log and the job summary. Fails on a vulnerable package, or
       # when a check could not run at all; an outdated package alone never fails the run.
@@ -102,13 +102,28 @@ jobs:
       # Runs after a FAILED restore as well, so the solutions that did restore are still
       # reported and the one that did not is marked "Not checked" in place (its
       # `dotnet list --no-restore` fails on the missing assets file, which the script reports).
-      # The job stays failed either way, because the restore step failed. It does not run when
+      # The job stays failed either way, because a restore step failed. It does not run when
       # restore never ran - a failed checkout, clone or SDK setup - as nothing could be checked.
+      # (The sample restore runs exactly when the main one did, so its outcome says both.)
       - name: Report outdated and vulnerable packages
-        if: ${{ !cancelled() && (steps.restore.outcome == 'success' || steps.restore.outcome == 'failure') }}
+        if: ${{ !cancelled() && (steps.restore-sample.outcome == 'success' || steps.restore-sample.outcome == 'failure') }}
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-        # SOLUTION_PATHS is a space-separated list; split it explicitly into arguments.
+        run: bash .github/scripts/dependency-report.sh "$MAIN_SOLUTION" "$SAMPLE_SOLUTION"
+
+      # The sample pins a published build of this repository's packages (PlochPackagesVersion in
+      # samples/SampleApp/Directory.Packages.props), exactly as an external consumer would. Neither
+      # build-dotnet.yml (project references) nor release.yml (freshly packed packages) ever
+      # compiles against that pin, so it once fell behind the library's API and stopped compiling
+      # without anyone noticing (PLO-583). The restore above already resolves the pin; this builds
+      # and tests against it, so a stale pin turns this weekly run red.
+      #
+      # Deliberately here and not on pull requests: a PR that changes the library's API is ahead
+      # of every published package until it merges, so a PR gate would fail on correct changes.
+      # It runs whenever the SAMPLE restored - even if the main solution's restore failed or the
+      # report step failed on a vulnerability.
+      - name: Build and test the sample against its pinned packages
+        if: ${{ !cancelled() && steps.restore-sample.outcome == 'success' }}
         run: |
-          read -ra solutions <<<"$SOLUTION_PATHS"
-          bash .github/scripts/dependency-report.sh "${solutions[@]}"
+          dotnet build "$SAMPLE_SOLUTION" -c Release --no-restore
+          dotnet test "$SAMPLE_SOLUTION" -c Release --no-build

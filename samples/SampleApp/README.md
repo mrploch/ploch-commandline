@@ -34,6 +34,11 @@ repository it lives in.
 `dotnet build` still fails at restore. Use `-p:UsePlochProjectReferences=true`, which is what CI
 runs and needs no feed access, so the sample cannot drift away from the libraries.
 
+The standalone mode compiles against the version pinned as `PlochPackagesVersion` in
+[`Directory.Packages.props`](Directory.Packages.props) — a published **main-branch** build, never a
+pull-request build. The weekly *Dependency report* workflow builds and tests the sample against that
+pin, so a pin that falls behind the library's API is caught within a week.
+
 The switch lives in [`ProjectReferences.props`](ProjectReferences.props), imported conditionally by
 [`Directory.Build.targets`](Directory.Build.targets) — **targets**, not props: `Directory.Build.props`
 is evaluated before the project body, so the `<PackageReference Remove="..." />` items would have

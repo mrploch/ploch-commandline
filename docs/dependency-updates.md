@@ -105,7 +105,13 @@ runs weekly (and on demand) and:
   sections already rendered for other solutions are kept. The same holds for restore: every
   solution is restored even if one fails, and the report still runs, marking the
   unrestored solution "Not checked" while the job stays failed. An outdated package alone
-  never fails the run.
+  never fails the run;
+- builds and tests `samples/SampleApp` against the Ploch package version it pins
+  (`PlochPackagesVersion`). No other workflow compiles against that pin — CI uses project
+  references and the release uses freshly packed packages — so without this step a pin
+  that falls behind the library's API rots unnoticed, which is exactly what happened in
+  [PLO-583](https://linear.app/ploch/issue/PLO-583). It is not a pull-request check: a PR
+  that changes the API is ahead of every published package until it merges.
 
 Five details are load-bearing and easy to undo by accident:
 

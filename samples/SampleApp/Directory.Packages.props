@@ -21,8 +21,14 @@
          while appearing to pin one. A floating 1.0.*-* fixed that but replaced it with a different
          problem: this sample is copied by consumers, and floating makes its restore time-dependent,
          lets the four Ploch packages resolve to different builds, and does not settle onto the
-         stable release once v1 ships. Bump this deliberately as part of the release commit. -->
-    <PlochPackagesVersion>1.0.26-pr.11.3-spectre-console-in.g45b21c88cb</PlochPackagesVersion>
+         stable release once v1 ships. Bump this deliberately as part of the release commit.
+
+         Pin a MAIN-branch build (`x.y.z-prerelease`), never a pull-request build
+         (`x.y.z-pr.N...`): a PR build carries whatever that branch had, and its larger patch number
+         says nothing about how current it is. 1.0.26-pr.11.3 predated #80, #81 and #83 and stopped
+         compiling (PLO-583). The weekly Dependency report workflow builds this sample in standalone
+         mode, so a pin that falls behind the library's API fails loudly instead of rotting. -->
+    <PlochPackagesVersion>1.0.20-prerelease</PlochPackagesVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Ploch packages">
