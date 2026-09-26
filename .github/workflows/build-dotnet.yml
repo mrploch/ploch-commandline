@@ -237,8 +237,21 @@ jobs:
       #
       # Raised by the Copilot (Grok 4.6) reviewer on PR #52 as a live defect; investigated and
       # refuted independently by the Codex reviewer; refutation confirmed by measurement.
+      #
+      # GITHUB_ENV is pointed at a throwaway file for this one build (PLO-584). Nerdbank.GitVersioning
+      # appends GitBuildVersion, GitBuildVersionSimple and GitAssemblyInformationalVersion to
+      # $GITHUB_ENV from every project it versions, and this is the only step that builds projects
+      # from two NBGV repositories (this one and the ploch-common checkout) in parallel. Concurrent
+      # appends can interleave into a line without '=', which the runner then rejects after a
+      # successful build ("Unable to process file command 'env'", "Invalid format 'b166'"). Nothing
+      # in these workflows reads those variables - versions come from `dotnet nbgv get-version` - so
+      # discarding them loses nothing. NBGV 3.7.115, the version this repository pins, has no MSBuild
+      # switch for this: the SetCloudBuildVersionVars target is gated only on version.json's
+      # cloudBuild.setVersionVariables, which is per repository and would not cover ploch-common.
       - name: Build sample application
-        run: dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false
+        run: >-
+          GITHUB_ENV="$RUNNER_TEMP/sample-build.nbgv.env"
+          dotnet build ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false
       - name: Test sample application
         run: dotnet test ./samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -c Release --no-build -p:UsePlochProjectReferences=true -p:GeneratePackageOnBuild=false --logger "trx;LogFileName=${{ runner.temp }}/sample-test-results/SampleTestResults.trx" --results-directory "${{ runner.temp }}/sample-test-results"
 
