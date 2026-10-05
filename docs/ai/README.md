@@ -27,8 +27,9 @@ without searching.
 - **Fixed names and location.** `CLAUDE.md` at the root, the five documents above in `docs/ai/`.
   A repository may add a document; it does not rename or drop one. A document that does not
   apply keeps its file and says so in one line.
-- **Fixed sections.** Each document keeps its numbered top-level sections in the same order in
-  every repository. An empty section says "None" rather than disappearing.
+- **Fixed sections.** Each of the five documents has its own list of numbered top-level sections,
+  kept in the same order in every repository. An empty section says "None" rather than
+  disappearing. `CLAUDE.md` and this index have fixed, unnumbered headings.
 - **Verification stamp.** Every document starts with the date and commit it was verified against.
 - **Evidence over assertion.** A claim that is not obvious cites a file path, a command that was
   run, or a tracker link. Anything not checked is marked `UNVERIFIED`.

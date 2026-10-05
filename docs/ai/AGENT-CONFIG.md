@@ -34,7 +34,7 @@ repository is checked out inside the workspace.
 | `.contextstream/config.json` | 1 | under 1 KB | ContextStream | Remove with ContextStream |
 | `.cursor/mcp.json` | 1 | 1 KB | Cursor | Remove or replace: defines only ContextStream |
 | `.claude/rules/` | 27 | 154 KB | Claude Code, all of it, every session | Reduce; see section 3 |
-| `.claude/skills/` | 9 | 228 KB | Claude Code, on demand | Keep 5 of 6 skills |
+| `.claude/skills/` | 9 | 228 KB | Claude Code, on demand | Keep 4 of 6 skills |
 | `.claude/mrploch-dev/` | 2 | 35 KB | Nothing; unregistered plugin | Remove |
 | `.agents/` | 12 | 183 KB | Codex, Antigravity | Regenerate from one source or remove |
 | `.cursor/rules/` | 26 | 137 KB | Cursor | Stale mirror; regenerate or remove |
@@ -77,7 +77,8 @@ Committed skills, and whether this repository uses them:
 | Skill | Copies | Used here |
 |---|---|---|
 | `implement-issue` | `.claude`, `.agents`, `.cursor` | Yes |
-| `dev-finishing-touches`, `dotnet-dev-finishing-touches` | `.claude`, partly `.agents`, `.cursor` | Yes |
+| `dotnet-dev-finishing-touches` | all three | Yes |
+| `dev-finishing-touches` | `.claude` only | No; the committed copy is the adaptation for another repository's Astro site (npm build, browser checks, FTPS deployment) |
 | `dotnet-dev-practical` | all three | Yes |
 | `docfx-api-docs` | `.claude`, `.cursor` | Yes; the repository has a DocFX site |
 | `commit`, `pr`, `review-pr`, `review-pr-comments`, `qa-explore` | `.agents` only | Yes, but overlap built-in commands |
@@ -137,12 +138,12 @@ Ordered by value. "Where" names the layer that has to change.
 
 | # | Change | Where | Effect |
 |---|---|---|---|
-| 8 | Commit `.claude/settings.json` with an allow-list for `dotnet build`, `test`, `restore`, `format`, `msbuild`, read-only `git`, `gh pr`, `gh run`, `gh api`, and a deny-list for credential files and force pushes | Repository | Fewer prompts without allowing everything |
+| 8 | Commit `.claude/settings.json` with an allow-list for `dotnet build`, `test`, `restore`, `format`, `msbuild`, read-only `git` and read-only `gh` sub-commands (`gh pr view`, `list`, `checks`, `diff`; `gh run view`, `list`), and a deny-list for credential files and force pushes. Leave `gh api` and every command that writes, merges or cancels on "ask" | Repository | Fewer prompts without allowing writes |
 | 9 | Add one verification script that runs what CI runs: the stable-version guard, build, tests, the sample in project-reference mode and DocFX | Repository | One command before a pull request |
 | 10 | Add a test project that compiles the documentation snippets | Repository | Stops the drift behind PLO-620 |
 | 11 | Require the `build` check in the `main` ruleset | GitHub | A red build cannot merge |
 | 12 | Update the pull request template: Linear reference, change-log entry, breaking change, documentation updated | Repository | Template matches the process |
-| 13 | Delete `.claude/mrploch-dev/`, `prompt-lookup` and the WinUI skills from this repository | Repository | About 110 KB less; shorter skill list |
+| 13 | Delete `.claude/mrploch-dev/`, `prompt-lookup`, the WinUI skills and the Astro-site `dev-finishing-touches` copy from this repository | Repository | About 170 KB less; shorter skill list; no wrong verification workflow |
 | 14 | Generate `.agents/` and `.cursor/` from one source, or stop committing them | Workspace | No hand-maintained mirrors |
 
 ### Priority 3 — tidy-up

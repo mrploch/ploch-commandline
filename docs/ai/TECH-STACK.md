@@ -18,7 +18,7 @@
 | Package management | Central (`Directory.Packages.props`) | Root, plus shared files |
 | Versioning | Nerdbank.GitVersioning, `1.0-prerelease` | `version.json` |
 | Tests | xUnit v3, FluentAssertions, Moq, AutoFixture, Coverlet | Shared files |
-| Docs site | DocFX 2.78.5 | `DocumentationSite/docfx.json` |
+| Docs site | DocFX 2.78.5 | Version: `.config/dotnet-tools.json`; site: `DocumentationSite/docfx.json` |
 | Licence | Apache-2.0 | `LICENSE`, `Directory.Build.props` |
 
 There is no database, container image or external runtime service.
@@ -43,7 +43,7 @@ Observed on 2026-10-05 with SDK 10.0.401 and no `GH_PACKAGES_TOKEN`.
 | Command | Result |
 |---|---|
 | `dotnet restore Ploch.CommandLine.Spectre.slnx` | Succeeds; warns `401` from GitHub Packages, falls back to nuget.org |
-| `dotnet build Ploch.CommandLine.Spectre.slnx` | 0 warnings, 0 errors, about 5 s; also packs 8 packages |
+| `dotnet build Ploch.CommandLine.Spectre.slnx` | 0 warnings, 0 errors, about 5 s; also packs the 4 packages and their symbol packages |
 | `dotnet test Ploch.CommandLine.Spectre.slnx` | 289 passed, about 5 s |
 | Sample build, CI mode (below) | Succeeds, about 18 s |
 | Sample test, CI mode | 49 passed |
@@ -76,12 +76,12 @@ Things that do not work as you might expect:
   `--source` is given.
 - `.github/scripts/test-*.sh` need bash 4 or later (`mapfile`); they fail under the stock macOS
   bash 3.2.
-- Every build packs NuGet packages, Debug included (`GeneratePackageOnBuild=true` for non-test
-  projects).
+- Every build of the main solution packs NuGet packages, Debug included
+  (`GeneratePackageOnBuild=true` for its non-test projects). The sample sets it to `false`.
 
 ## 4. Dependencies
 
-Version sources: **L** is this repository's `Directory.Packages.props`. **S/x** is
+Version sources: **L** is a version pinned in this repository's `Directory.Packages.props`. **S/x** is
 `../mrploch-development/dependencies/x.Packages.props`. Versions are what resolved on the
 verification date; "newer" is the latest stable on nuget.org that day.
 
@@ -101,7 +101,7 @@ verification date; "newer" is the latest stable on nuget.org that day.
 | FluentValidation.DependencyInjectionExtensions | 12.1.1 | L | FluentValidation | current |
 | Ardalis.Result | 10.1.0 | S/Common | UseCases | current |
 | Ploch.Common, Ploch.Common.DependencyInjection | 4.0.47 | S/Ploch | core, Serilog, FluentValidation | current |
-| Ploch.Common.Apps.Shared | 4.0.47 | L (override) | core | current |
+| Ploch.Common.Apps.Shared | 4.0.47 | S/Ploch property, declared in L | core | current |
 
 ### 4.2 Build, test and analysis
 
@@ -128,8 +128,10 @@ FluentAssertions, Moq and AutoFixture arrive transitively through
 
 - **No vulnerable or deprecated package** in the main solution, transitive included (nuget.org
   data).
-- **Updates to shared versions are made in `mrploch-development`,** not here. Only the two rows
-  marked L are bumped in this repository.
+- **Updates to shared versions are made in `mrploch-development`,** not here. Only
+  `FluentValidation.DependencyInjectionExtensions` and `Nerdbank.GitVersioning` are pinned in this
+  repository; `Ploch.Common.Apps.Shared` is declared here but takes its version from the shared
+  property.
 - **The sample pins its own versions** in `samples/SampleApp/Directory.Packages.props`, including a
   prerelease build of this repository's packages (`1.0.20-prerelease` on the verification date,
   while `main` built `1.0.25`). `dependency-report.yml` watches that pin weekly.

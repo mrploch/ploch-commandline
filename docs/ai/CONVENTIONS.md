@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Last verified | 2026-10-05, against commit `6a2c931` |
-| Verified by | Reading the code, `.editorconfig`, git history (41 commits), 40 merged pull requests |
+| Verified by | Reading the code, `.editorconfig`, git history (41 commits), the 39 merged pull requests |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
 This document records what is actually done. Where practice differs from a written rule,
