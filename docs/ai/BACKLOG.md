@@ -37,7 +37,7 @@ batch from late September 2026 was prioritised.
 | Issue | Priority | Summary |
 |---|---|---|
 | [PLO-103](https://linear.app/ploch/issue/PLO-103) | None | Umbrella: reach a releasable state and release 1.0 |
-| [PLO-585](https://linear.app/ploch/issue/PLO-585) | Low | Review `GH_PACKAGES_TOKEN` exposure to pull-request code; pin the sibling checkout |
+| [PLO-585](https://linear.app/ploch/issue/PLO-585) | Low | Review credential handling in the CI workflows and the sibling-checkout policy |
 | [PLO-655](https://linear.app/ploch/issue/PLO-655) | Medium | Triage the findings in section 6 |
 
 What still stands between `main` and 1.0, from PLO-103:
