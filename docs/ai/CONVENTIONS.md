@@ -39,7 +39,7 @@ section 10 says so.
 | Nullable | Enabled; flow diagnostics are errors | `.editorconfig` |
 | Guards | `x.NotNull()` from `Ploch.Common.ArgumentChecking` | `AppBuilder.ConfigureHost` |
 | Async | `Async` suffix; `ConfigureAwait(false)` in library code | `AsyncAppCommand<TSettings>` |
-| Fields | Private fields `_camelCase`; constants PascalCase | `.editorconfig` naming rules |
+| Fields | Private instance and private mutable static fields `_camelCase`; `const` and `static readonly` PascalCase | `_logDirectory`, `_current`; `SyncRoot`, `SampleAmount` |
 | Fluent calls | Return value ignored without a discard | `IDE0058` disabled |
 | Modifiers | Types are open `public class`; `sealed` is rare | DI bridge types are sealed |
 | Suppressions | `[SuppressMessage(..., Justification = ...)]` on the member | `AppBuilder.ConfigureAppConfiguration` |
