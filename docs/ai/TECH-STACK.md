@@ -186,8 +186,10 @@ Facts worth knowing:
 
 - `version.json` sets `1.0-prerelease`. The patch number is the git height. `main` and `v*` tags
   are public release refs; other refs get a `.g<sha>` suffix.
-- Every push to `main` publishes `1.0.<height>-prerelease` packages to GitHub Packages. Pull
-  requests targeting `main` publish `-pr.<n>.<branch>` versions.
+- Every push to `main` publishes `1.0.<height>-prerelease` packages to GitHub Packages. A pull
+  request targeting `main` from a branch in this repository publishes `-pr.<n>.<branch>` versions.
+  Pull requests from forks and from Dependabot receive no `GH_PACKAGES_TOKEN`, so that step skips
+  with a warning and nothing is published for them.
 - A stable release is `release.yml`, dispatched by hand with `release_version` and optionally
   `dry_run`. It sets the version, runs the guard, builds, tests, packs, tests the sample against
   the fresh packages, tags, publishes to nuget.org through Trusted Publishing (OIDC), creates the

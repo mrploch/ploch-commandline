@@ -90,4 +90,10 @@ Each of these is explained, with file references, in
 - Conventional Commits with a `Refs: PLO-<n>` footer. Pull requests are squash-merged.
 - A pull request is finished only when every check is green and every review thread is answered.
 
+The rule files committed under `.claude/rules/` predate the move to Linear and still ask for
+GitHub issue numbers (`Refs: #<n>`, `<type>/<n>-…` branches). Where they disagree with this
+section, this section describes current practice; the differences are listed in
+[`docs/ai/CONVENTIONS.md`](docs/ai/CONVENTIONS.md) section 10 and their replacement is proposed in
+[`docs/ai/AGENT-CONFIG.md`](docs/ai/AGENT-CONFIG.md).
+
 Detail and the evidence for each convention: [`docs/ai/CONVENTIONS.md`](docs/ai/CONVENTIONS.md).
