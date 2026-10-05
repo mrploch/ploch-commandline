@@ -18,7 +18,7 @@ Linear is right and this file needs a refresh.
 | Backlog | 3 |
 | Done | 58 |
 | Cancelled | 1 |
-| Open pull requests | 1 |
+| Open pull requests | 2, including the one that adds this file |
 | Merged pull requests | 39 |
 | Git tags, GitHub Releases, packages on nuget.org | 0 |
 
