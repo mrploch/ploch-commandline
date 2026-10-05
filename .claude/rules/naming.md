@@ -17,9 +17,9 @@ C# casing is **not a matter of taste**; it is fixed by the [.NET Framework Desig
 | Method | PascalCase | `RemoveUserFromList` |
 | Property, event | PascalCase | `CreatedTime` |
 | Public / protected field (rare — prefer a property) | PascalCase | `Empty` |
-| Private field | `_camelCase` | `_profileRepository` |
-| `const` (any accessibility), public / protected `static readonly` | PascalCase — **never** `SCREAMING_CASE` | `DefaultTimeout` |
-| Private `static` / `static readonly` field | `_camelCase`, like other private fields | `_defaultTimeout` |
+| Private instance field | `_camelCase` | `_profileRepository` |
+| `const` and `static readonly` field (any accessibility) | PascalCase, no prefix — **never** `SCREAMING_CASE` | `DefaultTimeout` |
+| Private `static` field that is not `readonly` | `_camelCase`, like other private fields | `_current` |
 | Parameter, local variable | camelCase | `cancellationToken` |
 | Generic type parameter | PascalCase, `T` prefix | `TEntity`, `TId` |
 | Enum member | PascalCase | `DeleteBehavior.Cascade` |
