@@ -31,6 +31,8 @@ It builds on top of the [Spectre.Console](https://spectreconsole.net/) library, 
   dependencies are kept current, and why NuGet is handled by a scheduled workflow rather
   than by Dependabot.
 - [Release notes](RELEASE_NOTES.md) — what changed in each version.
+- [AI knowledge base](docs/ai/README.md) — architecture, stack, conventions and backlog written
+  for AI agents; [`CLAUDE.md`](CLAUDE.md) is its entry point.
 
 ## Building this repository
 

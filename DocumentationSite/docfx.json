@@ -45,7 +45,8 @@
           "docs/**/toc.yml"
         ],
         "exclude": [
-          "docs/README.md"
+          "docs/README.md",
+          "docs/ai/**"
         ]
       }
     ],
