@@ -286,6 +286,14 @@ dotnet_diagnostic.IDE0002.severity = error # Simplify name
 # hundreds of per-call-site `_ =` discards. See .claude/rules/code-quality.md, which prescribes
 # this exact setting and forbids the discards.
 dotnet_diagnostic.IDE0058.severity = none
+# IDE1006 is the Roslyn naming-style analyser. The dotnet_naming_rule entries further down only
+# take effect in a build once this diagnostic has a severity of its own; without it they are
+# IDE-only hints. Under TreatWarningsAsErrors a naming violation therefore breaks the build.
+# Field naming it enforces: private instance and private mutable static fields are _camelCase;
+# const and static readonly fields are PascalCase with no prefix. A Roslyn naming rule holds one
+# style only, so private_static_readonly_rule must name PascalCase outright - the Rider export
+# once listed both forms for ReSharper and wrote the underscore form for Roslyn (PLO-658).
+dotnet_diagnostic.IDE1006.severity = warning
 # RCS1251 ("Remove unnecessary braces from record/class declaration") is disabled because its fix -
 # the C# 12 bodiless form `class X : Y;` - breaks the build: the workspace-wide StyleCop.Analyzers
 # 1.1.118 predates C# 12, reports the trailing semicolon as an empty statement (SA1106) and crashes
@@ -401,9 +409,9 @@ dotnet_naming_rule.private_static_fields_rule.symbols = private_static_fields_sy
 dotnet_naming_rule.private_static_readonly_rule.import_to_resharper = True
 dotnet_naming_rule.private_static_readonly_rule.resharper_description = Static readonly fields (private)
 dotnet_naming_rule.private_static_readonly_rule.resharper_guid = 15b5b1f1-457c-4ca6-b278-5615aedc07d3
-dotnet_naming_rule.private_static_readonly_rule.resharper_style = _ + aaBb, AaBb
+dotnet_naming_rule.private_static_readonly_rule.resharper_style = AaBb
 dotnet_naming_rule.private_static_readonly_rule.severity = warning
-dotnet_naming_rule.private_static_readonly_rule.style = lower_camel_case_style
+dotnet_naming_rule.private_static_readonly_rule.style = upper_camel_case_style
 dotnet_naming_rule.private_static_readonly_rule.symbols = private_static_readonly_symbols
 dotnet_naming_rule.static_field_should_be_pascal_case_rule.import_to_resharper = True
 dotnet_naming_rule.static_field_should_be_pascal_case_rule.resharper_description = static_field_should_be_pascal_case
