@@ -308,7 +308,7 @@ jobs:
       # with this one, and a Dependabot branch is in this repository - yet a Dependabot run's token
       # is read-only whatever `permissions:` says, so the upload would fail. Skip it here (PLO-622).
       - name: Upload coverage to GitHub Code Quality
-        if: "!cancelled() && steps.test.outcome != 'skipped'" && github.actor != 'dependabot[bot]'
+        if: "!cancelled() && steps.test.outcome != 'skipped' && github.actor != 'dependabot[bot]'"
         uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34 # v1.4.2
         with:
           file: ./CoverageReport/Cobertura.xml
