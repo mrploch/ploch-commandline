@@ -99,7 +99,7 @@ jobs:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: |
           if [ -n "$GH_PACKAGES_TOKEN" ]; then
-            echo "GH_PACKAGES_TOKEN=$GH_PACKAGES_TOKEN" >> "$GITHUB_ENV"
+            printf 'GH_PACKAGES_TOKEN=%s\n' "$GH_PACKAGES_TOKEN" >> "$GITHUB_ENV"
             echo "GH_PACKAGES_TOKEN is available to the following steps"
           else
             echo "::notice::GH_PACKAGES_TOKEN is not available to this run; Ploch.* packages restore from nuget.org only"
@@ -293,9 +293,10 @@ jobs:
       # This step and the result steps below run after a FAILED test step - a failing test's
       # report is the point - but not after a SKIPPED one: with no test run there is nothing to
       # merge, upload or report, and each would only add its own unrelated failure to the one
-      # that stopped the job (PLO-661).
+      # that stopped the job. Nor after a CANCELLED run, which always() would still enter:
+      # `!cancelled()` keeps a cancellation from reporting partial output (PLO-661).
       - name: Merge coverage reports
-        if: always() && steps.test.outcome != 'skipped'
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         run: >
           dotnet tool run reportgenerator
           "-reports:**/CoverageResults/coverage*.cobertura.xml"
@@ -307,7 +308,7 @@ jobs:
       # with this one, and a Dependabot branch is in this repository - yet a Dependabot run's token
       # is read-only whatever `permissions:` says, so the upload would fail. Skip it here (PLO-622).
       - name: Upload coverage to GitHub Code Quality
-        if: always() && steps.test.outcome != 'skipped' && github.actor != 'dependabot[bot]'
+        if: "!cancelled() && steps.test.outcome != 'skipped'" && github.actor != 'dependabot[bot]'
         uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34 # v1.4.2
         with:
           file: ./CoverageReport/Cobertura.xml
@@ -315,14 +316,14 @@ jobs:
           label: code-coverage/coverlet
 
       - name: Run codacy-coverage-reporter
-        if: always() && steps.test.outcome != 'skipped'
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         continue-on-error: true
         uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: '**/CoverageResults/coverage*.opencover.xml'
       - name: Upload Test Results
-        if: always() && steps.test.outcome != 'skipped'
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
@@ -332,14 +333,14 @@ jobs:
       - name: Test Report
         uses: phoenix-actions/test-reporting@7317eea6e13c47348dd0bb318669485157c518d6 # v16
         id: test-report
-        if: always() && steps.test.outcome != 'skipped'
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         continue-on-error: true
         with:
           name: Test Results
           path: '**/*.trx'
           reporter: dotnet-trx
       - name: Upload Coverage Results
-        if: always() && steps.test.outcome != 'skipped'
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: code-coverage
@@ -354,7 +355,7 @@ jobs:
       # would both be regressions.
       - name: Build documentation (smoke test)
         id: docfx
-        if: always() && steps.tools.outcome == 'success'
+        if: "!cancelled() && steps.tools.outcome == 'success'"
         continue-on-error: true
         run: dotnet docfx DocumentationSite/docfx.json
 
