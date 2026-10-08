@@ -62,6 +62,11 @@ NuGet retries and falls back to nuget.org. Measured on 2026-09-20 (UTC) with the
 `--no-cache` and an empty packages folder: exit code 0. That is one dated measurement, not a
 guarantee — see below.
 
+**Leave the variable unset; never set it to an empty string.** An empty value is substituted as
+the feed password, and NuGet on Linux then fails outright — `Value cannot be null or empty
+string. (Parameter 'password')` — in both `dotnet tool restore` and `dotnet restore`, with no
+fallback to nuget.org. CI exports the variable only when the run has a token for the same reason.
+
 **Best-effort, not guaranteed.** The GitHub Packages source stays eligible while unauthenticated.
 NuGet queries sources concurrently and rethrows a terminal protocol failure from one of them
 rather than ignoring it, so if that feed exhausts its retries before nuget.org returns the match,
@@ -94,7 +99,7 @@ Two things break the moment a prerelease version is referenced:
 
 1. **Fork pull requests cannot build.** Prerelease Ploch builds are published to GitHub Packages
    only, never to nuget.org. GitHub withholds repository secrets from pull requests opened from
-   forks, so `GH_PACKAGES_TOKEN` arrives empty and restore fails hard — with
+   forks, so no token is available and restore fails hard — with
    `error NU1301: … Response status code does not indicate success: 401 (Unauthorized)`, an error
    about a secret the contributor cannot be given. The same applies to any local build without a
    token.

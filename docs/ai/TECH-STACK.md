@@ -179,6 +179,11 @@ Facts worth knowing:
   merge at platform level.
 - Secrets used, by name: `GH_PACKAGES_TOKEN`, `SONAR_TOKEN`, `CODACY_PROJECT_TOKEN`, a Qodana
   token, `GH_TOKEN`. SonarCloud and coverage upload are skipped for forks and Dependabot.
+- `GH_PACKAGES_TOKEN` is exported by a guarded step only when the run has the secret, so a
+  secretless run (Dependabot, fork) sees it **unset** and restores from nuget.org. It must never be
+  defined as empty: NuGet on Linux rejects an empty feed password in `dotnet tool restore` and
+  `dotnet restore`, before any fallback. Result steps run after a failed test step, not a skipped
+  or cancelled one.
 - Review bots that comment on pull requests are configured outside the repository.
 - On the verification date every workflow's recent history was green.
 

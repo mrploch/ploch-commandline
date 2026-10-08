@@ -26,10 +26,9 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    env:
-      # Consumed by nuget.config's packageSourceCredentials entry for the
-      # MrPloch GitHub Packages feed, so restore can resolve Ploch.* packages.
-      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+    # GH_PACKAGES_TOKEN is deliberately NOT a job-level env entry. See "Expose GH_PACKAGES_TOKEN
+    # when the run has one" below: the variable must be absent, not empty, on runs without the
+    # secret.
 
     steps:
       - run: echo "The branch name is ${{ github.repository }}"
@@ -78,14 +77,36 @@ jobs:
       # The dependency report runs weekly (dependency-report.yml), so a regression in its
       # parsing or ownership attribution would otherwise surface only days after the change
       # that caused it. Same mocked-dotnet approach; ubuntu-latest ships jq, which it needs.
-      # The job-level GH_PACKAGES_TOKEN is blanked here: the test mocks every feed access,
-      # so it has no use for the secret and should not be able to read it.
+      # Both fixture tests run before the token is exported (next step): they mock every feed
+      # access, so they have no use for the secret and cannot read it.
       - name: Test the dependency report script
-        env:
-          GH_PACKAGES_TOKEN: ''
         run: bash .github/scripts/test-dependency-report.sh
 
+      # nuget.config expands %GH_PACKAGES_TOKEN% into the github feed's ClearTextPassword. GitHub
+      # withholds repository secrets from Dependabot runs and from fork pull requests, and a job
+      # env entry bound to a withheld secret is not absent but EMPTY - and NuGet on Linux rejects
+      # an empty password outright, in `dotnet tool restore` ("Unhandled exception: Value cannot
+      # be null or empty string. (Parameter 'password')") and in `dotnet restore` (the same text
+      # as an error on every project), before any fallback to nuget.org can happen. That broke
+      # every secretless run at the next step (PLO-661).
+      #
+      # Left UNSET, the placeholder stays literal, the feed answers 401, NuGet warns and falls
+      # back to nuget.org, which holds every stable Ploch.* version the main solution needs -
+      # the documented tokenless path. So the variable is exported only when the run has a
+      # value, and the fixture tests above never see it either way.
+      - name: Expose GH_PACKAGES_TOKEN when the run has one
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+        run: |
+          if [ -n "$GH_PACKAGES_TOKEN" ]; then
+            printf 'GH_PACKAGES_TOKEN=%s\n' "$GH_PACKAGES_TOKEN" >> "$GITHUB_ENV"
+            echo "GH_PACKAGES_TOKEN is available to the following steps"
+          else
+            echo "::notice::GH_PACKAGES_TOKEN is not available to this run; Ploch.* packages restore from nuget.org only"
+          fi
+
       - name: Restore .NET tools
+        id: tools
         run: dotnet tool restore
 
       # For PR builds, embed the PR number and branch name in the prerelease tag
@@ -204,6 +225,7 @@ jobs:
       - name: Build
         run: dotnet build ${{ env.SOLUTION_PATH }} --no-restore -c Release
       - name: Test
+        id: test
         run: dotnet test ${{ env.SOLUTION_PATH }} --verbosity normal --no-build -c Release --logger "trx;LogFileName=TestOutputResults.trx" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"
 
       # SonarCloud end (runs even after test failures, only if begin succeeded).
@@ -267,8 +289,14 @@ jobs:
       # single Cobertura file (its script does Path(file).is_file(), so no globbing), while coverlet
       # writes one report per test project, hence the merge first. Both formats already come out of
       # the Test step above: Codacy consumes the opencover twin of these same files.
+      #
+      # This step and the result steps below run after a FAILED test step - a failing test's
+      # report is the point - but not after a SKIPPED one: with no test run there is nothing to
+      # merge, upload or report, and each would only add its own unrelated failure to the one
+      # that stopped the job. Nor after a CANCELLED run, which always() would still enter:
+      # `!cancelled()` keeps a cancellation from reporting partial output (PLO-661).
       - name: Merge coverage reports
-        if: always()
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         run: >
           dotnet tool run reportgenerator
           "-reports:**/CoverageResults/coverage*.cobertura.xml"
@@ -280,7 +308,7 @@ jobs:
       # with this one, and a Dependabot branch is in this repository - yet a Dependabot run's token
       # is read-only whatever `permissions:` says, so the upload would fail. Skip it here (PLO-622).
       - name: Upload coverage to GitHub Code Quality
-        if: always() && github.actor != 'dependabot[bot]'
+        if: "!cancelled() && steps.test.outcome != 'skipped' && github.actor != 'dependabot[bot]'"
         uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34 # v1.4.2
         with:
           file: ./CoverageReport/Cobertura.xml
@@ -288,14 +316,14 @@ jobs:
           label: code-coverage/coverlet
 
       - name: Run codacy-coverage-reporter
-        if: always()
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         continue-on-error: true
         uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: '**/CoverageResults/coverage*.opencover.xml'
       - name: Upload Test Results
-        if: always()
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
@@ -305,14 +333,14 @@ jobs:
       - name: Test Report
         uses: phoenix-actions/test-reporting@7317eea6e13c47348dd0bb318669485157c518d6 # v16
         id: test-report
-        if: always()
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         continue-on-error: true
         with:
           name: Test Results
           path: '**/*.trx'
           reporter: dotnet-trx
       - name: Upload Coverage Results
-        if: always()
+        if: "!cancelled() && steps.test.outcome != 'skipped'"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: code-coverage
@@ -327,7 +355,7 @@ jobs:
       # would both be regressions.
       - name: Build documentation (smoke test)
         id: docfx
-        if: always()
+        if: "!cancelled() && steps.tools.outcome == 'success'"
         continue-on-error: true
         run: dotnet docfx DocumentationSite/docfx.json
 
