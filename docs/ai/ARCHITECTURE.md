@@ -165,7 +165,8 @@ them in `Dispose`. A builder made with the public constructor owns neither.
 validation failures before a command runs.
 
 **Output and markup.** `FormattableString` messages have their holes escaped. Plain `string`
-messages are parsed as markup. `WriteBold` and `WriteError` escape content before wrapping it.
+messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in to parsing.
+`WriteBold` and `WriteError` escape content before wrapping it in a tag and rendering it as markup.
 Handler selection is "most derived type wins; first registration wins ties".
 
 **Service lifetimes.** The registrar registers everything Spectre asks for as a singleton, so
@@ -194,7 +195,6 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Hosting | The host is built but never started; hosted services do not run |
 | Lifetimes | Singleton commands capture transient services, including `TokensArgumentsProcessor` |
 | Cancellation | `catch (OperationCanceledException)` does not check that the token was cancelled |
-| Output | `IOutput.Write(string)` throws on user data containing `[` |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
 | Public API | `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`, `CommandAppConfigurator` have no caller in `src/` |

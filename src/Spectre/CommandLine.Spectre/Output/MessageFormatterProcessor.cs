@@ -79,8 +79,8 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
         }
 
         // The caller asked for a decoration, not for their data to be parsed as markup, so the content is escaped
-        // before the tag is applied. Text the caller passes to IOutput.Write directly is still treated as markup:
-        // that is the contract of a markup output, and only the tag added here is this library's doing.
+        // before the tag is applied. The result is rendered through IOutput.Markup, so the escaping is what keeps a
+        // '[' in the caller's data from being read as a tag; IOutput.Write writes a string verbatim and never parses.
         return $"[{markupTag}]{Markup.Escape(text ?? string.Empty)}[/]";
     }
 

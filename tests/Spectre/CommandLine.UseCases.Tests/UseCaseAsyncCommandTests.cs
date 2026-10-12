@@ -250,6 +250,10 @@ public class UseCaseAsyncCommandTests
 
         public IOutput EndLine() => this;
 
+        public IOutput Markup(string value) => Record(value);
+
+        public IOutput MarkupLine(string value) => Record(value);
+
         public IOutput MarkupInterpolated(FormattableString value) => Record(value.ToString(CultureInfo.InvariantCulture));
 
         public IOutput MarkupLineInterpolated(FormattableString value) => Record(value.ToString(CultureInfo.InvariantCulture));

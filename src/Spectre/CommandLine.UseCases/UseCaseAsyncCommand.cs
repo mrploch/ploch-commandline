@@ -76,7 +76,7 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
 
         if (EchoSettings)
         {
-            Output.WriteLine("[dim]Settings:[/]");
+            Output.MarkupLine("[dim]Settings:[/]");
             var propertyValues = settings.GetPropertyValues();
             foreach (var (propertyName, propertyValue) in propertyValues)
             {
@@ -129,7 +129,7 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
     /// <returns><see cref="ExitCode.Success" />.</returns>
     protected virtual ExitCode ProcessSuccessResponse(Result<TUseCaseResponse> result)
     {
-        Output.WriteLine("[green]Use case completed successfully.[/]");
+        Output.MarkupLine("[green]Use case completed successfully.[/]");
 
         return ExitCode.Success;
     }

@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Ploch.Common.ArgumentChecking;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -8,6 +9,13 @@ namespace Ploch.CommandLine.Spectre.Output;
 ///     Provides an implementation of <see cref="IOutput" /> that uses Spectre.Console's ANSI console for markup-enabled
 ///     output.
 /// </summary>
+/// <remarks>
+///     Markup is parsed only where the caller asks for it: <see cref="Markup" />, <see cref="MarkupLine" />,
+///     <see cref="MarkupInterpolated" />, <see cref="MarkupLineInterpolated" /> and a <see cref="FormattableString" />
+///     passed to <see cref="Write{TMessage}" /> or <see cref="WriteLine{TMessage}" />. A plain <see cref="string" />
+///     is written verbatim, which mirrors the split Spectre.Console itself makes between
+///     <c>IAnsiConsole.Write(string)</c> and <c>IAnsiConsole.Markup(string)</c>.
+/// </remarks>
 /// <param name="console">The ANSI console instance used for rendering output.</param>
 /// <param name="formatterProcessor">The processor used for formatting messages.</param>
 public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProcessor formatterProcessor) : IOutput
@@ -17,6 +25,40 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// </summary>
     /// <returns>The current output instance for method chaining.</returns>
     public IOutput EndLine() => WriteLine();
+
+    /// <summary>
+    ///     Writes a string that is parsed as Spectre.Console markup to the console.
+    /// </summary>
+    /// <param name="value">The markup to render.</param>
+    /// <returns>The current output instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="value" /> is not well-formed markup.</exception>
+    public IOutput Markup(string value)
+    {
+        // Guarded here rather than left to Spectre so that Markup and MarkupLine share one contract: Spectre's
+        // MarkupLine appends the terminator before parsing, which would turn a null into a silent blank line.
+        value.NotNull();
+
+        console.Markup(value);
+
+        return this;
+    }
+
+    /// <summary>
+    ///     Writes a string that is parsed as Spectre.Console markup to the console, followed by a line terminator.
+    /// </summary>
+    /// <param name="value">The markup to render.</param>
+    /// <returns>The current output instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="value" /> is not well-formed markup.</exception>
+    public IOutput MarkupLine(string value)
+    {
+        value.NotNull();
+
+        console.MarkupLine(value);
+
+        return this;
+    }
 
     /// <summary>
     ///     Writes a markup-enabled interpolated string to the console.
@@ -74,7 +116,11 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write in bold.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteBold<TMessage>(TMessage? message) => Write(formatterProcessor.GetMessageText(message, "bold"));
+    /// <remarks>
+    ///     The processor returns the escaped text wrapped in the tag, so the result has to go through
+    ///     <see cref="Markup" />: <see cref="Write{TMessage}" /> would print the tag literally.
+    /// </remarks>
+    public IOutput WriteBold<TMessage>(TMessage? message) => Markup(Decorate(message, "bold"));
 
     /// <summary>
     ///     Writes a message in bold formatting followed by a line terminator to the console.
@@ -82,7 +128,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write in bold.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteBoldLine<TMessage>(TMessage? message) => WriteLine(formatterProcessor.GetMessageText(message, "bold"));
+    public IOutput WriteBoldLine<TMessage>(TMessage? message) => MarkupLine(Decorate(message, "bold"));
 
     /// <summary>
     ///     Writes an error message in red formatting to the console.
@@ -90,7 +136,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The error message to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteError<TMessage>(TMessage? message) => Write(formatterProcessor.GetMessageText(message, "red"));
+    public IOutput WriteError<TMessage>(TMessage? message) => Markup(Decorate(message, "red"));
 
     /// <summary>
     ///     Writes an error message in red formatting followed by a line terminator to the console.
@@ -98,7 +144,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The error message to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteErrorLine<TMessage>(TMessage? message) => WriteLine(formatterProcessor.GetMessageText(message, "red"));
+    public IOutput WriteErrorLine<TMessage>(TMessage? message) => MarkupLine(Decorate(message, "red"));
 
     /// <summary>
     ///     Writes an exception with detailed formatting to the console.
@@ -179,6 +225,21 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     private static string RenderFallbackText<TMessage>(TMessage message, IFormatProvider? format) => FormattedText.Render(message, format);
 
     /// <summary>
+    ///     Asks the processor for the message text wrapped in <paramref name="markupTag" />, ready for
+    ///     <see cref="Markup" />.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the message to decorate.</typeparam>
+    /// <param name="message">The message to decorate.</param>
+    /// <param name="markupTag">The style tag to wrap the message in.</param>
+    /// <returns>The decorated markup, or an empty string when the processor returns none.</returns>
+    /// <remarks>
+    ///     <see cref="IMessageFormatterProcessor.GetMessageText{TMessage}" /> is allowed to return
+    ///     <see langword="null" />, and <see cref="Markup" /> rejects a null argument, so the result is coalesced here
+    ///     once rather than at each of the four decorating helpers.
+    /// </remarks>
+    private string Decorate<TMessage>(TMessage? message, string markupTag) => formatterProcessor.GetMessageText(message, markupTag) ?? string.Empty;
+
+    /// <summary>
     ///     Renders a message and reports whether a registered <see cref="IMessageWriter" /> was the one that rendered it.
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
@@ -199,7 +260,9 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
 
         if (message is string str)
         {
-            console.Markup(str);
+            // Verbatim, not console.Markup: a path such as C:\logs[1].txt or user input echoed back is not
+            // well-formed markup and used to throw from the parser. Markup is an explicit opt-in via Markup/MarkupLine.
+            console.Write(str);
 
             return null;
         }
