@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Ploch.CommandLine.Spectre.Commands;
+using Ploch.CommandLine.Spectre.Output;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 using Ploch.Common.DependencyInjection;
 using Spectre.Console;
@@ -619,6 +621,23 @@ public sealed class AppBuilderTests : IDisposable
         disposeAgain.Should().NotThrow("Dispose has to be idempotent - a using block around an already-disposed builder is legal");
     }
 
+    /// <summary>
+    ///     Pins the exit code the documentation gives for a failed <c>Validate</c>: Spectre.Console.Cli rejects the
+    ///     command before <c>Execute</c> runs and returns its own <c>-1</c>, so <see cref="ExitCode.InvalidInput" /> is
+    ///     never involved. The command would return <see cref="ExitCode.Success" /> if it ran at all.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_return_spectres_minus_one_when_the_settings_fail_validation()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+
+        var exitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<RejectingCommand>("reject")).Run("reject");
+
+        exitCode.Should().Be(-1, "Spectre.Console.Cli short-circuits a failed Validate with its own exit code");
+        exitCode.Should().NotBe((int)ExitCode.InvalidInput, "InvalidInput is only returned by the command's own code");
+    }
+
     [Fact]
     public void ConfigureCommandApp_should_reject_a_disposed_builder()
     {
@@ -850,6 +869,21 @@ public sealed class AppBuilderTests : IDisposable
 
             return 0;
         }
+    }
+
+    private sealed class RejectingSettings : CommandSettings
+    {
+        public override ValidationResult Validate() => ValidationResult.Error("rejected by Validate");
+    }
+
+    /// <summary>Goes through the framework base class so the run exercises <c>CommandSettingsValidator</c> as well.</summary>
+    private sealed class RejectingCommand(CommandArgumentsRootProcessor settingsProcessor,
+                                          ICommandSettingsValidator<RejectingSettings> validator,
+                                          IExceptionHandler exceptionHandler,
+                                          IOutput output)
+        : AppCommand<RejectingSettings>(settingsProcessor, validator, exceptionHandler, output)
+    {
+        protected override ExitCode DoExecute(CommandContext context, RejectingSettings settings, CancellationToken cancellationToken) => ExitCode.Success;
     }
 
     private sealed class MarkerServicesBundle : ServicesBundle

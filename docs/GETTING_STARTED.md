@@ -47,7 +47,7 @@ dotnet add package Ploch.CommandLine.Spectre
 dotnet add package Spectre.Console.Cli
 ```
 
-`Ploch.CommandLine.Spectre` is the only package you need to start. It depends on
+`Ploch.CommandLine.Spectre` is the only Ploch package you need to start. It depends on
 `Ploch.CommandLine.Spectre.Serilog` and registers its `SerilogConfigurationBundle` through
 `AppServicesBundle`, so logging goes through Serilog from the first run;
 [section 13](#13-logging-with-serilog) shows how to configure it. Add the remaining packages as
