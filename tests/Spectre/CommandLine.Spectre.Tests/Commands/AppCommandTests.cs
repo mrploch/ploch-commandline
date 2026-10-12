@@ -228,6 +228,25 @@ public class AppCommandTests
         handler.Handled.Should().BeEmpty();
     }
 
+    // The token shape AppBuilder actually supplies: cancellable, but not cancelled. Pins that the filter reads
+    // IsCancellationRequested and not CanBeCanceled, which CancellationToken.None alone could not tell apart.
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_route_an_OperationCanceledException_to_the_exception_handler_when_a_cancellable_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        using var foreign = new CancellationTokenSource();
+        foreign.Cancel();
+        var exception = new OperationCanceledException(foreign.Token);
+        var command = new StubCommand(_ => throw exception, handler);
+        using var live = new CancellationTokenSource();
+
+        var result = command.Execute(context, new StubSettings(), live.Token);
+
+        result.Should().Be((int)ExitCode.Error, "a token that merely can be cancelled has not been");
+        handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception);
+    }
+
     [Theory]
     [AutoMockData]
     public void Execute_should_route_a_TaskCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)

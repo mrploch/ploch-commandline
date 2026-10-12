@@ -1,6 +1,6 @@
 ### Fixed
 
-- `AppCommand<TSettings>` and `AsyncAppCommand<TSettings>` reported every
+- **Breaking:** `AppCommand<TSettings>` and `AsyncAppCommand<TSettings>` reported every
   `OperationCanceledException` as exit code 130, so a `TaskCanceledException`
   from an `HttpClient` timeout, or an inner token the command cancelled itself,
   was presented as "the user cancelled" and never reached `IExceptionHandler`.
@@ -17,8 +17,9 @@
 
 - **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
   `Run` or `RunAsync` on the same executor — whatever the first attempt's
-  outcome — throws `InvalidOperationException` naming
-  `AppBuilder.ConfigureCommandApp` as the way to run again. Previously the
+  outcome — throws `InvalidOperationException` — synchronously, before any task is
+  returned from `RunAsync` — naming `AppBuilder.ConfigureCommandApp` as the
+  way to run again. Previously the
   second run reached Spectre, which, once the first run had built the host,
   rendered the host builder's "Build can only be called once" error and
   returned -1; an attempt may build that host and it can only be built once,

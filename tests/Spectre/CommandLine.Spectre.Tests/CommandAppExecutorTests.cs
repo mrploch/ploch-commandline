@@ -269,9 +269,9 @@ public sealed class CommandAppExecutorTests : IDisposable
         var firstRun = () => executor.RunAsync("build");
         await firstRun.Should().ThrowAsync<IOException>();
 
-        var secondRun = () => executor.RunAsync("build");
+        Action secondRun = () => _ = executor.RunAsync("build");
 
-        await secondRun.Should().ThrowAsync<InvalidOperationException>();
+        secondRun.Should().Throw<InvalidOperationException>("the rejection is synchronous after a faulted attempt too");
         commandApp.Verify(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

@@ -66,7 +66,9 @@ public class CommandAppExecutor(ICommandApp commandApp, CancellationToken cancel
     ///     A task representing the asynchronous operation, with an integer result representing the exit code of the application, where 0 typically indicates
     ///     success.
     /// </returns>
-    /// <exception cref="InvalidOperationException">Thrown when this executor has already been used; see the class remarks.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown synchronously, before any task is returned, when this executor has already been used; see the class remarks.
+    /// </exception>
     public Task<int> RunAsync(params IEnumerable<string> args)
     {
         // Claimed before the async state machine starts, so a rejected call throws synchronously, as a usage error

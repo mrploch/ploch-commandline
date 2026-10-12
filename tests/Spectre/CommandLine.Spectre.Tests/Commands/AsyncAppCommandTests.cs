@@ -143,6 +143,23 @@ public class AsyncAppCommandTests
         handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception);
     }
 
+    // The token shape AppBuilder actually supplies: cancellable, but not cancelled. Pins that the filter reads
+    // IsCancellationRequested and not CanBeCanceled, which CancellationToken.None alone could not tell apart.
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_route_a_TaskCanceledException_to_the_exception_handler_when_a_cancellable_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var exception = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout elapsing.");
+        var command = CreateCommand((_, _) => throw exception, handler);
+        using var live = new CancellationTokenSource();
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), live.Token);
+
+        result.Should().Be((int)ExitCode.Error, "a token that merely can be cancelled has not been");
+        handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception);
+    }
+
     [Theory]
     [AutoMockData]
     public async Task ExecuteAsync_should_route_a_cancelled_task_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
@@ -193,11 +210,15 @@ public class AsyncAppCommandTests
                                     },
                                     handler);
 
+        // Both waits are bounded so a regression that stops cancellation reaching the command fails the test
+        // instead of hanging it.
         var execution = command.ExecuteAsync(context, new StubSettings(), cts.Token);
-        await started.Task;
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await cts.CancelAsync();
 
-        (await execution).Should().Be((int)ExitCode.Cancelled, "the token's state is read when the exception is caught, not when the command started");
+        (await execution.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)).Should()
+                                                             .Be((int)ExitCode.Cancelled,
+                                                                 "the token's state is read when the exception is caught, not when the command started");
         handler.Handled.Should().BeEmpty();
     }
 

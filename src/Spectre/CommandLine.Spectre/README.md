@@ -62,7 +62,9 @@ public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
 build another executor for another run.
 
 `AppCommand<TSettings>` validates the settings, runs the registered argument processors, and turns
-exceptions and cancellation into exit codes, so `DoExecute` holds only the command's own work.
+exceptions and cancellation into exit codes — cancellation only when the command's own token was
+cancelled; see the Getting Started guide's Cancellation section — so `DoExecute` holds only the
+command's own work.
 
 ## Getting Started
 
