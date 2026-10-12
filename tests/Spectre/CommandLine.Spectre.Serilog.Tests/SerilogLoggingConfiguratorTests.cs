@@ -46,6 +46,35 @@ public sealed class SerilogLoggingConfiguratorTests : IDisposable
     }
 
     [Fact]
+    public void AddSerilog_should_accept_a_missing_configuration()
+    {
+        // The XML example on AddSerilog shows it called with no arguments. Serilog has complete defaults, so a
+        // missing IConfiguration must not stop the logger from being registered.
+        var services = new ServiceCollection();
+
+        var registration = () => services.AddSerilog(logName: "unconfigured", logPath: _logDirectory, template: Template);
+
+        registration.Should().NotThrow("Serilog does not need an IConfiguration to be configured");
+        services.Count(descriptor => descriptor.ServiceType == typeof(ILogger)).Should().Be(1);
+    }
+
+    [Fact]
+    public void AddSerilog_should_log_through_the_default_configuration_when_no_configuration_is_supplied()
+    {
+        var services = new ServiceCollection();
+        services.AddSerilog(logName: "unconfigured", logPath: _logDirectory, template: Template);
+
+        using (var provider = services.BuildServiceProvider())
+        {
+            var logger = provider.GetRequiredService<ILogger>();
+            logger.Information("an unconfigured message");
+            (logger as IDisposable)?.Dispose();
+        }
+
+        ReadLogFile("unconfigured.log").Should().Contain("REGISTERED|INF|an unconfigured message", "the predefined setup applies without an IConfiguration");
+    }
+
+    [Fact]
     public void AddSerilog_should_return_the_same_service_collection_for_chaining()
     {
         var services = new ServiceCollection();

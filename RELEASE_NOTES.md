@@ -73,6 +73,11 @@ have been retired.
 
 ### Fixed
 
+- `services.AddSerilog()` called without an `IConfiguration` threw
+  `InvalidOperationException` ("configuration was not initialized"), although the
+  method's documentation showed exactly that call. `SerilogConfigurationBundle` now
+  registers the logger with its predefined sinks and the `Information` minimum level
+  when no configuration is supplied.
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.

@@ -5,7 +5,8 @@ using Ploch.Common.DependencyInjection;
 namespace Ploch.CommandLine.Spectre.Serilog;
 
 /// <summary>
-///     Provides a <see cref="ServicesBundle" /> for configuring Serilog logging using the specified <see cref="IConfiguration" />.
+///     Provides a <see cref="ServicesBundle" /> for configuring Serilog logging, optionally reading further settings from
+///     an <see cref="IConfiguration" />.
 ///     Allows optional customization of the log output template, log name, log file path, and the culture used to
 ///     format values in the log files.
 /// </summary>
@@ -22,12 +23,37 @@ public class SerilogConfigurationBundle(string? template = null,
                                         CultureInfo? culture = null) : ConfigurableServicesBundle
 {
     /// <summary>
+    ///     Registers Serilog whether or not a configuration was supplied to the bundle.
+    /// </summary>
+    /// <remarks>
+    ///     The base implementation refuses to run when <see cref="ServicesBundle.Configuration" /> is
+    ///     <see langword="null" />. Every value this bundle reads from configuration is optional, though: without one the
+    ///     logger uses the predefined sinks and enrichers and the <c>Information</c> minimum level. Registering directly
+    ///     in that case lets <c>services.AddSerilog()</c> be called without an <see cref="IConfiguration" />, as its
+    ///     documentation shows; with a configuration the base implementation runs and calls <see cref="Configure" /> as
+    ///     usual.
+    /// </remarks>
+    public override void DoConfigure()
+    {
+        if (Configuration is null)
+        {
+            RegisterSerilog(null);
+
+            return;
+        }
+
+        base.DoConfigure();
+    }
+
+    /// <summary>
     ///     Configures the services with Serilog based on the provided configuration and logging parameters.
     /// </summary>
     /// <param name="configuration">
-    ///     An optional instance of <see cref="IConfiguration" /> that may provide additional configuration details.
+    ///     An instance of <see cref="IConfiguration" /> that may provide additional configuration details.
     /// </param>
-    protected override void Configure(IConfiguration configuration)
+    protected override void Configure(IConfiguration configuration) => RegisterSerilog(configuration);
+
+    private void RegisterSerilog(IConfiguration? configuration)
     {
         Services.AddSerilog((_, loggerConfiguration) => loggerConfiguration.ConfigureSerilog(configuration,
                                                                                             template,
