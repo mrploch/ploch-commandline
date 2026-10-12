@@ -7,6 +7,14 @@ on:
       - main # The 'main' branch
       - 'releases/*' # The release branches
 
+# One run at a time per pull request, or per ref for everything else. A later push to an open
+# pull request cancels the run it supersedes. A running main or release-branch run is never
+# cancelled; later pushes there wait behind it, and GitHub keeps only the newest waiting run
+# per group, so the branch head is always analysed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   qodana:
     runs-on: ubuntu-latest

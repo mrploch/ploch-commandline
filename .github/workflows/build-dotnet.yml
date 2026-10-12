@@ -12,6 +12,14 @@ on:
   # gets a full build regardless of what it targets; the publishing steps stay gated below.
   pull_request:
   workflow_dispatch:
+# One run at a time per pull request, or per ref for everything else. A later push to an open
+# pull request cancels the run it supersedes. A running main run is never cancelled, because
+# that would skip the GitHub Packages publish; later main pushes wait behind it. GitHub keeps
+# one waiting run per group, so a third push while one is still waiting replaces the waiting
+# run - the newest commit is always the one that gets built and published.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   SONAR_PROJECT_KEY: mrploch_ploch-commandline
   SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}

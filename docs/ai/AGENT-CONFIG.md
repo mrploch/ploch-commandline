@@ -154,7 +154,6 @@ Ordered by value. "Where" names the layer that has to change.
 | 16 | Keep one SonarQube route and one Linear route | Workspace, user | Clearer tool choice |
 | 17 | Turn off session-start injections that contradict the repository workflow | User | Consistent instructions |
 | 18 | Replace machine-specific paths in rules with derived ones | Workspace | Rules work on every machine |
-| 19 | Add cancel-in-progress concurrency to the pull-request workflows | Repository | Faster feedback |
 
 ## 7. Decisions needed
 
