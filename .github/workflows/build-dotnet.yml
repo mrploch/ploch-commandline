@@ -255,7 +255,7 @@ jobs:
       # ProjectReferences, and Directory.Build.props packs them on every Release build, so in
       # principle they could pack a second time - over the package-mode nupkgs this workflow
       # later publishes - with ploch-common resolved as a ProjectReference and therefore a
-      # PRERELEASE dependency version. That is exactly the #47 defect this branch exists to remove.
+      # PRERELEASE dependency version. That is exactly the #47 defect that PR #52 removed.
       #
       # It does not currently happen: the library projects are not members of the sample
       # solution, so they do not inherit its Release mapping and build (without packing) in
@@ -365,7 +365,7 @@ jobs:
       #
       # Pushed to the feed URL directly rather than to a registered source name.
       # `dotnet nuget add source` rejects a duplicate URL as well as a duplicate name,
-      # and NuGet.Config already registers this exact URL as "github", so adding it
+      # and nuget.config already registers this exact URL as "github", so adding it
       # again fails with "The source specified has already been added to the list of
       # available package sources". `nuget push` accepts a URL, so no source is needed.
       - name: Publish NuGet packages to GitHub Packages

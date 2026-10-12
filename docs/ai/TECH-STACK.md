@@ -38,7 +38,8 @@ There is no database, container image or external runtime service.
 
 ## 3. Commands
 
-Observed on 2026-10-05 with SDK 10.0.401 and no `GH_PACKAGES_TOKEN`.
+Observed on 2026-10-05 with SDK 10.0.401 and no `GH_PACKAGES_TOKEN`; the two `dotnet build` rows
+were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds packing.
 
 | Command | Result |
 |---|---|
