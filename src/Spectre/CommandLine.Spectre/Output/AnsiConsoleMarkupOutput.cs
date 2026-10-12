@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Ploch.Common.ArgumentChecking;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -34,6 +35,10 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <exception cref="InvalidOperationException"><paramref name="value" /> is not well-formed markup.</exception>
     public IOutput Markup(string value)
     {
+        // Guarded here rather than left to Spectre so that Markup and MarkupLine share one contract: Spectre's
+        // MarkupLine appends the terminator before parsing, which would turn a null into a silent blank line.
+        value.NotNull();
+
         console.Markup(value);
 
         return this;
@@ -48,6 +53,8 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <exception cref="InvalidOperationException"><paramref name="value" /> is not well-formed markup.</exception>
     public IOutput MarkupLine(string value)
     {
+        value.NotNull();
+
         console.MarkupLine(value);
 
         return this;

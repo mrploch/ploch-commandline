@@ -121,6 +121,53 @@ public class AnsiConsoleMarkupOutputTests
         markupLine.Should().Throw<InvalidOperationException>();
     }
 
+    /// <summary>
+    ///     Spectre's own <c>MarkupLine</c> appends the terminator before parsing, so a null would become a silent blank
+    ///     line there while <c>Markup</c> threw. The guard gives both members the single contract the XML docs state.
+    /// </summary>
+    [Fact]
+    public void Markup_and_MarkupLine_should_throw_ArgumentNullException_for_a_null_value()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var markup = () => output.Markup(null!);
+        var markupLine = () => output.MarkupLine(null!);
+
+        markup.Should().Throw<ArgumentNullException>().WithParameterName("value");
+        markupLine.Should().Throw<ArgumentNullException>().WithParameterName("value");
+        console.Output.Should().BeEmpty("a rejected argument must not leave a stray line behind");
+    }
+
+    /// <summary>
+    ///     The verbatim change is scoped to <see cref="string" />. A <see cref="FormattableString" /> must still have
+    ///     its template parsed as markup and its holes escaped; a template without a style tag could not tell the two
+    ///     apart, so this one carries a tag.
+    /// </summary>
+    [Fact]
+    public void Write_should_still_parse_the_template_of_an_interpolated_string_as_markup()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.Write<FormattableString>($"[bold]{"[literal]"}[/]");
+
+        console.Output.Should().Be("[literal]", "the template's tag is consumed and the hole is escaped");
+        console.RawOutput.Should().Contain(BoldOn);
+    }
+
+    [Fact]
+    public void WriteLine_should_still_parse_the_template_of_an_interpolated_string_as_markup_and_terminate_the_line()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.WriteLine<FormattableString>($"[bold]{"[literal]"}[/]");
+
+        console.Output.Should().Be("[literal]" + Environment.NewLine);
+        console.RawOutput.Should().Contain(BoldOn);
+    }
+
     [Fact]
     public void Markup_should_write_nothing_for_an_empty_string()
     {

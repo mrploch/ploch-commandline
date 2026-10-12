@@ -145,7 +145,9 @@ public interface IOutput
     /// <returns>The current output instance for method chaining.</returns>
     /// <remarks>
     ///     A <see cref="string" /> is written verbatim, as it is by <see cref="Write{TMessage}" />. To render markup,
-    ///     call <see cref="MarkupLine" /> or <see cref="MarkupLineInterpolated" />.
+    ///     call <see cref="MarkupLine" /> or <see cref="MarkupLineInterpolated" />. An interpolated string literal
+    ///     infers <see cref="string" /> here, so <c>WriteLine($"[green]ok[/]")</c> prints the tags; pass it as
+    ///     <c>WriteLine&lt;FormattableString&gt;($"...")</c> to take the interpolated-markup path.
     /// </remarks>
     IOutput WriteLine<TMessage>(TMessage message);
 }
