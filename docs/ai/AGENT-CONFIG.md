@@ -142,7 +142,7 @@ Ordered by value. "Where" names the layer that has to change.
 | 9 | Add one verification script that runs what CI runs: the stable-version guard, build, tests, the sample in project-reference mode and DocFX | Repository | One command before a pull request |
 | 10 | Add a test project that compiles the documentation snippets | Repository | Stops the drift behind PLO-620 |
 | 11 | Require the `build` check in the `main` ruleset | GitHub | A red build cannot merge |
-| 12 | Update the pull request template: Linear reference, change-log entry, breaking change, documentation updated | Repository | Template matches the process |
+| 12 | Update the pull request template: Linear reference, change-log entry, breaking change, documentation updated (done in PLO-758) | Repository | Template matches the process |
 | 13 | Delete `.claude/mrploch-dev/`, `prompt-lookup`, the WinUI skills and the Astro-site `dev-finishing-touches` copy from this repository | Repository | About 170 KB less; shorter skill list; no wrong verification workflow |
 | 14 | Generate `.agents/` and `.cursor/` from one source, or stop committing them | Workspace | No hand-maintained mirrors |
 

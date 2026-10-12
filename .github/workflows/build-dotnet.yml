@@ -252,17 +252,17 @@ jobs:
       #
       # -p:GeneratePackageOnBuild=false is defence in depth, not a fix for a live bug. In
       # UsePlochProjectReferences mode this step pulls the four library projects in as
-      # ProjectReferences, and they set GeneratePackageOnBuild=true, so in principle they could
-      # pack a second time - over the package-mode nupkgs this workflow later publishes - with
-      # ploch-common resolved as a ProjectReference and therefore a PRERELEASE dependency
-      # version. That is exactly the #47 defect this branch exists to remove.
+      # ProjectReferences, and Directory.Build.props packs them on every Release build, so in
+      # principle they could pack a second time - over the package-mode nupkgs this workflow
+      # later publishes - with ploch-common resolved as a ProjectReference and therefore a
+      # PRERELEASE dependency version. That is exactly the #47 defect this branch exists to remove.
       #
-      # It does not currently happen: measured on a fully clean tree, this step packs the
-      # libraries into bin/Debug, while publish-nuget-packages.sh globs */bin/Release/*.nupkg,
-      # so the published artefacts are untouched. But the only thing preventing it is an
-      # incidental configuration-mapping quirk - the library projects are not members of the
-      # sample solution, so they do not inherit its Release mapping. Adding them to that
-      # solution would silently arm the bug. Suppressing the pack removes the class outright.
+      # It does not currently happen: the library projects are not members of the sample
+      # solution, so they do not inherit its Release mapping and build (without packing) in
+      # Debug, leaving the bin/Release packages that publish-nuget-packages.sh finds untouched.
+      # But the only thing preventing it is that incidental configuration-mapping quirk - adding
+      # them to that solution would silently arm the bug. Suppressing the pack removes the class
+      # outright.
       #
       # Raised by the Copilot (Grok 4.6) reviewer on PR #52 as a live defect; investigated and
       # refuted independently by the Codex reviewer; refutation confirmed by measurement.
@@ -274,9 +274,10 @@ jobs:
       # appends can interleave into a line without '=', which the runner then rejects after a
       # successful build ("Unable to process file command 'env'", "Invalid format 'b166'"). Nothing
       # in these workflows reads those variables - versions come from `dotnet nbgv get-version` - so
-      # discarding them loses nothing. NBGV 3.7.115, the version this repository pins, has no MSBuild
-      # switch for this: the SetCloudBuildVersionVars target is gated only on version.json's
-      # cloudBuild.setVersionVariables, which is per repository and would not cover ploch-common.
+      # discarding them loses nothing. The redirection predates the NBGV_SetCloudBuildVersionVars
+      # MSBuild switch that the pinned NBGV now offers (Nerdbank.GitVersioning.targets gates the
+      # SetCloudBuildVersionVars target on it); passing that as a global property would also reach
+      # both repositories, but the redirection is the measured fix and is kept.
       - name: Build sample application
         run: >-
           GITHUB_ENV="$RUNNER_TEMP/sample-build.nbgv.env"
