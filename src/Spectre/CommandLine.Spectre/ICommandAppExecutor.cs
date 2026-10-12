@@ -3,6 +3,12 @@
 /// <summary>
 ///     Defines an interface for executing command-line applications.
 /// </summary>
+/// <remarks>
+///     An executor permits one execution attempt: an attempt may build the host it runs over, and that host cannot be
+///     built again, so every attempt consumes the executor whatever its outcome. A second <see cref="Run" /> or
+///     <see cref="RunAsync" /> on the same instance throws <see cref="InvalidOperationException" />. Build another
+///     executor, with <see cref="AppBuilder.ConfigureCommandApp" />, to run again.
+/// </remarks>
 public interface ICommandAppExecutor
 {
     /// <summary>
@@ -10,6 +16,7 @@ public interface ICommandAppExecutor
     /// </summary>
     /// <param name="args">Collections of command-line arguments to pass to the application.</param>
     /// <returns>An integer representing the exit code of the application, where 0 typically indicates success.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when this executor has already been used.</exception>
     int Run(params IEnumerable<string> args);
 
     /// <summary>
@@ -20,5 +27,6 @@ public interface ICommandAppExecutor
     ///     A task representing the asynchronous operation, with an integer result representing the exit code of the application, where 0 typically indicates
     ///     success.
     /// </returns>
+    /// <exception cref="InvalidOperationException">Thrown when this executor has already been used.</exception>
     Task<int> RunAsync(params IEnumerable<string> args);
 }

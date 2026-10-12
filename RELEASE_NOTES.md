@@ -58,6 +58,14 @@ have been retired.
   earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
   now registered after every caller service delegate, including those added
   through `ConfigureHost`.
+- **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
+  `Run` or `RunAsync` on the same executor — whatever the first attempt's
+  outcome — throws `InvalidOperationException` naming
+  `AppBuilder.ConfigureCommandApp` as the way to run again. Previously the
+  second run reached Spectre, which, once the first run had built the host,
+  rendered the host builder's "Build can only be called once" error and
+  returned -1; an attempt may build that host and it can only be built once,
+  so the executor now says so up front.
 
 ### Removed
 
@@ -91,3 +99,14 @@ have been retired.
   `Host.CreateDefaultBuilder`'s sources, so its keys overrode
   `appsettings.{Environment}.json`, environment variables and command-line
   arguments. Standard .NET configuration precedence now applies.
+- `AppCommand<TSettings>` and `AsyncAppCommand<TSettings>` reported every
+  `OperationCanceledException` as exit code 130, so a `TaskCanceledException`
+  from an `HttpClient` timeout, or an inner token the command cancelled itself,
+  was presented as "the user cancelled" and never reached `IExceptionHandler`.
+  Cancellation is now reported only when the token the command received has
+  cancellation requested; any other `OperationCanceledException` goes to the
+  handler like every other exception.
+- `AppBuilder(ConsoleAppInfo, CancellationTokenSource)`,
+  `AppBuilder.ConfigureCommandApp` and `EnvironmentSettings.Initialize` throw
+  `ArgumentNullException` for a null argument instead of storing it and failing
+  later, far from the caller.

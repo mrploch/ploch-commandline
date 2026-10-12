@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Moq;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
@@ -12,9 +12,10 @@ namespace Ploch.CommandLine.Spectre.Tests.Commands;
 /// <summary>
 ///     Cover for the synchronous command base. It performs the same framework work as
 ///     <see cref="AsyncAppCommand{TSettings}" />: the execution banner is printed, the settings processor runs before the
-///     implementation, exceptions are routed to the configured handler rather than propagating, cancellation is reported
-///     as <see cref="ExitCode.Cancelled" /> instead of being treated as a generic failure, and the cancellation token
-///     reaches the implementation.
+///     implementation, exceptions are routed to the configured handler rather than propagating, cancellation requested
+///     through the supplied token is reported as <see cref="ExitCode.Cancelled" /> instead of being treated as a generic
+///     failure while an <see cref="OperationCanceledException" /> nobody asked for is a fault like any other, and the
+///     cancellation token reaches the implementation.
 /// </summary>
 public class AppCommandTests
 {
@@ -160,11 +161,120 @@ public class AppCommandTests
     {
         var handler = new RecordingExceptionHandler();
         var command = new StubCommand(_ => ExitCode.Success, handler, new([new CancellingProcessor()]));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
 
-        var result = command.Execute(context, new StubSettings(), CancellationToken.None);
+        var result = command.Execute(context, new StubSettings(), cts.Token);
 
         result.Should().Be((int)ExitCode.Cancelled);
         handler.Handled.Should().BeEmpty("cancellation during argument processing is a requested outcome, not a fault");
+    }
+
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_route_cancellation_from_the_settings_processor_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = new StubCommand(_ => ExitCode.Success, handler, new([new CancellingProcessor()]));
+
+        var result = command.Execute(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        handler.Handled.Should().ContainSingle().Which.Should().BeOfType<OperationCanceledException>();
+    }
+
+    /// <summary>
+    ///     Pins the fix for PLO-756: an <see cref="OperationCanceledException" /> is only "the user cancelled" when the
+    ///     token the command received was cancelled. One raised for any other reason - here an unrelated token the
+    ///     command itself observed - is a fault and must reach the handler like every other exception.
+    /// </summary>
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_route_an_OperationCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        using var foreign = new CancellationTokenSource();
+        foreign.Cancel();
+        var exception = new OperationCanceledException(foreign.Token);
+        var command = new StubCommand(_ => throw exception, handler);
+
+        var result = command.Execute(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error, "a cancellation nobody asked for is a fault, not a requested outcome");
+        handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception, "the handler must see the original exception");
+    }
+
+    /// <summary>Cancellation requested while the command is running, not before: the filter reads the token's state at catch time.</summary>
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_report_cancellation_requested_while_the_command_is_running(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        using var cts = new CancellationTokenSource();
+        var command = new StubCommand(token =>
+                                      {
+                                          cts.Cancel();
+                                          token.ThrowIfCancellationRequested();
+
+                                          return ExitCode.Success;
+                                      },
+                                      handler);
+
+        var result = command.Execute(context, new StubSettings(), cts.Token);
+
+        result.Should().Be((int)ExitCode.Cancelled, "the token's state is read when the exception is caught, not when the command started");
+        handler.Handled.Should().BeEmpty();
+    }
+
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_route_a_TaskCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var exception = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout elapsing.");
+        var command = new StubCommand(_ => throw exception, handler);
+
+        var result = command.Execute(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception);
+    }
+
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_report_cancellation_propagated_through_a_linked_token(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = new StubCommand(token =>
+                                      {
+                                          using var linked = CancellationTokenSource.CreateLinkedTokenSource(token);
+                                          linked.Token.ThrowIfCancellationRequested();
+
+                                          return ExitCode.Success;
+                                      },
+                                      handler);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var result = command.Execute(context, new StubSettings(), cts.Token);
+
+        result.Should().Be((int)ExitCode.Cancelled, "a linked token carries a different token value, but the cancellation was still requested");
+        handler.Handled.Should().BeEmpty();
+    }
+
+    [Theory]
+    [AutoMockData]
+    public void Execute_should_route_an_exception_other_than_cancellation_to_the_exception_handler_even_when_the_token_was_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = new StubCommand(_ => throw new InvalidOperationException("boom"), handler);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var result = command.Execute(context, new StubSettings(), cts.Token);
+
+        result.Should().Be((int)ExitCode.Error, "only an OperationCanceledException is a requested outcome; the filter must not widen");
+        handler.Handled.Should().ContainSingle().Which.Message.Should().Be("boom");
     }
 
     [Theory]

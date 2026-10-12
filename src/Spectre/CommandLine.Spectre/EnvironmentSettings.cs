@@ -1,4 +1,6 @@
-﻿namespace Ploch.CommandLine.Spectre;
+﻿using Ploch.Common.ArgumentChecking;
+
+namespace Ploch.CommandLine.Spectre;
 
 /// <summary>
 ///     Describes the environment the console application is running in.
@@ -65,12 +67,16 @@ public class EnvironmentSettings(bool isDebugging, bool pauseBeforeExit, IReadOn
     ///     Replaces the loader used to populate <see cref="Current" />. Call before <see cref="Current" /> is first read.
     /// </summary>
     /// <param name="settingsLoader">The loader to use when reading environment settings.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="settingsLoader" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when <see cref="Current" /> has already been materialised, because the supplied loader would
     ///     otherwise silently never be used.
     /// </exception>
     public static void Initialize(IEnvironmentSettingsLoader settingsLoader)
     {
+        // Rejected before the lock: a null stored here would only fail on the first read of Current, far from the caller.
+        settingsLoader.NotNull();
+
         lock (SyncRoot)
         {
             if (_current is not null)

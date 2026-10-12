@@ -58,6 +58,9 @@ public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
 }
 ```
 
+The executor `ConfigureCommandApp` returns permits one execution attempt; call `ConfigureCommandApp`
+again to build another.
+
 `AppCommand<TSettings>` validates the settings, runs the registered argument processors, and turns
 exceptions and cancellation into exit codes, so `DoExecute` holds only the command's own work.
 
