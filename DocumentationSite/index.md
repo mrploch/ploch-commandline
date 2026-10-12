@@ -157,8 +157,9 @@ differs.
 
 A failed `Validate` never reaches this table. `Spectre.Console.Cli` runs validation before the
 command, reports the errors itself and exits with its own `-1` (`255` in a POSIX shell), so
-`InvalidInput` only comes from your own code: `DoExecute` / `DoExecuteAsync`, or an
-`IExceptionHandler` that chooses it for an exception. The same applies to a command line Spectre
+`InvalidInput` only comes from your own code: `DoExecute` / `DoExecuteAsync`, a
+`UseCaseAsyncCommand` failure mapping (`ProcessFailureResponse`), or an `IExceptionHandler` that
+chooses it for an exception. The same applies to a command line Spectre
 cannot bind, such as an unknown command or a missing required argument. The
 [Getting Started guide](../docs/GETTING_STARTED.md#11-exit-codes) walks through both kinds of exit code.
 

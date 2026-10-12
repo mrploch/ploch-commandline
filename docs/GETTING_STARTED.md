@@ -780,7 +780,7 @@ out of a shutdown the user just asked for would turn it into a hang.
 ## 13. Logging with Serilog
 
 `Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with the
-Spectre.Console console sink and two rolling files — everything, and errors and warnings only. The
+Spectre.Console console sink and two rolling files — everything, and warnings and above. The
 core package registers it with log files named after the process; call `AddSerilog` to choose
 your own name and directory:
 
