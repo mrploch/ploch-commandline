@@ -256,7 +256,11 @@ public class AppBuilder : IDisposable
     ///         <see cref="IHostBuilder.Build" /> cannot be called again, so every attempt consumes the executor and a second
     ///         <see cref="ICommandAppExecutor.Run" /> or <see cref="ICommandAppExecutor.RunAsync" /> on it throws
     ///         <see cref="InvalidOperationException" />. Call this method again to build a fresh executor for another run; it
-    ///         replays the same recorded configuration over the same cancellation source.
+    ///         replays the same recorded configuration over the same cancellation source. Cancellation is permanent, so
+    ///         after an attempt that was cancelled - by Ctrl+C or through the registered
+    ///         <see cref="CancellationTokenSource" /> - an executor from this builder starts with an already-cancelled
+    ///         token; to run again after cancellation, start from a new builder (<see cref="Create" />) or pass a fresh
+    ///         source to the constructor.
     ///     </para>
     ///     <para>
     ///         Every <see cref="ConfigureServices(Action{HostBuilderContext, IServiceCollection})" />,

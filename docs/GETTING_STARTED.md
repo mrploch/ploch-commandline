@@ -783,8 +783,10 @@ the host behind it, and that host cannot be built again, so every attempt consum
 whatever its outcome: a second `Run` / `RunAsync` on the same executor throws
 `InvalidOperationException`. To run again, call `ConfigureCommandApp` on the builder once more; it
 configures a fresh host builder over the same recorded configuration and the same cancellation
-source — the host itself is built when the new executor runs — so a source that was cancelled stays
-cancelled.
+source — the host itself is built when the new executor runs. Cancellation is permanent, so a source
+that was cancelled stays cancelled and an executor built from the same builder after Ctrl+C starts
+with an already-cancelled token; to run again after cancellation, start from a new builder
+(`AppBuilder.Create`) or pass a fresh `CancellationTokenSource` to the constructor.
 
 ## 13. Logging with Serilog
 
