@@ -188,8 +188,13 @@ public sealed class CommandAppExecutorTests : IDisposable
         commandApp.Verify(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once, "a rejected run must never reach Spectre");
     }
 
+    /// <summary>
+    ///     Invoked through an <see cref="Action" /> and asserted with <c>Throw</c>, not <c>ThrowAsync</c>: the rejection
+    ///     is a usage error and is meant to throw synchronously, before any task is handed back. <c>ThrowAsync</c> would
+    ///     also accept a faulted task, so it could not tell the two apart.
+    /// </summary>
     [Fact]
-    public async Task RunAsync_should_throw_when_called_a_second_time()
+    public async Task RunAsync_should_throw_synchronously_when_called_a_second_time()
     {
         var commandApp = new Mock<ICommandApp>();
         commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
@@ -197,25 +202,26 @@ public sealed class CommandAppExecutorTests : IDisposable
         var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
         await executor.RunAsync("build");
 
-        var secondRun = () => executor.RunAsync("build");
+        Action secondRun = () => _ = executor.RunAsync("build");
 
-        await secondRun.Should().ThrowAsync<InvalidOperationException>().WithMessage("*ConfigureCommandApp*");
+        secondRun.Should()
+                 .Throw<InvalidOperationException>("a usage error throws before the task is created rather than faulting the task")
+                 .WithMessage("*ConfigureCommandApp*");
         commandApp.Verify(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task RunAsync_should_throw_when_Run_has_already_been_called()
+    public void RunAsync_should_throw_synchronously_when_Run_has_already_been_called()
     {
         var commandApp = new Mock<ICommandApp>();
         commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).Returns(0);
         SetPauseBeforeExit(false);
         var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
-        var firstRun = () => executor.Run("build");
-        firstRun.Should().NotThrow();
+        executor.Run("build");
 
-        var secondRun = () => executor.RunAsync("build");
+        Action secondRun = () => _ = executor.RunAsync("build");
 
-        await secondRun.Should().ThrowAsync<InvalidOperationException>("Run and RunAsync share the one run the executor has");
+        secondRun.Should().Throw<InvalidOperationException>("Run and RunAsync share the one attempt the executor has");
         commandApp.Verify(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

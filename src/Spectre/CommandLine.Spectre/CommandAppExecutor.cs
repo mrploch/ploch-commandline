@@ -23,16 +23,20 @@ namespace Ploch.CommandLine.Spectre;
 ///         An executor permits one execution attempt. An attempt may build the host behind the type registrar, and
 ///         <see cref="IHostBuilder.Build" /> cannot be called again, so every attempt consumes the executor whatever its
 ///         outcome: a second <see cref="Run" /> or <see cref="RunAsync" /> is rejected up front with an
-///         <see cref="InvalidOperationException" /> that names <see cref="AppBuilder.ConfigureCommandApp" /> as the way
-///         to run again.
+///         <see cref="InvalidOperationException" />. Running again takes a new executor over a freshly configured
+///         command application; <see cref="AppBuilder.ConfigureCommandApp" /> does both when the application was built
+///         through <see cref="AppBuilder" />. An executor constructed directly, or through
+///         <see cref="CommandAppConfigurator" />, wraps an <see cref="ICommandApp" /> the caller owns, so the caller
+///         configures a new one.
 ///     </para>
 /// </remarks>
 public class CommandAppExecutor(ICommandApp commandApp, CancellationToken cancellationToken) : ICommandAppExecutor
 {
     private const string AlreadyRunMessage =
         "This ICommandAppExecutor has already been used. An executor permits one execution attempt, because an attempt may build "
-        + "the host behind it and that host cannot be built again; call AppBuilder.ConfigureCommandApp again to build a new executor "
-        + "for another run.";
+        + "the host behind it and that host cannot be built again. To run again, build a new executor over a freshly configured "
+        + "command application: call AppBuilder.ConfigureCommandApp again when the application was built through AppBuilder, "
+        + "or configure a new ICommandApp when the executor was constructed directly.";
 
     /// <summary>1 once the execution attempt has been claimed. Shared by <see cref="Run" /> and <see cref="RunAsync" />.</summary>
     private int _runClaimed;

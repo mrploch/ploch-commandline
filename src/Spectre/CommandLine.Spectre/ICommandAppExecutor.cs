@@ -6,8 +6,9 @@
 /// <remarks>
 ///     An executor permits one execution attempt: an attempt may build the host it runs over, and that host cannot be
 ///     built again, so every attempt consumes the executor whatever its outcome. A second <see cref="Run" /> or
-///     <see cref="RunAsync" /> on the same instance throws <see cref="InvalidOperationException" />. Build another
-///     executor, with <see cref="AppBuilder.ConfigureCommandApp" />, to run again.
+///     <see cref="RunAsync" /> on the same instance throws <see cref="InvalidOperationException" />. To run again,
+///     build a new executor over a freshly configured command application — <see cref="AppBuilder.ConfigureCommandApp" />
+///     does both when the application was built through <see cref="AppBuilder" />.
 /// </remarks>
 public interface ICommandAppExecutor
 {

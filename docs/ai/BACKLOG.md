@@ -94,7 +94,7 @@ Findings of the 2026-10-05 review that have no issue of their own. They are trac
 | Host is built but never started; hosted services do not run | `DependencyInjectionTypeRegistrar.cs` |
 | Commands and settings are singletons and capture transient services | `DependencyInjectionTypeRegistrar.cs` |
 | Validation failure exits `-1`; `ExitCode.InvalidInput` is 2 | `ExitCode.cs`, `DocumentationSite/index.md` |
-| `OperationCanceledException` is treated as cancellation without checking the token — resolved by PLO-756 | `AppCommand.cs`, `AsyncAppCommand.cs` |
+| `OperationCanceledException` is treated as cancellation without checking the token | `AppCommand.cs`, `AsyncAppCommand.cs` |
 | `IOutput.Write(string)` parses markup and throws on `[` in user data | `AnsiConsoleMarkupOutput.cs` |
 | Banner and "Executing command" lines always go to standard output | `AppBuilder.cs`, `AppCommand.cs` |
 
@@ -106,9 +106,9 @@ Findings of the 2026-10-05 review that have no issue of their own. They are trac
 | XML docs still describe a plain console sink | Serilog package |
 | Package README example uses the abstract `CommandSettings` | `src/Spectre/CommandLine.Spectre/README.md` |
 | Guide lists Serilog as optional and says `Execute` exercises validation | `docs/GETTING_STARTED.md` |
-| Missing null guards on three public entry points — resolved by PLO-756 | `AppBuilder.cs`, `EnvironmentSettings.cs` |
+| Missing null guards on three public entry points | `AppBuilder.cs`, `EnvironmentSettings.cs` |
 | Two message writers are unreachable through `IOutput` | `Output/` |
-| Reusing one executor for a second `Run` is untested — resolved by PLO-756: the executor permits one execution attempt | `CommandAppExecutor.cs` |
+| Reusing one executor for a second `Run` is untested | `CommandAppExecutor.cs` |
 
 ### 6.3 Build, CI and hygiene
 
