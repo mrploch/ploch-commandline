@@ -871,12 +871,15 @@ public sealed class AppBuilderTests : IDisposable
         }
     }
 
+    // Instantiated by Spectre.Console.Cli through the host, which the inspection cannot see.
+    // ReSharper disable once ClassNeverInstantiated.Local
     private sealed class RejectingSettings : CommandSettings
     {
         public override ValidationResult Validate() => ValidationResult.Error("rejected by Validate");
     }
 
     /// <summary>Goes through the framework base class so the run exercises <c>CommandSettingsValidator</c> as well.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local
     private sealed class RejectingCommand(CommandArgumentsRootProcessor settingsProcessor,
                                           ICommandSettingsValidator<RejectingSettings> validator,
                                           IExceptionHandler exceptionHandler,
