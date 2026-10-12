@@ -26,6 +26,7 @@ public interface IOutput
     ///     <see cref="global::Spectre.Console.Markup.Escape(string)" /> first, or passed through <see cref="MarkupInterpolated" />,
     ///     which escapes its interpolation holes for you.
     /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException">
     ///     <paramref name="value" /> is not well-formed markup, for example an unknown style name or an unbalanced tag.
     /// </exception>
@@ -47,6 +48,7 @@ public interface IOutput
     ///     originate in the source file goes through <see cref="global::Spectre.Console.Markup.Escape(string)" /> or
     ///     <see cref="MarkupLineInterpolated" />.
     /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException">
     ///     <paramref name="value" /> is not well-formed markup, for example an unknown style name or an unbalanced tag.
     /// </exception>

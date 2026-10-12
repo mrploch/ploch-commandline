@@ -73,7 +73,7 @@ taken from first implementation to release-ready.
 | Coupling to sibling repositories | Restore, fork builds, sample pin, Dependabot and release reproducibility each broke at least once | `Directory.Packages.props`, `nuget.config`, `samples/SampleApp/`, workflows |
 | Third-party analysers disagreeing with the code | Six issues to scope, baseline or tune SonarCloud, Codacy and Qodana | `.codacy.yml`, `SonarLint.xml`, `.qodana/`, `build-dotnet.yml` |
 | `AppBuilder` call-order semantics | Four bugs, two of them breaking fixes | `src/Spectre/CommandLine.Spectre/AppBuilder.cs` |
-| Markup handling of caller data | Two bugs (PLO-314, PLO-755), both fixed before 1.0 | `src/Spectre/CommandLine.Spectre/Output/` |
+| Markup handling of caller data | Two bugs, one still open as a design point | `src/Spectre/CommandLine.Spectre/Output/` |
 | Documentation drifting from the API | PLO-620 plus the mismatches in section 6 | `docs/`, `DocumentationSite/`, package READMEs |
 | Committed credentials and vulnerable pins | One leaked key, two advisories | Agent configuration files, shared package versions |
 
@@ -95,6 +95,7 @@ Findings of the 2026-10-05 review that have no issue of their own. They are trac
 | Commands and settings are singletons and capture transient services | `DependencyInjectionTypeRegistrar.cs` |
 | Validation failure exits `-1`; `ExitCode.InvalidInput` is 2 | `ExitCode.cs`, `DocumentationSite/index.md` |
 | `OperationCanceledException` is treated as cancellation without checking the token | `AppCommand.cs`, `AsyncAppCommand.cs` |
+| `IOutput.Write(string)` parses markup and throws on `[` in user data | `AnsiConsoleMarkupOutput.cs` |
 | Banner and "Executing command" lines always go to standard output | `AppBuilder.cs`, `AppCommand.cs` |
 
 ### 6.2 Correctness and documentation

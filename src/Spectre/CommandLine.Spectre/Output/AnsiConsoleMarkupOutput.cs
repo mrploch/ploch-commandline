@@ -30,6 +30,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// </summary>
     /// <param name="value">The markup to render.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="value" /> is not well-formed markup.</exception>
     public IOutput Markup(string value)
     {
@@ -43,6 +44,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// </summary>
     /// <param name="value">The markup to render.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="value" /> is not well-formed markup.</exception>
     public IOutput MarkupLine(string value)
     {
