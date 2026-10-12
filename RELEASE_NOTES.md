@@ -60,13 +60,16 @@ have been retired.
   through `ConfigureHost`.
 - **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
   `Run` or `RunAsync` on the same executor — whatever the first attempt's
-  outcome — throws `InvalidOperationException` — synchronously, before any task is
-  returned from `RunAsync` — naming `AppBuilder.ConfigureCommandApp` as the
-  way to run again. Previously the
-  second run reached Spectre, which, once the first run had built the host,
-  rendered the host builder's "Build can only be called once" error and
-  returned -1; an attempt may build that host and it can only be built once,
-  so the executor now says so up front.
+  outcome — throws `InvalidOperationException`, synchronously and before any
+  task is returned from `RunAsync`. Running again takes a new executor over a
+  freshly configured command application: `AppBuilder.ConfigureCommandApp`
+  provides one when the application was built through `AppBuilder`, while an
+  executor constructed directly or through `CommandAppConfigurator` needs a
+  newly configured `ICommandApp`, because `Configure` wraps the same one.
+  Previously the second run reached Spectre, which, once the first run had
+  built the host, rendered the host builder's "Build can only be called once"
+  error and returned -1; an attempt may build that host and it can only be
+  built once, so the executor now says so up front.
 
 ### Removed
 
