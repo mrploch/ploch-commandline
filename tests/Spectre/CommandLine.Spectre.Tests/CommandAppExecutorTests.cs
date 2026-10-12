@@ -188,11 +188,9 @@ public sealed class CommandAppExecutorTests : IDisposable
         commandApp.Verify(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once, "a rejected run must never reach Spectre");
     }
 
-    /// <summary>
-    ///     Invoked through an <see cref="Action" /> and asserted with <c>Throw</c>, not <c>ThrowAsync</c>: the rejection
-    ///     is a usage error and is meant to throw synchronously, before any task is handed back. <c>ThrowAsync</c> would
-    ///     also accept a faulted task, so it could not tell the two apart.
-    /// </summary>
+    // Invoked through an Action and asserted with Throw, not ThrowAsync: the rejection is a usage error and is meant to
+    // throw synchronously, before any task is handed back. ThrowAsync would also accept a faulted task, so it could not
+    // tell the two apart. (A plain comment: Qodana's documentation rules would demand <returns> on an async test.)
     [Fact]
     public async Task RunAsync_should_throw_synchronously_when_called_a_second_time()
     {
