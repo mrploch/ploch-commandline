@@ -75,7 +75,7 @@ public class AnsiConsoleMarkupOutputTests
     public void Markup_should_parse_the_string_as_markup()
     {
         using var console = new RecordingConsole();
-        var output = CreateOutput(console);
+        IOutput output = CreateOutput(console);
 
         output.Markup("[bold]ok[/]");
 
@@ -87,7 +87,7 @@ public class AnsiConsoleMarkupOutputTests
     public void MarkupLine_should_parse_the_string_as_markup_and_terminate_the_line()
     {
         using var console = new RecordingConsole();
-        var output = CreateOutput(console);
+        IOutput output = CreateOutput(console);
 
         output.MarkupLine("[bold]ok[/]");
 
@@ -103,7 +103,7 @@ public class AnsiConsoleMarkupOutputTests
     public void Markup_should_throw_for_a_string_that_is_not_well_formed_markup()
     {
         using var console = new RecordingConsole();
-        var output = CreateOutput(console);
+        IOutput output = CreateOutput(console);
 
         var markup = () => output.Markup("C:\\logs[1].txt");
 
@@ -169,6 +169,22 @@ public class AnsiConsoleMarkupOutputTests
 
         chained.Should().BeSameAs(output);
         console.Output.Should().Be(Environment.NewLine + Environment.NewLine);
+    }
+
+    /// <summary>
+    ///     <see cref="IMessageFormatterProcessor.GetMessageText{TMessage}" /> may return null. The built-in processor
+    ///     never does, but a custom one can, and that null must not reach <c>Markup</c>, which rejects it.
+    /// </summary>
+    [Fact]
+    public void Decorating_helpers_should_tolerate_a_processor_that_returns_null_text()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console, new RecordingFormatterProcessor());
+
+        var decorate = () => output.WriteBold<string>(null).WriteBoldLine<string>(null).WriteError<string>(null).WriteErrorLine<string>(null);
+
+        decorate.Should().NotThrow("a null from the processor is rendered as nothing, not passed to the markup parser");
+        console.Output.Should().Be(Environment.NewLine + Environment.NewLine, "only the two line forms leave a mark");
     }
 
     [Fact]

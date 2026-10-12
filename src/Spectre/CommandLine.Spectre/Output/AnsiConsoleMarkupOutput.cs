@@ -111,7 +111,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     ///     The processor returns the escaped text wrapped in the tag, so the result has to go through
     ///     <see cref="Markup" />: <see cref="Write{TMessage}" /> would print the tag literally.
     /// </remarks>
-    public IOutput WriteBold<TMessage>(TMessage? message) => Markup(formatterProcessor.GetMessageText(message, "bold") ?? string.Empty);
+    public IOutput WriteBold<TMessage>(TMessage? message) => Markup(Decorate(message, "bold"));
 
     /// <summary>
     ///     Writes a message in bold formatting followed by a line terminator to the console.
@@ -119,7 +119,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The message to write in bold.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteBoldLine<TMessage>(TMessage? message) => MarkupLine(formatterProcessor.GetMessageText(message, "bold") ?? string.Empty);
+    public IOutput WriteBoldLine<TMessage>(TMessage? message) => MarkupLine(Decorate(message, "bold"));
 
     /// <summary>
     ///     Writes an error message in red formatting to the console.
@@ -127,7 +127,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The error message to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteError<TMessage>(TMessage? message) => Markup(formatterProcessor.GetMessageText(message, "red") ?? string.Empty);
+    public IOutput WriteError<TMessage>(TMessage? message) => Markup(Decorate(message, "red"));
 
     /// <summary>
     ///     Writes an error message in red formatting followed by a line terminator to the console.
@@ -135,7 +135,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <typeparam name="TMessage">The type of the message to write.</typeparam>
     /// <param name="message">The error message to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
-    public IOutput WriteErrorLine<TMessage>(TMessage? message) => MarkupLine(formatterProcessor.GetMessageText(message, "red") ?? string.Empty);
+    public IOutput WriteErrorLine<TMessage>(TMessage? message) => MarkupLine(Decorate(message, "red"));
 
     /// <summary>
     ///     Writes an exception with detailed formatting to the console.
@@ -214,6 +214,21 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     ///     <c>console.Write</c>.
     /// </remarks>
     private static string RenderFallbackText<TMessage>(TMessage message, IFormatProvider? format) => FormattedText.Render(message, format);
+
+    /// <summary>
+    ///     Asks the processor for the message text wrapped in <paramref name="markupTag" />, ready for
+    ///     <see cref="Markup" />.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the message to decorate.</typeparam>
+    /// <param name="message">The message to decorate.</param>
+    /// <param name="markupTag">The style tag to wrap the message in.</param>
+    /// <returns>The decorated markup, or an empty string when the processor returns none.</returns>
+    /// <remarks>
+    ///     <see cref="IMessageFormatterProcessor.GetMessageText{TMessage}" /> is allowed to return
+    ///     <see langword="null" />, and <see cref="Markup" /> rejects a null argument, so the result is coalesced here
+    ///     once rather than at each of the four decorating helpers.
+    /// </remarks>
+    private string Decorate<TMessage>(TMessage? message, string markupTag) => formatterProcessor.GetMessageText(message, markupTag) ?? string.Empty;
 
     /// <summary>
     ///     Renders a message and reports whether a registered <see cref="IMessageWriter" /> was the one that rendered it.
