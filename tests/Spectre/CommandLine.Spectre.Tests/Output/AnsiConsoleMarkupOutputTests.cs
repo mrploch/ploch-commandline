@@ -75,7 +75,7 @@ public class AnsiConsoleMarkupOutputTests
     public void Markup_should_parse_the_string_as_markup()
     {
         using var console = new RecordingConsole();
-        IOutput output = CreateOutput(console);
+        var output = CreateOutput(console);
 
         output.Markup("[bold]ok[/]");
 
@@ -87,7 +87,7 @@ public class AnsiConsoleMarkupOutputTests
     public void MarkupLine_should_parse_the_string_as_markup_and_terminate_the_line()
     {
         using var console = new RecordingConsole();
-        IOutput output = CreateOutput(console);
+        var output = CreateOutput(console);
 
         output.MarkupLine("[bold]ok[/]");
 
@@ -103,7 +103,7 @@ public class AnsiConsoleMarkupOutputTests
     public void Markup_should_throw_for_a_string_that_is_not_well_formed_markup()
     {
         using var console = new RecordingConsole();
-        IOutput output = CreateOutput(console);
+        var output = CreateOutput(console);
 
         var markup = () => output.Markup("C:\\logs[1].txt");
 
@@ -198,16 +198,20 @@ public class AnsiConsoleMarkupOutputTests
         console.Output.Should().BeEmpty();
     }
 
+    /// <summary>
+    ///     <c>MarkupLine</c> returns <see cref="IOutput" />, so the chained <c>Markup</c> call here goes through the
+    ///     interface member rather than the implementation - the contract a consumer programs against.
+    /// </summary>
     [Fact]
     public void Markup_and_MarkupLine_should_return_the_same_instance_so_calls_can_be_chained()
     {
         using var console = new RecordingConsole();
         var output = CreateOutput(console);
 
-        var chained = output.Markup("[bold]a[/]").MarkupLine("[italic]b[/]");
+        var chained = output.MarkupLine("[italic]a[/]").Markup("[bold]b[/]");
 
         chained.Should().BeSameAs(output);
-        console.Output.Should().Be("ab" + Environment.NewLine);
+        console.Output.Should().Be("a" + Environment.NewLine + "b");
     }
 
     [Fact]
