@@ -11,6 +11,11 @@
 # have to reimplement it; the canned evaluation stands in for MSBuild's answer.
 set -euo pipefail
 
+# The script under test is run with "$BASH", the interpreter running this fixture, not a bare
+# `bash` resolved through PATH: `/bin/bash test-dependency-report.sh` must exercise the script
+# under macOS bash 3.2, and a Homebrew bash 5 must exercise it under bash 5.
+echo "Testing dependency-report.sh under $BASH ($BASH_VERSION)"
+
 script="$PWD/.github/scripts/dependency-report.sh"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -430,7 +435,7 @@ unset GITHUB_STEP_SUMMARY
 diagnostics_log="$work/stderr.log"
 run_report() {
   local scenario="$1"
-  (cd "$work/repo" && SCENARIO="$scenario" bash "$script" ./Main.slnx ./samples/Sample/Sample.slnx) \
+  (cd "$work/repo" && SCENARIO="$scenario" "$BASH" "$script" ./Main.slnx ./samples/Sample/Sample.slnx) \
     2>"$diagnostics_log"
 }
 
@@ -637,7 +642,7 @@ fi
 echo 'Scenario: mrploch-development not checked out'
 mv "$work/mrploch-development" "$work/mrploch-development.away"
 set +e
-(cd "$work/repo" && SCENARIO=clean bash "$script" ./Main.slnx >/dev/null 2>&1)
+(cd "$work/repo" && SCENARIO=clean "$BASH" "$script" ./Main.slnx >/dev/null 2>&1)
 status=$?
 set -e
 mv "$work/mrploch-development.away" "$work/mrploch-development"

@@ -9,7 +9,7 @@ on:
 
 # One run at a time per pull request: a later push to an open pull request cancels the run it
 # supersedes. Every other event (push to main or a release branch, workflow_dispatch) gets a
-# group of its own, keyed by run id, so every push there is analysed and none is cancelled.
+# group of its own, keyed by run id, so this configuration never cancels or displaces them.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

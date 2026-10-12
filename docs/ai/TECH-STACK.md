@@ -188,9 +188,9 @@ Facts worth knowing:
 - `build-dotnet.yml`, `codeql.yml` and `qodana_code_quality.yml` each run under a concurrency group
   keyed by workflow and pull-request number, so a later push to an open pull request cancels the
   run it supersedes. Every other event (push to `main` or `releases/*`, schedule, dispatch) is keyed
-  by run id instead - a group of its own - so those runs are never cancelled, queued or displaced,
-  and their package publish and code-scanning upload always complete. A superseded pull-request
-  run can be cancelled before its upload, which is the point.
+  by run id instead - a group of its own - so this configuration never cancels or displaces them;
+  the package publish and code-scanning upload keep their existing success conditions. A
+  superseded pull-request run can be cancelled before its upload, which is the point.
 - Review bots that comment on pull requests are configured outside the repository.
 - On the verification date every workflow's recent history was green.
 
