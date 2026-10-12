@@ -183,11 +183,10 @@ public class AppCommandTests
         handler.Handled.Should().ContainSingle().Which.Should().BeOfType<OperationCanceledException>();
     }
 
-    /// <summary>
-    ///     Pins the fix for PLO-756: an <see cref="OperationCanceledException" /> is only "the user cancelled" when the
-    ///     token the command received was cancelled. One raised for any other reason - here an unrelated token the
-    ///     command itself observed - is a fault and must reach the handler like every other exception.
-    /// </summary>
+    // Pins the fix for PLO-756: an OperationCanceledException is only "the user cancelled" when the token the command
+    // received was cancelled. One raised for any other reason - here an unrelated token the command itself observed -
+    // is a fault and must reach the handler like every other exception. (A plain comment rather than XML docs: the
+    // documentation analysers would demand <param> and <returns> on a test method.)
     [Theory]
     [AutoMockData]
     public void Execute_should_route_an_OperationCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
@@ -204,16 +203,19 @@ public class AppCommandTests
         handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception, "the handler must see the original exception");
     }
 
-    /// <summary>Cancellation requested while the command is running, not before: the filter reads the token's state at catch time.</summary>
+    // Cancellation requested while the command is running, not before: the filter reads the token's state at catch time.
     [Theory]
     [AutoMockData]
     public void Execute_should_report_cancellation_requested_while_the_command_is_running(CommandContext context)
     {
         var handler = new RecordingExceptionHandler();
         using var cts = new CancellationTokenSource();
+
+        // The delegate is captured rather than the source, so the lambda never touches a disposed object.
+        Action requestCancellation = cts.Cancel;
         var command = new StubCommand(token =>
                                       {
-                                          cts.Cancel();
+                                          requestCancellation();
                                           token.ThrowIfCancellationRequested();
 
                                           return ExitCode.Success;

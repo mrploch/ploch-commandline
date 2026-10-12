@@ -778,11 +778,13 @@ out of a shutdown the user just asked for would turn it into a hang.
 
 ### One run per executor
 
-The executor `ConfigureCommandApp` returns permits one execution attempt. An attempt may build the
-host behind it, and that host cannot be built again, so every attempt consumes the executor whatever
-its outcome: a second `Run` / `RunAsync` on the same executor throws `InvalidOperationException`. To run again, call
-`ConfigureCommandApp` on the builder once more; it builds a fresh host over the same recorded
-configuration and the same cancellation source, so a source that was cancelled stays cancelled.
+`ConfigureCommandApp` returns an executor that permits one execution attempt. An attempt may build
+the host behind it, and that host cannot be built again, so every attempt consumes the executor
+whatever its outcome: a second `Run` / `RunAsync` on the same executor throws
+`InvalidOperationException`. To run again, call `ConfigureCommandApp` on the builder once more; it
+configures a fresh host builder over the same recorded configuration and the same cancellation
+source — the host itself is built when the new executor runs — so a source that was cancelled stays
+cancelled.
 
 ## 13. Logging with Serilog
 

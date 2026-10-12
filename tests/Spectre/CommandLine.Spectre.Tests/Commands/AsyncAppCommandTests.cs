@@ -107,11 +107,10 @@ public class AsyncAppCommandTests
         handler.Handled.Should().ContainSingle().Which.Should().BeOfType<OperationCanceledException>();
     }
 
-    /// <summary>
-    ///     Pins the fix for PLO-756: an <see cref="OperationCanceledException" /> is only "the user cancelled" when the
-    ///     token the command received was cancelled. One raised for any other reason - here an unrelated token the
-    ///     command itself observed - is a fault and must reach the handler like every other exception.
-    /// </summary>
+    // Pins the fix for PLO-756: an OperationCanceledException is only "the user cancelled" when the token the command
+    // received was cancelled. One raised for any other reason - here an unrelated token the command itself observed -
+    // is a fault and must reach the handler like every other exception. (A plain comment rather than XML docs: the
+    // documentation analysers would demand <param> and <returns> on a test method.)
     [Theory]
     [AutoMockData]
     public async Task ExecuteAsync_should_route_an_OperationCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
@@ -128,10 +127,8 @@ public class AsyncAppCommandTests
         handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception, "the handler must see the original exception");
     }
 
-    /// <summary>
-    ///     The shape an <c>HttpClient</c> timeout takes: a <see cref="TaskCanceledException" /> while the command's own
-    ///     token is live. Reporting it as exit code 130 would tell the user they cancelled something they did not.
-    /// </summary>
+    // The shape an HttpClient timeout takes: a TaskCanceledException while the command's own token is live. Reporting
+    // it as exit code 130 would tell the user they cancelled something they did not.
     [Theory]
     [AutoMockData]
     public async Task ExecuteAsync_should_route_a_TaskCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
@@ -153,7 +150,10 @@ public class AsyncAppCommandTests
         var handler = new RecordingExceptionHandler();
         using var foreign = new CancellationTokenSource();
         await foreign.CancelAsync();
-        var command = CreateCommand((_, _) => Task.FromCanceled<ExitCode>(foreign.Token), handler);
+
+        // The token is captured rather than the source, so the lambda never touches a disposed object.
+        var foreignToken = foreign.Token;
+        var command = CreateCommand((_, _) => Task.FromCanceled<ExitCode>(foreignToken), handler);
 
         var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
 
@@ -176,7 +176,7 @@ public class AsyncAppCommandTests
         handler.Handled.Should().BeEmpty();
     }
 
-    /// <summary>Cancellation requested while the command is suspended, not before: the filter reads the token's state at catch time.</summary>
+    // Cancellation requested while the command is suspended, not before: the filter reads the token's state at catch time.
     [Theory]
     [AutoMockData]
     public async Task ExecuteAsync_should_report_cancellation_requested_while_the_command_is_running(CommandContext context)
