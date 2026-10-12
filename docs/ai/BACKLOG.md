@@ -118,10 +118,8 @@ Findings of the 2026-10-05 review that have no issue of their own. They are trac
 | `directory.build.targets` is lower-case and fully commented out | Repository root |
 | Solution lists `NuGet.Config`; the file is `nuget.config` | `Ploch.CommandLine.Spectre.slnx` |
 | Stale comments in three workflows and `.editorconfig` | `.github/workflows/`, `.editorconfig` |
-| Fixture scripts need bash 4 | `.github/scripts/test-*.sh` |
 | Vestigial build items and duplicated Serilog references | See [`TECH-STACK.md`](TECH-STACK.md) section 9 |
 | Noisy `PrintSettings` target; Debug builds pack | `Directory.Build.props` |
-| No concurrency cancellation for superseded runs | `.github/workflows/` |
 | Three test files whose names do not match their classes | `tests/Spectre/CommandLine.Spectre.Tests/` |
 | Generic pull request template | `.github/pull_request_template.md` |
 | Outdated shared versions, three with a new major | `mrploch-development` |
