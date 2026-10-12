@@ -19,12 +19,12 @@ on:
     - cron: '31 4 * * 1'
   workflow_dispatch:
 
-# One run at a time per pull request, or per ref for everything else. A later push to an open
-# pull request cancels the run it supersedes. A running main run is never cancelled, so the
-# SARIF upload the ruleset's code_scanning rule reads always arrives; later main pushes wait
-# behind it, and GitHub keeps only the newest waiting run per group.
+# One run at a time per pull request: a later push to an open pull request cancels the run it
+# supersedes. Every other event (push to main, schedule, workflow_dispatch) gets a group of its
+# own, keyed by run id, so no main run is ever cancelled or displaced and the SARIF upload the
+# ruleset's code_scanning rule reads always arrives.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:

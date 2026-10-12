@@ -186,11 +186,10 @@ Facts worth knowing:
   `dotnet restore`, before any fallback. Result steps run after a failed test step, not a skipped
   or cancelled one.
 - `build-dotnet.yml`, `codeql.yml` and `qodana_code_quality.yml` each run under a concurrency group
-  keyed by workflow and pull-request number (or ref). A later push to an open pull request cancels
-  the run it supersedes. A running `main` (or, for Qodana, `releases/*`) run is never cancelled, so
-  its package publish, code-scanning upload or analysis completes; later pushes there wait behind
-  it, and GitHub keeps only the newest waiting run per group, so a burst of pushes builds the
-  branch head rather than every intermediate commit.
+  keyed by workflow and pull-request number, so a later push to an open pull request cancels the
+  run it supersedes. Every other event (push to `main` or `releases/*`, schedule, dispatch) is keyed
+  by run id instead - a group of its own - so those runs are never cancelled, queued or displaced,
+  and the package publish and code-scanning upload always complete for every commit.
 - Review bots that comment on pull requests are configured outside the repository.
 - On the verification date every workflow's recent history was green.
 
