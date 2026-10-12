@@ -2,7 +2,7 @@
 
 ## Issue ticket number and link
 
-Closes PLO-<n>
+Closes PLO-nnn
 
 ## Checklist before requesting a review
 
