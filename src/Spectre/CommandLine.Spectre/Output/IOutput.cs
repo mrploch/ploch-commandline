@@ -14,6 +14,45 @@ public interface IOutput
     IOutput EndLine();
 
     /// <summary>
+    ///     Writes a string that is parsed as Spectre.Console markup to the output.
+    /// </summary>
+    /// <param name="value">The markup to render, such as <c>"[green]ok[/]"</c>.</param>
+    /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     This is the explicit opt-in to markup parsing: <see cref="Write{TMessage}" /> and
+    ///     <see cref="WriteLine{TMessage}" /> write a <see cref="string" /> verbatim. Every <c>[</c> in
+    ///     <paramref name="value" /> is read as the start of a style tag, so text that came from outside the source
+    ///     file - a path, a user name, a configuration value - must be escaped with
+    ///     <see cref="global::Spectre.Console.Markup.Escape(string)" /> first, or passed through <see cref="MarkupInterpolated" />,
+    ///     which escapes its interpolation holes for you.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    ///     <paramref name="value" /> is not well-formed markup, for example an unknown style name or an unbalanced tag.
+    /// </exception>
+    /// <example>
+    ///     <code>
+    /// output.Markup("[bold]Done:[/] ");
+    /// output.Markup($"[green]{Markup.Escape(path)}[/]");   // or: output.MarkupInterpolated($"[green]{path}[/]")
+    ///     </code>
+    /// </example>
+    IOutput Markup(string value);
+
+    /// <summary>
+    ///     Writes a string that is parsed as Spectre.Console markup to the output, followed by a line break.
+    /// </summary>
+    /// <param name="value">The markup to render, such as <c>"[green]ok[/]"</c>.</param>
+    /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     The line-terminating form of <see cref="Markup" />. The same escaping rule applies: data that did not
+    ///     originate in the source file goes through <see cref="global::Spectre.Console.Markup.Escape(string)" /> or
+    ///     <see cref="MarkupLineInterpolated" />.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    ///     <paramref name="value" /> is not well-formed markup, for example an unknown style name or an unbalanced tag.
+    /// </exception>
+    IOutput MarkupLine(string value);
+
+    /// <summary>
     ///     Writes markup-formatted interpolated string to the output.
     /// </summary>
     /// <param name="value">The interpolated string with markup formatting.</param>
@@ -41,6 +80,13 @@ public interface IOutput
     /// <param name="message">The message to write.</param>
     /// <param name="format">The format provider to use for formatting the message, or null to use the default format.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     A <see cref="string" /> is written verbatim: a <c>[</c> in it is printed, not parsed as a markup tag, so a
+    ///     path or user input can be passed straight through. To render markup, call <see cref="Markup" /> or
+    ///     <see cref="MarkupInterpolated" />. A <see cref="FormattableString" /> message is rendered as interpolated
+    ///     markup with its holes escaped, but note that an interpolated string literal infers <see cref="string" />
+    ///     here, so it has to be passed as <c>Write&lt;FormattableString&gt;($"...")</c> to take that path.
+    /// </remarks>
     IOutput Write<TMessage>(TMessage message, IFormatProvider? format = null);
 
     /// <summary>
@@ -95,5 +141,9 @@ public interface IOutput
     /// <typeparam name="TMessage">The type of the message.</typeparam>
     /// <param name="message">The message to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     A <see cref="string" /> is written verbatim, as it is by <see cref="Write{TMessage}" />. To render markup,
+    ///     call <see cref="MarkupLine" /> or <see cref="MarkupLineInterpolated" />.
+    /// </remarks>
     IOutput WriteLine<TMessage>(TMessage message);
 }

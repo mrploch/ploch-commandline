@@ -297,6 +297,15 @@ public class AppCommandTests
     {
         public IOutput EndLine() => this;
 
+        public IOutput Markup(string value) => this;
+
+        public IOutput MarkupLine(string value)
+        {
+            lines.Add(value);
+
+            return this;
+        }
+
         public IOutput MarkupInterpolated(FormattableString value) => this;
 
         public IOutput MarkupLineInterpolated(FormattableString value)

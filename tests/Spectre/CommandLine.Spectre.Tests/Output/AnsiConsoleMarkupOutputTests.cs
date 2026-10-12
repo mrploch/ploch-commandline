@@ -9,22 +9,189 @@ namespace Ploch.CommandLine.Spectre.Tests.Output;
 /// <summary>
 ///     Cover for the console output adapter. The dispatch inside <see cref="AnsiConsoleMarkupOutput.Write{TMessage}" />
 ///     is the path that previously wrote writer-handled messages twice, and the bold/error helpers are the only
-///     place the markup tags reach the formatter processor.
+///     place the markup tags reach the formatter processor. The <c>Markup</c> / <c>MarkupLine</c> pair is the sole
+///     entry point that parses a plain string as markup; <c>Write</c> and <c>WriteLine</c> print it verbatim.
 /// </summary>
 public class AnsiConsoleMarkupOutputTests
 {
     /// <summary>Two items, hoisted so the collection tests do not allocate a constant array at each call site (CA1861).</summary>
     private static readonly string[] TwoItems = ["a", "b"];
 
+    /// <summary>The SGR sequence that switches bold on. ANSI is enabled on the recording console, so a parsed [bold] tag emits it.</summary>
+    private static readonly string BoldOn = (char)27 + "[1m";
+
+    /// <summary>
+    ///     A plain string used to be sent through <c>console.Markup</c>, so anything that was not well-formed markup -
+    ///     a path like <c>C:\logs[1].txt</c>, user input echoed back - threw from the parser. Spectre.Console itself
+    ///     separates <c>Write(string)</c> from <c>Markup(string)</c>; this adapter now follows the same split.
+    /// </summary>
     [Fact]
-    public void Write_should_render_a_plain_string_as_markup()
+    public void Write_should_print_a_plain_string_verbatim_instead_of_parsing_it_as_markup()
     {
         using var console = new RecordingConsole();
         var output = CreateOutput(console);
 
         output.Write("[bold]emphasised[/]");
 
-        console.Output.Should().Be("emphasised", "the markup tags are interpreted, not printed literally");
+        console.Output.Should().Be("[bold]emphasised[/]", "a string handed to Write is text, not markup");
+    }
+
+    [Fact]
+    public void Write_should_not_throw_for_a_string_that_is_not_well_formed_markup()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var write = () => output.Write(@"C:\logs[1].txt");
+
+        write.Should().NotThrow("a path is data, and data must never be parsed as a style tag");
+        console.Output.Should().Be(@"C:\logs[1].txt");
+    }
+
+    [Fact]
+    public void WriteLine_should_print_a_bracketed_string_verbatim_and_terminate_the_line()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.WriteLine("path[1]");
+
+        console.Output.Should().Be("path[1]" + Environment.NewLine);
+    }
+
+    [Fact]
+    public void WriteLine_should_not_throw_for_a_string_that_is_not_well_formed_markup()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var write = () => output.WriteLine("unbalanced [ bracket");
+
+        write.Should().NotThrow();
+        console.Output.Should().Be("unbalanced [ bracket" + Environment.NewLine);
+    }
+
+    [Fact]
+    public void Markup_should_parse_the_string_as_markup()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.Markup("[bold]ok[/]");
+
+        console.Output.Should().Be("ok", "the tag is consumed by the renderer, so only the text survives");
+        console.RawOutput.Should().Contain(BoldOn, "the bold decoration is applied, which proves the tag was parsed rather than printed");
+    }
+
+    [Fact]
+    public void MarkupLine_should_parse_the_string_as_markup_and_terminate_the_line()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.MarkupLine("[bold]ok[/]");
+
+        console.Output.Should().Be("ok" + Environment.NewLine);
+        console.RawOutput.Should().Contain(BoldOn);
+    }
+
+    /// <summary>
+    ///     The explicit markup entry point is where parsing is wanted, so a malformed tag surfaces as the parser's
+    ///     exception instead of being silently printed. That is the contract callers opt into by choosing it over Write.
+    /// </summary>
+    [Fact]
+    public void Markup_should_throw_for_a_string_that_is_not_well_formed_markup()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var markup = () => output.Markup("C:\\logs[1].txt");
+
+        markup.Should().Throw<InvalidOperationException>("Markup is the opt-in to parsing, so a bad tag is reported, not swallowed");
+    }
+
+    [Fact]
+    public void MarkupLine_should_throw_for_a_string_that_is_not_well_formed_markup()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var markupLine = () => output.MarkupLine("unbalanced [ bracket");
+
+        markupLine.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Markup_should_write_nothing_for_an_empty_string()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.Markup(string.Empty);
+
+        console.Output.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MarkupLine_should_write_only_a_line_terminator_for_an_empty_string()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.MarkupLine(string.Empty);
+
+        console.Output.Should().Be(Environment.NewLine);
+    }
+
+    /// <summary>
+    ///     The decorating helpers now route through <c>Markup</c>, which rejects a null argument, so the null message
+    ///     the processor turns into an empty string has to keep arriving as an empty string rather than as null.
+    /// </summary>
+    [Fact]
+    public void WriteBold_and_WriteError_should_write_nothing_for_a_null_message()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var chained = output.WriteBold<string>(null).WriteError<string>(null);
+
+        chained.Should().BeSameAs(output);
+        console.Output.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WriteBoldLine_and_WriteErrorLine_should_write_only_a_line_terminator_for_a_null_message()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var chained = output.WriteBoldLine<string>(null).WriteErrorLine<string>(null);
+
+        chained.Should().BeSameAs(output);
+        console.Output.Should().Be(Environment.NewLine + Environment.NewLine);
+    }
+
+    [Fact]
+    public void WriteBold_and_WriteError_should_write_nothing_for_an_empty_message()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.WriteBold(string.Empty).WriteError(string.Empty);
+
+        console.Output.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Markup_and_MarkupLine_should_return_the_same_instance_so_calls_can_be_chained()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var chained = output.Markup("[bold]a[/]").MarkupLine("[italic]b[/]");
+
+        chained.Should().BeSameAs(output);
+        console.Output.Should().Be("ab" + Environment.NewLine);
     }
 
     [Fact]

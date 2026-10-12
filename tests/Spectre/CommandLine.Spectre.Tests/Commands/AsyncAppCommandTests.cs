@@ -181,6 +181,10 @@ public class AsyncAppCommandTests
     {
         public IOutput EndLine() => this;
 
+        public IOutput Markup(string value) => this;
+
+        public IOutput MarkupLine(string value) => this;
+
         public IOutput MarkupInterpolated(FormattableString value) => this;
 
         public IOutput MarkupLineInterpolated(FormattableString value) => this;

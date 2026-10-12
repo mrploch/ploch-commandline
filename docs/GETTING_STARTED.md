@@ -391,8 +391,22 @@ table.AddRow(user.Id.ToString(), Markup.Escape(user.Name), Markup.Escape(user.Em
 `MarkupLineInterpolated` escapes its interpolation holes automatically — that is the difference
 between it and building a `Markup` from an interpolated string, which does not.
 
-**`IOutput.Write` dispatches on the type of the message.** A `FormattableString`, a `string` and an
-`IRenderable` are rendered directly; anything else is offered to the registered `IMessageWriter`s,
+**`Write` and `WriteLine` print a string as-is; markup is an explicit opt-in.** This mirrors the
+split Spectre.Console makes between `IAnsiConsole.Write(string)` and `IAnsiConsole.Markup(string)`:
+
+```csharp
+Output.WriteLine(@"C:\logs[1].txt");            // prints C:\logs[1].txt - the bracket is text
+Output.MarkupLine("[green]Done.[/]");           // parsed as markup: a green "Done."
+Output.MarkupLineInterpolated($"[green]{path}[/]"); // markup around an escaped value
+```
+
+Because `Markup` and `MarkupLine` parse everything they are given, a value that did not originate
+in your source file goes through `Markup.Escape(...)` first, or through the `…Interpolated` overloads,
+which escape it for you.
+
+**`IOutput.Write` dispatches on the type of the message.** A `FormattableString` is rendered as
+interpolated markup, a `string` is written verbatim and an `IRenderable` is rendered by the
+console; anything else is offered to the registered `IMessageWriter`s,
 and the writer whose message type matches receives the message itself along with the
 `IMessageFormatterProcessor`, so the writer decides how the value is formatted. Writing an
 `Exception` therefore renders the full exception through `ExceptionMessageWriter`, and writing a

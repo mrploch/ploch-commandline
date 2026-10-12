@@ -61,6 +61,10 @@ public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
 `AppCommand<TSettings>` validates the settings, runs the registered argument processors, and turns
 exceptions and cancellation into exit codes, so `DoExecute` holds only the command's own work.
 
+`IOutput.Write` and `WriteLine` print a string as-is, so a path or user input containing `[` is safe
+to pass straight through. Markup is an explicit opt-in: `Markup` / `MarkupLine` parse their argument
+as Spectre markup, and `MarkupInterpolated` / `MarkupLineInterpolated` escape the interpolated values.
+
 ## Getting Started
 
 See the [Getting Started guide](https://github.com/mrploch/ploch-commandline/blob/main/docs/GETTING_STARTED.md),
