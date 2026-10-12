@@ -19,7 +19,7 @@ stable releases go to [NuGet.org](https://www.nuget.org/profiles/mrploch).
 | Package | Purpose |
 |---|---|
 | `Ploch.CommandLine.Spectre` | Core framework — `AppBuilder`, command base classes, settings pipeline, output pipeline. |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog integration, including a `SerilogConfigurationBundle` for structured logging. |
+| `Ploch.CommandLine.Spectre.Serilog` | Serilog integration, including a `SerilogConfigurationBundle` for structured logging. The core package depends on it and `AppServicesBundle` registers the bundle, so it is installed and active without a separate `dotnet add package`. |
 | `Ploch.CommandLine.Spectre.FluentValidation` | Declarative validation of command settings using FluentValidation validators. |
 | `Ploch.CommandLine.UseCases` | Bridges commands to `IResultUseCase` for a Clean Architecture style, built on `Ardalis.Result`. |
 
@@ -133,7 +133,8 @@ which exposes `Run` and `RunAsync`.
 | `AsyncAppCommand<TSettings>` | Asynchronous commands. Implement `DoExecuteAsync`. |
 | `UseCaseAsyncCommand<...>` | Commands that delegate to an `IResultUseCase`. |
 
-Each base class validates the settings, invokes your implementation, and routes any
+`Spectre.Console.Cli` calls each base class's `Validate` override first; `Execute` / `ExecuteAsync`
+then runs the settings processor, invokes your implementation, and routes any
 exception to the configured `IExceptionHandler`. Cancellation is handled separately from
 failure: an `OperationCanceledException` returns `ExitCode.Cancelled` and never reaches the
 exception handler.
@@ -151,8 +152,14 @@ differs.
 |---|---|---|
 | `ExitCode.Success` | 0 | Completed normally. |
 | `ExitCode.Error` | 1 | Unhandled failure. |
-| `ExitCode.InvalidInput` | 2 | Settings failed validation. |
+| `ExitCode.InvalidInput` | 2 | Returned by a command that rejects the input it was given — a value outside a supported set, a missing file, mutually exclusive flags. |
 | `ExitCode.Cancelled` | 130 | Cancelled before completing — the conventional shell code for termination by SIGINT (128 + 2). |
+
+A failed `Validate` never reaches this table. `Spectre.Console.Cli` runs validation before the
+command, reports the errors itself and exits with its own `-1` (`255` in a POSIX shell), so
+`InvalidInput` is only ever returned by your `DoExecute` / `DoExecuteAsync`. The same applies to a command line it
+cannot bind, such as an unknown command or a missing required argument. The
+[Getting Started guide](../docs/GETTING_STARTED.md#11-exit-codes) walks through both kinds of exit code.
 
 ### Token substitution
 

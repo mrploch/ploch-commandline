@@ -86,10 +86,7 @@ public static class LoggerConfigurationExtensions
     ///             <description>Separate error log file for warnings, errors, and fatal messages</description>
     ///         </item>
     ///         <item>
-    ///             <description>Console output for immediate feedback</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>Spectre.Console integration for enhanced console formatting</description>
+    ///             <description>Console output through the Spectre.Console sink, the only console sink registered</description>
     ///         </item>
     ///         <item>
     ///             <description>Configurable minimum log level from configuration</description>

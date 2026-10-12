@@ -8,6 +8,11 @@ from the application's configuration.
 
 ## Installation
 
+`Ploch.CommandLine.Spectre` already depends on this package and registers `SerilogConfigurationBundle`
+through `AppServicesBundle`, so an application built with `AppBuilder` needs no extra reference; call
+`AddSerilog` to customise the registration, as below. Add the package directly only when you use it
+without the core package:
+
 ```bash
 dotnet add package Ploch.CommandLine.Spectre.Serilog
 ```

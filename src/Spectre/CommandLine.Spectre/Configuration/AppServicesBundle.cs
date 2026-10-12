@@ -35,7 +35,7 @@ public class AppServicesBundle : ConfigurableServicesBundle
     ///     - Serilog configuration through SerilogConfigurationBundle
     ///     - Command settings validation services
     ///     - Exception handling services
-    ///     - Console logging.
+    ///     - The logging services, with Serilog as the provider through the dependency bundle.
     /// </remarks>
     protected override void Configure(IConfiguration configuration)
     {
@@ -51,7 +51,7 @@ public class AppServicesBundle : ConfigurableServicesBundle
                 .AddSingleton(typeof(ICommandSettingsValidator<>), typeof(CommandSettingsValidator<>))
                 .AddSingleton<IExceptionHandler, DefaultExceptionHandler>();
 
-        // No AddConsole() here: SerilogConfigurationBundle already installs a console sink, and adding the
+        // No AddConsole() here: SerilogConfigurationBundle already installs the Spectre.Console sink, and adding the
         // Microsoft console logger as well duplicated every log line on the terminal.
         Services.AddLogging();
     }

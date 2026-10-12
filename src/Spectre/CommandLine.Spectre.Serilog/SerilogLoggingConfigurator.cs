@@ -9,10 +9,9 @@ namespace Ploch.CommandLine.Spectre.Serilog;
 ///     with integration into the Microsoft.Extensions.DependencyInjection framework.
 /// </summary>
 /// <remarks>
-///     This static class offers convenient extension methods that simplify the process of adding
-///     and configuring Serilog as the logging provider in command-line applications. The methods
-///     handle both the services bundle registration and the direct Serilog configuration,
-///     providing a streamlined setup process.
+///     This static class offers a convenient extension method that simplifies the process of adding
+///     and configuring Serilog as the logging provider in command-line applications. It registers the
+///     <see cref="SerilogConfigurationBundle" />, which is the single place the logger is configured.
 ///     <para>
 ///         The configurator integrates with the services bundle pattern used throughout the
 ///         application, ensuring consistent dependency injection practices while providing
@@ -61,9 +60,9 @@ public static class SerilogLoggingConfigurator
     ///         removed so the bundle is the single place the logger is configured.
     ///     </para>
     ///     <para>
-    ///         The bundle configures multiple sinks (file, console, Spectre.Console), enrichers (thread information,
-    ///         context), and formatting options suited to command-line applications. File logging includes automatic
-    ///         rotation and separate error logging.
+    ///         The bundle configures three sinks (a rolling log file, a separate warnings-and-errors file and the
+    ///         Spectre.Console console sink), enrichers (thread information, context), and formatting options suited to
+    ///         command-line applications. File logging includes automatic rotation.
     ///     </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">
