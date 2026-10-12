@@ -3,7 +3,7 @@
 [Serilog](https://serilog.net/) integration for
 [Ploch.CommandLine.Spectre](https://www.nuget.org/packages/Ploch.CommandLine.Spectre): one call configures
 Serilog as the application's `ILogger` provider. It writes a size-rolled log file, a separate file for
-warnings and errors, and console output through Spectre.Console, and reads any further Serilog settings
+warnings and above, and console output through Spectre.Console, and reads any further Serilog settings
 from the application's configuration.
 
 ## Installation

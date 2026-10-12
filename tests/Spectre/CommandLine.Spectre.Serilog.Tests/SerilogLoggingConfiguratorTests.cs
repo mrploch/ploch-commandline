@@ -2,7 +2,9 @@ using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
+using ILogger = Serilog.ILogger;
 
 namespace Ploch.CommandLine.Spectre.Serilog.Tests;
 
@@ -64,11 +66,11 @@ public sealed class SerilogLoggingConfiguratorTests : IDisposable
         var services = new ServiceCollection();
         services.AddSerilog(logName: "unconfigured", logPath: _logDirectory, template: Template);
 
+        // Logging through the Microsoft factory, not the resolved Serilog.ILogger: the latter is a non-owning wrapper
+        // whose Dispose leaves the root logger open, whereas disposing the provider disposes the factory and the sinks.
         using (var provider = services.BuildServiceProvider())
         {
-            var logger = provider.GetRequiredService<ILogger>();
-            logger.Information("an unconfigured message");
-            (logger as IDisposable)?.Dispose();
+            provider.GetRequiredService<ILoggerFactory>().CreateLogger<SerilogLoggingConfiguratorTests>().LogInformation("an unconfigured message");
         }
 
         ReadLogFile("unconfigured.log").Should().Contain("REGISTERED|INF|an unconfigured message", "the predefined setup applies without an IConfiguration");
