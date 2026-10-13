@@ -21,10 +21,11 @@ namespace Ploch.CommandLine.Spectre;
 ///         stays usable.
 ///     </para>
 ///     <para>
-///         For an executor returned by <see cref="AppBuilder.ConfigureCommandApp" />, running builds the host for
-///         dependency injection, configuration and logging; the library never starts it, so a registered
-///         <see cref="Microsoft.Extensions.Hosting.IHostedService" /> does not run, and the host is disposed when the
-///         run ends. See the remarks on <see cref="AppBuilder.ConfigureCommandApp" />.
+///         For an executor returned by <see cref="AppBuilder.ConfigureCommandApp" />, a run that reaches command
+///         resolution builds the host for dependency injection, configuration and logging — a parse failure or
+///         <c>--version</c> returns before any host exists. The library never starts the host, so a registered
+///         <see cref="Microsoft.Extensions.Hosting.IHostedService" /> does not run, and a host that was built is
+///         disposed when the run ends. See the remarks on <see cref="AppBuilder.ConfigureCommandApp" />.
 ///     </para>
 /// </remarks>
 public class CommandAppExecutor(ICommandApp commandApp, CancellationToken cancellationToken) : ICommandAppExecutor

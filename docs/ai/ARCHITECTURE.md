@@ -120,7 +120,9 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 `args` is passed twice on purpose: to `Create` for host configuration and to `Run` for parsing.
 The canonical call site is `samples/SampleApp/src/SampleApp/Program.cs`.
 
-The host built in step 4 is never started; see **Hosting** in section 5.
+Step 4 builds the host only once parsing has succeeded and a command is being resolved — a parse
+failure or `--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and never
+starts it; see **Hosting** in section 5.
 
 ### 4.2 Command execution
 
@@ -173,10 +175,12 @@ Handler selection is "most derived type wins; first registration wins ties".
 **Service lifetimes.** The registrar registers everything Spectre asks for as a singleton, so
 commands and settings are singletons resolved from the root provider.
 
-**Hosting.** The host is built when the executor runs and is never started: it exists for
-dependency injection, configuration and logging, and a CLI command is the unit of work.
-`IHost.StartAsync` is not called, so a registered `IHostedService` is neither started nor stopped,
-and the host is disposed when the run ends (PLO-780, pinned by
+**Hosting.** The host is built once a run reaches command resolution — a parse failure or
+`--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and the library
+never starts it: it exists for dependency injection, configuration and logging, and a CLI command
+is the unit of work. `IHost.StartAsync` is not called, so a registered `IHostedService` is neither
+started nor stopped by the library, and a host that was built is disposed when the run ends
+(PLO-780, pinned by
 `AppBuilderTests.ConfigureCommandApp_should_not_start_the_host_so_a_registered_hosted_service_never_runs`).
 Starting the host around the command is a possible 1.x feature, tracked as PLO-785.
 

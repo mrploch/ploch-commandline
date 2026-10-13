@@ -208,6 +208,10 @@ public sealed class AppBuilderTests : IDisposable
     [Fact]
     public void ConfigureCommandApp_should_not_start_the_host_so_a_registered_hosted_service_never_runs()
     {
+        // Dispose resets the counters after every test; resetting here as well keeps an aborted earlier run from
+        // leaking a count into this one.
+        ProbeHostedService.Reset();
+
         var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddHostedService<ProbeHostedService>()));
 
         recorder.ExitCode.Should().Be(0);
