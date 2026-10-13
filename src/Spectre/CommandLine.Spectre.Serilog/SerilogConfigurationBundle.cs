@@ -23,34 +23,33 @@ public class SerilogConfigurationBundle(string? template = null,
                                         CultureInfo? culture = null) : ConfigurableServicesBundle
 {
     /// <summary>
-    ///     Registers Serilog whether or not a configuration was supplied to the bundle.
+    ///     Calls <see cref="Configure" /> whether or not a configuration was supplied to the bundle.
     /// </summary>
     /// <remarks>
     ///     The base implementation refuses to run when <see cref="ServicesBundle.Configuration" /> is
     ///     <see langword="null" />. Every value this bundle reads from configuration is optional, though: without one the
-    ///     logger uses the predefined sinks and enrichers and the <c>Information</c> minimum level. Registering directly
-    ///     in that case lets <c>services.AddSerilog()</c> be called without an <see cref="IConfiguration" />, as its
-    ///     documentation shows; with a configuration the base implementation runs and calls <see cref="Configure" /> as
-    ///     usual.
+    ///     logger uses the predefined sinks and enrichers and the <c>Information</c> minimum level. Dispatching to
+    ///     <see cref="Configure" /> in both cases lets <c>services.AddSerilog()</c> be called without an
+    ///     <see cref="IConfiguration" />, as its documentation shows, and runs a subclass's <see cref="Configure" />
+    ///     override the same way with and without a configuration.
     /// </remarks>
-    public override void DoConfigure()
-    {
-        if (Configuration is null)
-        {
-            RegisterSerilog(null);
+    public override void DoConfigure() =>
 
-            return;
-        }
-
-        base.DoConfigure();
-    }
+        // The base class declares the parameter non-nullable but documents that it can be null; the override below and
+        // every subclass override must expect null when the bundle was registered without a configuration.
+        Configure(Configuration!);
 
     /// <summary>
     ///     Configures the services with Serilog based on the provided configuration and logging parameters.
     /// </summary>
     /// <param name="configuration">
-    ///     An instance of <see cref="IConfiguration" /> that may provide additional configuration details.
+    ///     The <see cref="IConfiguration" /> that may provide additional Serilog settings, or <see langword="null" />
+    ///     when the bundle was registered without one, in which case the predefined setup is used unchanged.
     /// </param>
+    /// <remarks>
+    ///     A subclass that overrides this method to add its own registrations runs in both cases and must tolerate a
+    ///     <see langword="null" /> <paramref name="configuration" />.
+    /// </remarks>
     protected override void Configure(IConfiguration configuration) => RegisterSerilog(configuration);
 
     private void RegisterSerilog(IConfiguration? configuration)

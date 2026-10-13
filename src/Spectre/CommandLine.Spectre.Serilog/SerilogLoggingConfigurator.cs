@@ -60,7 +60,8 @@ public static class SerilogLoggingConfigurator
     ///         removed so the bundle is the single place the logger is configured.
     ///     </para>
     ///     <para>
-    ///         The bundle configures three sinks (a rolling log file, a separate warnings-and-errors file and the
+    ///         The bundle configures three sinks (a rolling log file, a separate file for warnings and above — warnings,
+    ///         errors and fatal events — and the
     ///         Spectre.Console console sink), enrichers (thread information, context), and formatting options suited to
     ///         command-line applications. File logging includes automatic rotation.
     ///     </para>

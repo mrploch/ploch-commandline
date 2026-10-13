@@ -77,7 +77,8 @@ have been retired.
   `InvalidOperationException` ("configuration was not initialized"), although the
   method's documentation showed exactly that call. `SerilogConfigurationBundle` now
   registers the logger with its predefined sinks and the `Information` minimum level
-  when no configuration is supplied.
+  when no configuration is supplied; its `Configure` hook runs in that case too, so a
+  subclass override receives `null` instead of being skipped.
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.
