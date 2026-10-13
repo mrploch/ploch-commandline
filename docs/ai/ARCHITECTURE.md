@@ -176,7 +176,10 @@ singletons, which is what
 Spectre's contract requires. `CommandArgumentsRootProcessor` and the `ICommandSettingsProcessor` the
 library registers (`TokensArgumentsProcessor`) are transient too; a processor a caller registers
 keeps the lifetime the caller gives it. The console, `IOutput`, the message formatter processor, the
-validators, the exception handler and the `CancellationTokenSource` stay singletons. Spectre's registrations are queued when the
+`ICommandSettingsValidator<>` implementations, the exception handler and the `CancellationTokenSource`
+stay singletons; the FluentValidation `IValidator<T>` implementations found by assembly scanning keep
+FluentValidation's default scoped lifetime and are resolved in a scope per validation. Spectre's
+registrations are queued when the
 application runs, after every `ConfigureServices` delegate, and the last registration wins, so a
 caller cannot turn a command back into a singleton from `ConfigureServices`.
 

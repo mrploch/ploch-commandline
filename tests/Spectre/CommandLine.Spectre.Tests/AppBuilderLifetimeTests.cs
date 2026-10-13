@@ -145,6 +145,7 @@ public sealed class AppBuilderLifetimeTests : IDisposable
     // ReSharper disable once ClassNeverInstantiated.Local - Spectre binds it through the container.
     private sealed class LifetimeProbeSettings : CommandSettings
     {
+        // ReSharper disable once UnusedAutoPropertyAccessor.Local - Spectre binds the parsed value by reflection.
         [CommandOption("--tag")]
         public string? Tag { get; init; }
     }
