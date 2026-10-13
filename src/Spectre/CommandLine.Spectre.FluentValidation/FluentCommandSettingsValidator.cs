@@ -15,10 +15,11 @@ namespace Ploch.CommandLine.Spectre.FluentValidation;
 /// </param>
 /// <remarks>
 ///     The validator is resolved per call rather than injected. This type is registered as a singleton, and Spectre
-///     resolves commands from the root provider, so a scoped dependency cannot be injected into a command or into
-///     the validator it receives: FluentValidation registers validators as scoped by default, and a validator may
-///     legitimately depend on a DbContext, a repository, or a scoped user context. Resolving inside a scope keeps
-///     the wrapper a singleton while letting consumer validators keep any lifetime and any dependencies.
+///     resolves commands from the root provider, so a scoped dependency must be resolved inside an explicit scope:
+///     resolved from the root, it either fails scope validation or is promoted to the host's lifetime.
+///     FluentValidation registers validators as scoped by default, and a validator may legitimately depend on a
+///     DbContext, a repository, or a scoped user context. Resolving inside a scope keeps the wrapper a singleton
+///     while letting consumer validators keep any lifetime and any dependencies.
 /// </remarks>
 public class FluentCommandSettingsValidator<TSettings>(IServiceScopeFactory scopeFactory) : ICommandSettingsValidator<TSettings>
     where TSettings : CommandSettings

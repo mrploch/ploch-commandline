@@ -70,9 +70,11 @@ public sealed class AppServicesBundleTests
         var processors = new List<ObservableTokensArgumentsProcessor>();
         var services = BuildServices();
 
-        // Registered with whatever lifetime the bundle gave the real token processor, so this test fails as well
-        // if that registration ever becomes a singleton again, not only the descriptor test.
-        var tokenProcessorLifetime = services.Single(descriptor => descriptor.ImplementationType == typeof(TokensArgumentsProcessor)).Lifetime;
+        // The observable subclass replaces the bundle's token processor, with the lifetime the bundle gave it: the
+        // substitution assertions then prove the observed instances did the work, and the test fails as well if that
+        // registration ever becomes a singleton again, not only the descriptor test.
+        var tokenProcessorDescriptor = services.Single(descriptor => descriptor.ImplementationType == typeof(TokensArgumentsProcessor));
+        services.Remove(tokenProcessorDescriptor);
         services.Add(new ServiceDescriptor(typeof(ICommandSettingsProcessor),
                                            _ =>
                                            {
@@ -81,7 +83,7 @@ public sealed class AppServicesBundleTests
 
                                                return processor;
                                            },
-                                           tokenProcessorLifetime));
+                                           tokenProcessorDescriptor.Lifetime));
         using var provider = services.BuildServiceProvider();
         var firstSettings = new OutputSettings { OutputPath = "out/{date}" };
         var secondSettings = new ReportSettings { ReportName = "report-{date}" };
@@ -99,7 +101,7 @@ public sealed class AppServicesBundleTests
             .Which.Should()
             .Be(nameof(OutputSettings.OutputPath));
         processors[1].CollectedProperties.Should().ContainSingle().Which.Should().Be(nameof(ReportSettings.ReportName));
-        firstSettings.OutputPath.Should().NotContain("{date}");
+        firstSettings.OutputPath.Should().NotContain("{date}", "the observed processor is the only token processor in the pipeline");
         secondSettings.ReportName.Should().NotContain("{date}");
     }
 

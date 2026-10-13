@@ -170,8 +170,9 @@ Handler selection is "most derived type wins; first registration wins ties".
 
 **Service lifetimes.** `DependencyInjectionTypeRegistrar` registers everything Spectre asks for
 through `Register` — commands, settings, type converters, pair deconstructors — as transient, so a
-command holds its transient dependencies for its own lifetime rather than the host's, and two
-resolutions share no state. `RegisterInstance` and `RegisterLazy` are singletons, which is what
+command holds its transient dependencies for its own lifetime rather than the host's; dependency
+lifetimes are unchanged, so singleton services stay shared. `RegisterInstance` and `RegisterLazy` are
+singletons, which is what
 Spectre's contract requires. `CommandArgumentsRootProcessor` and the `ICommandSettingsProcessor` the
 library registers (`TokensArgumentsProcessor`) are transient too; a processor a caller registers
 keeps the lifetime the caller gives it. The console, `IOutput`, the message formatter processor, the

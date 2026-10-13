@@ -65,6 +65,15 @@ public sealed class AppBuilderLifetimeTests : IDisposable
     }
 
     [Fact]
+    public void Run_should_hand_the_command_the_bound_settings_and_the_container_an_unbound_instance()
+    {
+        RunProbe();
+
+        _recorder.ExecutingSettings!.Tag.Should().Be("bound", "Spectre binds the parsed arguments to the instance it passes to Execute");
+        _recorder.SettingsResolvedFromContainer!.Tag.Should().BeNull("a settings instance resolved from the container is a fresh, unbound one");
+    }
+
+    [Fact]
     public void Run_should_resolve_a_fresh_settings_processor_for_every_resolution()
     {
         RunProbe();
@@ -105,7 +114,7 @@ public sealed class AppBuilderLifetimeTests : IDisposable
                                                        configurator.AddCommand<LifetimeProbeCommand>("probe");
                                                    });
 
-        _recorder.ExitCode = executor.Run("probe");
+        _recorder.ExitCode = executor.Run("probe", "--tag", "bound");
     }
 
     private sealed class LifetimeRecorder
@@ -134,9 +143,10 @@ public sealed class AppBuilderLifetimeTests : IDisposable
     }
 
     // ReSharper disable once ClassNeverInstantiated.Local - Spectre binds it through the container.
-    // ReSharper disable once RedundantTypeDeclarationBody - StyleCop SA1106 rejects the semicolon body.
     private sealed class LifetimeProbeSettings : CommandSettings
     {
+        [CommandOption("--tag")]
+        public string? Tag { get; init; }
     }
 
     /// <summary>

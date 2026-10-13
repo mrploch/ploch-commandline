@@ -13,8 +13,9 @@ namespace Ploch.CommandLine.Spectre.DependencyInjection;
 ///     <para>
 ///         Lifetimes follow one rule. Everything registered through <see cref="Register" /> — which is how Spectre
 ///         registers every command, settings type, type converter and pair deconstructor — is <b>transient</b>: a
-///         new instance is created for every resolution, so a command never captures a transient dependency for the
-///         life of the host and no state is shared between two resolutions. <see cref="RegisterInstance" /> and
+///         new instance is created for every resolution, so a command holds its transient dependencies for its own
+///         lifetime rather than the host's. Dependency lifetimes are unchanged, so singleton services stay shared.
+///         <see cref="RegisterInstance" /> and
 ///         <see cref="RegisterLazy" /> are <b>singletons</b>, because that is what Spectre's contract asks for: the
 ///         first must hand back the very instance it was given, and the second describes a lazily created instance
 ///         whose factory runs at most once per host.
