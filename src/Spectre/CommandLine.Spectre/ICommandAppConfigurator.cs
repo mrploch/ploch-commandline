@@ -5,7 +5,7 @@ namespace Ploch.CommandLine.Spectre;
 /// <summary>
 ///     Defines an interface for configuring command-line applications.
 /// </summary>
-public interface ICommandAppConfigurator
+internal interface ICommandAppConfigurator
 {
     /// <summary>
     ///     Configures the command-line application using the provided configuration action.

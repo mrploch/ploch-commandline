@@ -58,6 +58,15 @@ have been retired.
   earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
   now registered after every caller service delegate, including those added
   through `ConfigureHost`.
+- **Breaking:** `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`,
+  `CommandAppConfigurator`, `ICommandAppConfigurator` and
+  `TypeMessageFormatter<TMessage>.IsWriter` are `internal`. Nothing on the
+  library's runtime path uses them (`AppBuilder` never went through the
+  configurator), so they are withdrawn from the 1.0 surface: widening later is
+  non-breaking, narrowing after 1.0 is not. Code that configured an
+  application through `CommandAppConfigurator` uses
+  `AppBuilder.ConfigureCommandApp` instead; the command metadata types and
+  `IsWriter` have no public replacement, as nothing in the library reads them.
 
 ### Removed
 
@@ -70,13 +79,16 @@ have been retired.
 - **Breaking:** `AnsiConsoleMarkupOutput.WriteMarkupLineInterpolated`, which was
   absent from `IOutput` and silently discarded non-`FormattableString` messages.
   Use `MarkupLineInterpolated`.
+- **Breaking:** `Win32ExceptionMessageFormatter.GetFormattedExceptionText`, a
+  `protected static` helper that nothing called. A subclass that used it
+  builds the same text from `Win32Exception.NativeErrorCode` and `Message`;
+  `GetExceptionText` remains the override point.
 
 ### Fixed
 
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.
-- `CommandInfoFactory.CreateFromType` threw on its primary path.
 - Cancellation was accepted everywhere and honoured nowhere; Ctrl+C cancelled a
   token nothing observed.
 - `AnsiConsoleMarkupOutput.Write` printed every writer-handled message twice.

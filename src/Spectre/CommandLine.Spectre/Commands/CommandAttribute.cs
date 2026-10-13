@@ -9,7 +9,7 @@
 /// <param name="description">An optional description of the command that explains its purpose.</param>
 /// <param name="examples">Optional examples demonstrating how to use the command.</param>
 [AttributeUsage(AttributeTargets.Class)]
-public sealed class CommandAttribute(string name, string? alias = null, string? description = null, params string[] examples) : Attribute
+internal sealed class CommandAttribute(string name, string? alias = null, string? description = null, params string[] examples) : Attribute
 {
     /// <summary>
     ///     Gets the primary name of the command.

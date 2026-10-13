@@ -55,6 +55,11 @@
     <ProjectReference Include="..\CommandLine.Spectre.Serilog\Ploch.CommandLine.Spectre.Serilog.csproj" />
   </ItemGroup>
 
+  <!-- Types kept internal for the 1.0 surface freeze stay testable (PLO-779). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ploch.CommandLine.Spectre.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Update="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
