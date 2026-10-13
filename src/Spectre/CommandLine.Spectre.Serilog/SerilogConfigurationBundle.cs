@@ -33,11 +33,7 @@ public class SerilogConfigurationBundle(string? template = null,
     ///     <see cref="IConfiguration" />, as its documentation shows, and runs a subclass's <see cref="Configure" />
     ///     override the same way with and without a configuration.
     /// </remarks>
-    public override void DoConfigure() =>
-
-        // The base class declares the parameter non-nullable but documents that it can be null; the override below and
-        // every subclass override must expect null when the bundle was registered without a configuration.
-        Configure(Configuration!);
+    public override void DoConfigure() => Configure(Configuration);
 
     /// <summary>
     ///     Configures the services with Serilog based on the provided configuration and logging parameters.
@@ -47,10 +43,12 @@ public class SerilogConfigurationBundle(string? template = null,
     ///     when the bundle was registered without one, in which case the predefined setup is used unchanged.
     /// </param>
     /// <remarks>
-    ///     A subclass that overrides this method to add its own registrations runs in both cases and must tolerate a
-    ///     <see langword="null" /> <paramref name="configuration" />.
+    ///     The parameter is declared nullable here although the base class declares it non-nullable: the base class
+    ///     documents that the value can be null, and this bundle really does run without one. A subclass that overrides
+    ///     this method to add its own registrations runs in both cases; declare its parameter as
+    ///     <c>IConfiguration?</c> as well and tolerate <see langword="null" />.
     /// </remarks>
-    protected override void Configure(IConfiguration configuration) => RegisterSerilog(configuration);
+    protected override void Configure(IConfiguration? configuration) => RegisterSerilog(configuration);
 
     private void RegisterSerilog(IConfiguration? configuration)
     {

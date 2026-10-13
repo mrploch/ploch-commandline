@@ -21,8 +21,9 @@ public sealed class SerilogConfigurationBundleTests
 
         services.AddServicesBundle(bundle, configuration);
 
+        bundle.ConfigureCalls.Should().Be(1, "the override must run exactly once");
         bundle.ReceivedConfiguration.Should().BeSameAs(configuration, "the override receives the configuration the bundle was registered with");
-        services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(Marker), "the override's own registration must be applied");
+        RegisteredMarker(services).Name.Should().Be("customised", "the override's own registration must be applied");
         services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(ILogger), "the base registration must still be applied exactly once");
     }
 
@@ -36,9 +37,16 @@ public sealed class SerilogConfigurationBundleTests
 
         bundle.ConfigureCalls.Should().Be(1, "the override must run without a configuration exactly as it does with one");
         bundle.ReceivedConfiguration.Should().BeNull("there is no configuration to hand over");
-        services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(Marker), "the override's own registration must be applied");
+        RegisteredMarker(services).Name.Should().Be("customised", "the override's own registration must be applied");
         services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(ILogger), "the base registration must still be applied exactly once");
     }
+
+    private static Marker RegisteredMarker(IServiceCollection services) =>
+        services.Should()
+                .ContainSingle(descriptor => descriptor.ServiceType == typeof(Marker))
+                .Which.ImplementationInstance.Should()
+                .BeOfType<Marker>()
+                .Subject;
 
     private sealed class Marker
     {
@@ -52,7 +60,7 @@ public sealed class SerilogConfigurationBundleTests
 
         public IConfiguration? ReceivedConfiguration { get; private set; }
 
-        protected override void Configure(IConfiguration configuration)
+        protected override void Configure(IConfiguration? configuration)
         {
             ConfigureCalls++;
             ReceivedConfiguration = configuration;

@@ -78,7 +78,10 @@ have been retired.
   method's documentation showed exactly that call. `SerilogConfigurationBundle` now
   registers the logger with its predefined sinks and the `Information` minimum level
   when no configuration is supplied; its `Configure` hook runs in that case too, so a
-  subclass override receives `null` instead of being skipped.
+  subclass override receives `null` instead of being skipped. **Breaking (source,
+  nullability):** the override's parameter is now declared `IConfiguration?`; with
+  nullable warnings enabled, a subclass override with a non-nullable parameter produces
+  CS8765 on recompilation and should declare `IConfiguration?` as well.
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.
