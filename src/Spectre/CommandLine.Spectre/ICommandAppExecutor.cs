@@ -3,6 +3,14 @@
 /// <summary>
 ///     Defines an interface for executing command-line applications.
 /// </summary>
+/// <remarks>
+///     For an executor returned by <see cref="AppBuilder.ConfigureCommandApp" />, running the application builds the
+///     <see cref="Microsoft.Extensions.Hosting.IHost" /> behind it, for dependency injection, configuration and logging
+///     only. The library never starts that host: a CLI command is the unit of work, so it invokes neither
+///     <c>StartAsync</c> nor <c>StopAsync</c> on a registered <see cref="Microsoft.Extensions.Hosting.IHostedService" />,
+///     and it disposes the host when the run ends. Starting the host around the command is a possible 1.x feature,
+///     tracked as <see href="https://linear.app/ploch/issue/PLO-785">PLO-785</see>.
+/// </remarks>
 public interface ICommandAppExecutor
 {
     /// <summary>

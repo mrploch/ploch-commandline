@@ -85,7 +85,12 @@ Three things happen here that you do not have to write yourself:
 - **Application banner.** The name is rendered as FIGlet text, followed by the version and
   description, before any command runs.
 - **Hosting.** `Host.CreateDefaultBuilder` supplies configuration, logging and the service
-  provider. Anything you register with `ConfigureServices` is injectable into commands.
+  provider. Anything you register with `ConfigureServices` is injectable into commands. The host
+  is built when the executor runs and is never started: a CLI command is the unit of work, so an
+  `IHostedService` you register (`services.AddHostedService<T>()`) has neither `StartAsync` nor
+  `StopAsync` called, and the host is disposed when the run ends. Starting the host around the
+  command is a possible 1.x feature, tracked as
+  [PLO-785](https://linear.app/ploch/issue/PLO-785); say so there if you need it.
 - **Ctrl+C.** `AppBuilder.Create` installs a `Console.CancelKeyPress` handler over a
   `CancellationTokenSource`, and that source's token is the one your commands receive (see
   [Cancellation](#12-cancellation)). The **first** interrupt cancels it cooperatively instead of

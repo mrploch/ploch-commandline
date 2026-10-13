@@ -104,7 +104,8 @@ HELLO, ALICE!
 ### `AppBuilder`
 
 `AppBuilder.Create(args)` starts the chain. It wraps a `HostBuilder`, so the
-usual hosting extension points are available:
+usual host-builder configuration entry points are available (the host itself is
+never started; see below):
 
 - `WithName`, `WithVersion`, `WithDescription` — application metadata, also used to render the startup banner.
 - `ConfigureServices` — register services into the container that resolves your commands.
@@ -124,6 +125,12 @@ leave the application unkillable from the keyboard.
 
 `ConfigureCommandApp` terminates the chain and returns an `ICommandAppExecutor`,
 which exposes `Run` and `RunAsync`.
+
+The host is built when the executor runs and is never started. It exists for dependency
+injection, configuration and logging; a CLI command is the unit of work, so an `IHostedService`
+you register is neither started nor stopped, and the host is disposed when the run ends. Starting
+it around the command is a possible 1.x feature, tracked as
+[PLO-785](https://linear.app/ploch/issue/PLO-785).
 
 ### Command base classes
 

@@ -7,7 +7,12 @@ real application: dependency injection, configuration, logging, and validation.
 ## Dependency injection
 
 `AppBuilder` builds on `Microsoft.Extensions.Hosting`, so commands are resolved
-from the same container as everything else. Register your services with
+from the same container as everything else. The host exists for that container,
+configuration and logging, and is never started: a CLI command is the unit of
+work, so an `IHostedService` you register is neither started nor stopped, and the
+host is disposed when the run ends (starting the host around the command is a
+possible 1.x feature, tracked as [PLO-785](https://linear.app/ploch/issue/PLO-785)).
+Register your services with
 `ConfigureServices` and take them as constructor parameters:
 
 ```csharp
