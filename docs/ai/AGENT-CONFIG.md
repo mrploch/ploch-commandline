@@ -142,19 +142,18 @@ Ordered by value. "Where" names the layer that has to change.
 | 9 | Add one verification script that runs what CI runs: the stable-version guard, build, tests, the sample in project-reference mode and DocFX | Repository | One command before a pull request |
 | 10 | Add a test project that compiles the documentation snippets | Repository | Stops the drift behind PLO-620 |
 | 11 | Require the `build` check in the `main` ruleset | GitHub | A red build cannot merge |
-| 12 | Update the pull request template: Linear reference, change-log entry, breaking change, documentation updated | Repository | Template matches the process |
-| 13 | Delete `.claude/mrploch-dev/`, `prompt-lookup`, the WinUI skills and the Astro-site `dev-finishing-touches` copy from this repository | Repository | About 170 KB less; shorter skill list; no wrong verification workflow |
-| 14 | Generate `.agents/` and `.cursor/` from one source, or stop committing them | Workspace | No hand-maintained mirrors |
+| 12 | Delete `.claude/mrploch-dev/`, `prompt-lookup`, the WinUI skills and the Astro-site `dev-finishing-touches` copy from this repository | Repository | About 170 KB less; shorter skill list; no wrong verification workflow |
+| 13 | Generate `.agents/` and `.cursor/` from one source, or stop committing them | Workspace | No hand-maintained mirrors |
 
 ### Priority 3 — tidy-up
 
 | # | Change | Where | Effect |
 |---|---|---|---|
-| 15 | Apply a per-repository capability profile that switches off plugins, skills and MCP servers this repository never uses | Workspace, user | Shorter listings |
-| 16 | Keep one SonarQube route and one Linear route | Workspace, user | Clearer tool choice |
-| 17 | Turn off session-start injections that contradict the repository workflow | User | Consistent instructions |
-| 18 | Replace machine-specific paths in rules with derived ones | Workspace | Rules work on every machine |
-| 19 | Add cancel-in-progress concurrency to the pull-request workflows | Repository | Faster feedback |
+| 14 | Apply a per-repository capability profile that switches off plugins, skills and MCP servers this repository never uses | Workspace, user | Shorter listings |
+| 15 | Keep one SonarQube route and one Linear route | Workspace, user | Clearer tool choice |
+| 16 | Turn off session-start injections that contradict the repository workflow | User | Consistent instructions |
+| 17 | Replace machine-specific paths in rules with derived ones | Workspace | Rules work on every machine |
+| 18 | Add cancel-in-progress concurrency to the pull-request workflows | Repository | Faster feedback |
 
 ## 7. Decisions needed
 

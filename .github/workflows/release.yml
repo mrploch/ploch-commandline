@@ -154,7 +154,7 @@ jobs:
 
       # No ploch-common checkout. The release build consumes ploch-common as released NuGet
       # packages (UsePlochProjectReferences defaults to false), so the sibling sources are not
-      # needed - and checking them out at the moving `master` branch is what made this workflow
+      # needed - and checking them out at the moving `main` branch is what made this workflow
       # able to pack a stable package with prerelease Ploch.Common dependencies (issue #47).
       # mrploch-development is still required: Directory.Packages.props imports the shared
       # version files from it.

@@ -50,13 +50,6 @@
         ]
       }
     ],
-    "resource": [
-      {
-        "files": [
-          "images/**"
-        ]
-      }
-    ],
     "dest": "_site",
     "globalMetadata": {
       "_appName": "Ploch.CommandLine.Spectre",

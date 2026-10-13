@@ -28,7 +28,7 @@ repository it lives in.
 | In-repository | `dotnet build -p:UsePlochProjectReferences=true` | Swaps those packages for `ProjectReference`s to the library sources in this repository |
 
 **The default mode restores from GitHub Packages,** which needs a `GH_PACKAGES_TOKEN` with
-`read:packages` in the environment — `NuGet.Config` maps it to the `github` source. The
+`read:packages` in the environment — `nuget.config` maps it to the `github` source. The
 `Ploch.CommandLine.*` packages are not on nuget.org yet (that is
 [issue #7](https://github.com/mrploch/ploch-commandline/issues/7)), so without that token a plain
 `dotnet build` still fails at restore. Use `-p:UsePlochProjectReferences=true`, which is what CI
