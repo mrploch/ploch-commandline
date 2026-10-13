@@ -83,7 +83,8 @@ public class EnumerableMessageWriterTests
         var act = () => new EnumerableMessageWriter(console.Console).Write(items, formatProvider: CultureInfo.InvariantCulture);
 
         act.Should().NotThrow("one unusable item must not take down the whole listing");
-        console.Output.Should().Contain("first").And.Contain("third");
+        console.Output.Should().Be($"first{Environment.NewLine}{Environment.NewLine}third{Environment.NewLine}",
+                                   "the null item must still occupy its own, empty line rather than being skipped");
     }
 
     private sealed class BracketingFormatter : TypeMessageFormatter<string>
