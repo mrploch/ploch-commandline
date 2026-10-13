@@ -50,7 +50,7 @@ public sealed class SerilogConfigurationBundleTests
 
     private sealed class Marker
     {
-        public string Name { get; init; } = "customised";
+        public string Name { get; } = "customised";
     }
 
     /// <summary>A consumer's bundle that adds a registration of its own on top of the Serilog defaults.</summary>
