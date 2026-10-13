@@ -11,6 +11,11 @@
 # have to reimplement it; the canned evaluation stands in for MSBuild's answer.
 set -euo pipefail
 
+# The script under test is run with "$BASH", the interpreter running this fixture, not a bare
+# `bash` resolved through PATH: `/bin/bash test-dependency-report.sh` must exercise the script
+# under macOS bash 3.2, and a Homebrew bash 5 must exercise it under bash 5.
+echo "Testing dependency-report.sh under $BASH ($BASH_VERSION)"
+
 script="$PWD/.github/scripts/dependency-report.sh"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -430,7 +435,7 @@ unset GITHUB_STEP_SUMMARY
 diagnostics_log="$work/stderr.log"
 run_report() {
   local scenario="$1"
-  (cd "$work/repo" && SCENARIO="$scenario" bash "$script" ./Main.slnx ./samples/Sample/Sample.slnx) \
+  (cd "$work/repo" && SCENARIO="$scenario" "$BASH" "$script" ./Main.slnx ./samples/Sample/Sample.slnx) \
     2>"$diagnostics_log"
 }
 
@@ -546,6 +551,13 @@ for property in PropertyPkgVersion SpacedPkgVersion InactiveVersion MultiPkgVers
 done
 [[ "$main_evaluation" != *ObsoleteVersion* ]] \
   || fail 'a property named only inside an XML comment must not be requested'
+# The sample names no $(Property), so its referenced-properties list is empty: the evaluation
+# must still run and carry only the pinning probe. This is the empty-array path of the guarded
+# expansion, which bash 3.2 under `set -u` must get through.
+sample_evaluation="$(grep '^msbuild .*samples.*Directory\.Packages\.props.*-getItem' "$CALLS" | grep -v -- "$probe_switch" || true)"
+[[ -n "$sample_evaluation" ]] || fail 'expected the sample version file to be evaluated'
+[[ "$(grep -o -- '-getProperty:' <<<"$sample_evaluation" | grep -c .)" -eq 1 ]] \
+  || fail "expected the sample evaluation to request only the pinning property: $sample_evaluation"
 
 # --- Scenario: clean --------------------------------------------------------------------
 echo 'Scenario: nothing vulnerable'
@@ -637,7 +649,7 @@ fi
 echo 'Scenario: mrploch-development not checked out'
 mv "$work/mrploch-development" "$work/mrploch-development.away"
 set +e
-(cd "$work/repo" && SCENARIO=clean bash "$script" ./Main.slnx >/dev/null 2>&1)
+(cd "$work/repo" && SCENARIO=clean "$BASH" "$script" ./Main.slnx >/dev/null 2>&1)
 status=$?
 set -e
 mv "$work/mrploch-development.away" "$work/mrploch-development"

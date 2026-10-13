@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The script under test is run with "$BASH", the interpreter running this fixture, not a bare
+# `bash` resolved through PATH: `/bin/bash test-publish-nuget-packages.sh` must exercise the
+# script under macOS bash 3.2, and a Homebrew bash 5 must exercise it under bash 5.
+echo "Testing publish-nuget-packages.sh under $BASH ($BASH_VERSION)"
+
 # Create a temporary workspace
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -40,7 +45,7 @@ export NUGET_PUSH_TOKEN="mock_token"
 export SYMBOLS_REQUIRED="true"
 
 echo "Testing --list functionality"
-list_output=$(bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list)
+list_output=$("$BASH" "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list)
 
 list_count=$(echo "$list_output" | wc -l)
 if [[ "$list_count" -ne 1 ]]; then
@@ -56,12 +61,27 @@ if ! echo "$list_output" | grep -q "src/ProjectA/bin/Release/ProjectA.1.0.0.nupk
 fi
 echo "  --list functionality OK"
 
-echo "Testing publish execution..."
-bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" "https://mock.feed" > output.log
+# SYMBOLS_REQUIRED=true and every package has its .snupkg: the missing-symbols array stays
+# empty, which is the path bash 3.2 under `set -u` must get through (it rejects "${arr[@]}" of
+# an empty array, not "${#arr[@]}"), and both the package and its symbols must be pushed.
+echo "Testing publish execution (required symbols all present)..."
+"$BASH" "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" "https://mock.feed" > output.log
 
 # Verify output
 grep -q "Publishing ./src/ProjectA/bin/Release/ProjectA.1.0.0.nupkg" output.log || { echo "Failed to find ProjectA"; exit 1; }
 grep -q "Publishing ./src/ProjectA/bin/Release/ProjectA.1.0.0.snupkg" output.log || { echo "Failed to find ProjectA symbols"; exit 1; }
+push_count=$(grep -c "^MOCK DOTNET: nuget push" output.log)
+if [[ "$push_count" -ne 2 ]]; then
+    echo "::error::expected exactly 2 pushes (package + symbols) with all symbols present, got $push_count" >&2
+    cat output.log
+    exit 1
+fi
+if grep -qi "missing" output.log; then
+    echo "::error::no symbol package should be reported missing when all are present" >&2
+    cat output.log
+    exit 1
+fi
+echo "  publish with required symbols all present OK"
 
 # Should NOT contain tests or samples (case insensitive)
 if grep -qi "test" output.log; then
@@ -84,7 +104,7 @@ echo "Testing missing symbols failure..."
 mkdir -p src/ProjectB/bin/Release
 touch src/ProjectB/bin/Release/ProjectB.1.0.0.nupkg
 
-if bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" "https://mock.feed" > missing_symbols.log 2>&1; then
+if "$BASH" "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" "https://mock.feed" > missing_symbols.log 2>&1; then
     echo "::error::Script should have failed due to missing symbols" >&2
     cat missing_symbols.log
     exit 1
@@ -98,7 +118,7 @@ fi
 echo "  missing symbols failure OK"
 
 echo "Testing --list with required symbols (dry-run path)..."
-if SYMBOLS_REQUIRED=true bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list > list_missing.log 2>&1; then
+if SYMBOLS_REQUIRED=true "$BASH" "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list > list_missing.log 2>&1; then
     echo "::error::--list should fail when a required symbol package is missing" >&2
     cat list_missing.log >&2
     exit 1
@@ -115,7 +135,7 @@ touch mock_dir/ProjectA.1.0.0.nupkg
 touch mock_dir/ProjectA.1.0.0.snupkg
 touch mock_dir/bin/Debug/ProjectA.1.0.0.nupkg
 
-list_dir_output=$(bash "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list --dir mock_dir)
+list_dir_output=$("$BASH" "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" --list --dir mock_dir)
 if echo "$list_dir_output" | grep -qi "test"; then
     echo "::error::--dir list output contains test packages" >&2
     echo "$list_dir_output"
