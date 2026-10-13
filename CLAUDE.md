@@ -75,7 +75,8 @@ More commands, with observed results, are in [`docs/ai/TECH-STACK.md`](docs/ai/T
 - Serilog is always on: the core package depends on the Serilog package and writes log files next
   to the binaries by default.
 - The host is built but never started, so `IHostedService` implementations do not run.
-- Commands and settings are registered as singletons.
+- Commands and settings are transient; `RegisterInstance` and `RegisterLazy` registrations, the
+  console, `IOutput` and the `CancellationTokenSource` are singletons.
 - `IOutput.Write(string)` parses Spectre markup. Use the interpolated overloads for user data.
 - A parse or validation failure exits with `-1`, not `ExitCode.InvalidInput` (2).
 - Configuration sources added through `ConfigureAppConfiguration` outrank the command line.

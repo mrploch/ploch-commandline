@@ -45,7 +45,11 @@ public class AppServicesBundle : ConfigurableServicesBundle
                 .AddSingleton(AnsiConsole.Console.Cursor)
                 .AddSingleton(AnsiConsole.Console.ExclusivityMode)
                 .AddSingleton(AnsiConsole.Console.Profile)
-                .AddSingleton<CommandArgumentsRootProcessor>()
+
+                // Transient, like the processors it aggregates: a singleton root processor would resolve the
+                // transient ICommandSettingsProcessor instances once and share them between every command in the
+                // host, so one command's processing state would leak into the next.
+                .AddTransient<CommandArgumentsRootProcessor>()
                 .AddTransient<ICommandSettingsProcessor, TokensArgumentsProcessor>()
 
                 .AddSingleton(typeof(ICommandSettingsValidator<>), typeof(CommandSettingsValidator<>))

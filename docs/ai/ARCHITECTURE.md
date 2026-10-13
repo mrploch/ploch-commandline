@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-05, against commit `6a2c931` |
+| Last verified | 2026-10-13, against commit `6fdfc2d` (service lifetimes, PLO-781) |
 | Verified by | Reading every project file and source file under `src/`; spot checks by `grep` |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
@@ -168,8 +168,15 @@ validation failures before a command runs.
 messages are parsed as markup. `WriteBold` and `WriteError` escape content before wrapping it.
 Handler selection is "most derived type wins; first registration wins ties".
 
-**Service lifetimes.** The registrar registers everything Spectre asks for as a singleton, so
-commands and settings are singletons resolved from the root provider.
+**Service lifetimes.** `DependencyInjectionTypeRegistrar` registers everything Spectre asks for
+through `Register` — commands, settings, type converters, pair deconstructors — as transient, so a
+command never captures a transient dependency and two resolutions share no state. `RegisterInstance`
+and `RegisterLazy` are singletons, which is what Spectre's contract requires. The settings-processing
+pipeline (`CommandArgumentsRootProcessor` and every `ICommandSettingsProcessor`) is transient too;
+the console, `IOutput`, the message formatter processor, the validators, the exception handler and
+the `CancellationTokenSource` stay singletons. Spectre's registrations are queued when the
+application runs, after every `ConfigureServices` delegate, and the last registration wins, so a
+caller cannot turn a command back into a singleton from `ConfigureServices`.
 
 ## 6. Extension points
 
@@ -192,7 +199,6 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
 | Hosting | The host is built but never started; hosted services do not run |
-| Lifetimes | Singleton commands capture transient services, including `TokensArgumentsProcessor` |
 | Cancellation | `catch (OperationCanceledException)` does not check that the token was cancelled |
 | Output | `IOutput.Write(string)` throws on user data containing `[` |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |

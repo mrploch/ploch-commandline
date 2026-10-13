@@ -58,6 +58,20 @@ have been retired.
   earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
   now registered after every caller service delegate, including those added
   through `ConfigureHost`.
+- **Breaking:** commands, settings and everything else Spectre registers through
+  `ITypeRegistrar.Register` are transient rather than singletons, and so is the
+  settings-processing pipeline (`CommandArgumentsRootProcessor` and every
+  `ICommandSettingsProcessor`). A singleton command captured its transient
+  dependencies for the life of the host, and every command shared one
+  `TokensArgumentsProcessor` with its mutable state. `RegisterInstance` and
+  `RegisterLazy` registrations, the console, `IOutput`, the message formatter
+  processor and the `CancellationTokenSource` stay singletons. State that must
+  outlive one resolution belongs in a singleton service the command depends on;
+  re-registering the command type from `ConfigureServices` has no effect, because
+  Spectre's registration is queued later and wins. A command that
+  constructor-injects its own settings type now receives a fresh, unbound instance
+  rather than the bound one Spectre passes to `Execute`
+  ([PLO-781](https://linear.app/ploch/issue/PLO-781)).
 
 ### Removed
 
