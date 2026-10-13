@@ -197,7 +197,6 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Output | `IOutput.Write(string)` throws on user data containing `[` |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
-| Public API | `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`, `CommandAppConfigurator` have no caller in `src/` |
 | Guards | `ConfigureCommandApp`, `EnvironmentSettings.Initialize` and the public constructor do not null-check |
 | Reuse | `UNVERIFIED`: a second `Run` on one executor probably fails, because it builds the host again |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |

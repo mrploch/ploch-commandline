@@ -9,7 +9,7 @@ public abstract class TypeMessageFormatter<TMessage> : TypeMessageHandler<TMessa
     /// <summary>
     ///     Gets a value indicating whether this handler writes the message itself rather than only formatting it.
     /// </summary>
-    public virtual bool IsWriter => false;
+    internal virtual bool IsWriter => false;
 
     /// <summary>
     ///     Formats a message supplied as <see cref="object" />, casting it to <typeparamref name="TMessage" />.

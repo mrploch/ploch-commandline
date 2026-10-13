@@ -11,7 +11,7 @@ namespace Ploch.CommandLine.Spectre;
 ///     The token the resulting executor hands to Spectre, and through it to every command. Required rather than
 ///     optional so that an application configured through this type cannot silently end up without cancellation.
 /// </param>
-public class CommandAppConfigurator(ICommandApp commandApp, CancellationToken cancellationToken) : ICommandAppConfigurator
+internal sealed class CommandAppConfigurator(ICommandApp commandApp, CancellationToken cancellationToken) : ICommandAppConfigurator
 {
     /// <summary>
     ///     Configures the command-line application using the provided configuration action.

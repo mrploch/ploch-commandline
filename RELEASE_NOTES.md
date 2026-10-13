@@ -58,6 +58,12 @@ have been retired.
   earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
   now registered after every caller service delegate, including those added
   through `ConfigureHost`.
+- **Breaking:** `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`,
+  `CommandAppConfigurator`, `ICommandAppConfigurator` and
+  `TypeMessageFormatter<TMessage>.IsWriter` are `internal`. Nothing on the
+  library's runtime path uses them (`AppBuilder` never went through the
+  configurator), so they are withdrawn from the 1.0 surface: widening later is
+  non-breaking, narrowing after 1.0 is not.
 
 ### Removed
 
@@ -70,6 +76,8 @@ have been retired.
 - **Breaking:** `AnsiConsoleMarkupOutput.WriteMarkupLineInterpolated`, which was
   absent from `IOutput` and silently discarded non-`FormattableString` messages.
   Use `MarkupLineInterpolated`.
+- **Breaking:** `Win32ExceptionMessageFormatter.GetFormattedExceptionText`, a
+  `protected static` helper that nothing called.
 
 ### Fixed
 
