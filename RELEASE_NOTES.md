@@ -84,7 +84,6 @@ have been retired.
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.
-- `CommandInfoFactory.CreateFromType` threw on its primary path.
 - Cancellation was accepted everywhere and honoured nowhere; Ctrl+C cancelled a
   token nothing observed.
 - `AnsiConsoleMarkupOutput.Write` printed every writer-handled message twice.

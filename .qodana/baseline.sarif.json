@@ -8,8 +8,8 @@
           "name": "QDNETC",
           "organization": "JetBrains, Inc",
           "fullName": "Qodana Community for .NET",
-          "version": "2026.2.672",
-          "semanticVersion": "262.0.20260805.161205",
+          "version": "2026.2.691",
+          "semanticVersion": "262.0.20260818.210923",
           "informationUri": "http://www.jetbrains.com/resharper/features/command-line.html",
           "rules": [
             {
@@ -80142,8 +80142,8 @@
       "versionControlProvenance": [
         {
           "repositoryUri": "https://github.com/mrploch/ploch-commandline.git",
-          "revisionId": "b149b215fca33d1cc15eeaab89ece927f85b58c9",
-          "branch": "ci/51-drop-clones-run-sample-tests",
+          "revisionId": "af2362d3164926d2dce46219e24d640e6315ea33",
+          "branch": "refactor/plo-779-internal-uncalled-types",
           "properties": {
             "repoUrl": "https://github.com/mrploch/ploch-commandline.git",
             "lastAuthorName": "",
@@ -80471,13 +80471,6 @@
         },
         {
           "location": {
-            "uri": "src/Spectre/CommandLine.Spectre/Output/Win32ExceptionMessageFormatter.cs",
-            "uriBaseId": "solutionDir"
-          },
-          "hashes": {}
-        },
-        {
-          "location": {
             "uri": "src/Spectre/CommandLine.Spectre/ICommandAppConfigurator.cs",
             "uriBaseId": "solutionDir"
           },
@@ -80550,22 +80543,22 @@
                   "uriBaseId": "solutionDir"
                 },
                 "region": {
-                  "startLine": 165,
+                  "startLine": 171,
                   "startColumn": 21,
-                  "endLine": 165,
+                  "endLine": 171,
                   "endColumn": 44,
-                  "charOffset": 9595,
+                  "charOffset": 9926,
                   "charLength": 23,
                   "snippet": {
                     "text": "cancellationTokenSource"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 164,
+                  "startLine": 170,
                   "startColumn": 1,
-                  "endLine": 166,
+                  "endLine": 172,
                   "endColumn": 18,
-                  "charOffset": 9557,
+                  "charOffset": 9888,
                   "charLength": 89,
                   "snippet": {
                     "text": "                {\n                    cancellationTokenSource.Cancel();\n                }"
@@ -80602,22 +80595,22 @@
                   "uriBaseId": "solutionDir"
                 },
                 "region": {
-                  "startLine": 186,
+                  "startLine": 192,
                   "startColumn": 29,
-                  "endLine": 186,
+                  "endLine": 192,
                   "endColumn": 52,
-                  "charOffset": 10827,
+                  "charOffset": 11158,
                   "charLength": 23,
                   "snippet": {
                     "text": "cancellationTokenSource"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 185,
+                  "startLine": 191,
                   "startColumn": 1,
-                  "endLine": 187,
+                  "endLine": 193,
                   "endColumn": 26,
-                  "charOffset": 10734,
+                  "charOffset": 11065,
                   "charLength": 153,
                   "snippet": {
                     "text": "                            interruptGate.SourceReleased = true;\n                            cancellationTokenSource.Dispose();\n                        }"
@@ -80708,22 +80701,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 399,
+                  "startLine": 606,
                   "startColumn": 37,
-                  "endLine": 399,
+                  "endLine": 606,
                   "endColumn": 60,
-                  "charOffset": 20170,
+                  "charOffset": 33652,
                   "charLength": 23,
                   "snippet": {
                     "text": "cancellationTokenSource"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 398,
+                  "startLine": 605,
                   "startColumn": 1,
-                  "endLine": 400,
+                  "endLine": 607,
                   "endColumn": 137,
-                  "charOffset": 20133,
+                  "charOffset": 33615,
                   "charLength": 204,
                   "snippet": {
                     "text": "\n        var useAfterDispose = () => cancellationTokenSource.Token;\n        useAfterDispose.Should().NotThrow(\"a source handed to the constructor belongs to the caller, who may still need it afterwards\");"
@@ -80761,22 +80754,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 495,
+                  "startLine": 702,
                   "startColumn": 77,
-                  "endLine": 495,
+                  "endLine": 702,
                   "endColumn": 84,
-                  "charOffset": 25011,
+                  "charOffset": 38493,
                   "charLength": 7,
                   "snippet": {
                     "text": "builder"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 494,
+                  "startLine": 701,
                   "startColumn": 1,
-                  "endLine": 496,
+                  "endLine": 703,
                   "endColumn": 76,
-                  "charOffset": 24839,
+                  "charOffset": 38321,
                   "charLength": 266,
                   "snippet": {
                     "text": "                                                                            callbackRan = true;\n                                                                            builder.Dispose();\n                                                                        });"
@@ -81079,22 +81072,22 @@
                   "index": 6
                 },
                 "region": {
-                  "startLine": 150,
+                  "startLine": 155,
                   "startColumn": 8,
-                  "endLine": 155,
+                  "endLine": 160,
                   "endColumn": 1,
-                  "charOffset": 5939,
+                  "charOffset": 6130,
                   "charLength": 348,
                   "snippet": {
                     "text": " <summary>\n    ///     The sibling test above covers a <em>rooted</em> logName. This covers the other escape, which Path.Join\n    ///     alone does not close: a relative name carrying \"..\" survives concatenation as \"logs/../outside.log\" and\n    ///     the operating system resolves it to a sibling of the configured directory.\n    /// </summary>\n"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 149,
+                  "startLine": 154,
                   "startColumn": 1,
-                  "endLine": 156,
+                  "endLine": 161,
                   "endColumn": 46,
-                  "charOffset": 5931,
+                  "charOffset": 6122,
                   "charLength": 414,
                   "snippet": {
                     "text": "\n    /// <summary>\n    ///     The sibling test above covers a <em>rooted</em> logName. This covers the other escape, which Path.Join\n    ///     alone does not close: a relative name carrying \"..\" survives concatenation as \"logs/../outside.log\" and\n    ///     the operating system resolves it to a sibling of the configured directory.\n    /// </summary>\n    [Theory]\n    [MemberData(nameof(DirectorySeparators))]"
@@ -81132,22 +81125,22 @@
                   "index": 6
                 },
                 "region": {
-                  "startLine": 196,
+                  "startLine": 252,
                   "startColumn": 8,
-                  "endLine": 197,
+                  "endLine": 253,
                   "endColumn": 1,
-                  "charOffset": 8239,
+                  "charOffset": 11298,
                   "charLength": 76,
                   "snippet": {
                     "text": " <summary>Reads a log file while the sink may still hold it open.</summary>\n"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 195,
+                  "startLine": 251,
                   "startColumn": 1,
-                  "endLine": 198,
+                  "endLine": 254,
                   "endColumn": 6,
-                  "charOffset": 8231,
+                  "charOffset": 11290,
                   "charLength": 137,
                   "snippet": {
                     "text": "\n    /// <summary>Reads a log file while the sink may still hold it open.</summary>\n    private string ReadLogFile(string fileName)\n    {"
@@ -81185,75 +81178,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 527,
+                  "startLine": 765,
                   "startColumn": 8,
-                  "endLine": 533,
+                  "endLine": 775,
                   "endColumn": 1,
-                  "charOffset": 26502,
-                  "charLength": 422,
-                  "snippet": {
-                    "text": " <summary>\n    ///     Builds an application configured by <paramref name=\"configure\" /> and runs a probe command through it.\n    ///     The probe reports back through a static slot rather than a registered service, so that the helper's own\n    ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly\n    ///     the registrations the test made.\n    /// </summary>\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 523,
-                  "startColumn": 96,
-                  "endLine": 531,
-                  "endColumn": 27,
-                  "charOffset": 26374,
-                  "charLength": 512,
-                  "snippet": {
-                    "text": "press as well would \"\n                          + \"leave one that neither stops nor terminates the application\");\n    }\n\n    /// <summary>\n    ///     Builds an application configured by <paramref name=\"configure\" /> and runs a probe command through it.\n    ///     The probe reports back through a static slot rather than a registered service, so that the helper's own\n    ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly\n    ///     the registrati"
-                  }
-                }
-              }
-            }
-          ],
-          "partialFingerprints": {
-            "equalIndicator/v1": "4BDFF0E9E190EC66A1386A1E1EF4802E1318B72F204D247BCD41FE67F1166BEE"
-          },
-          "baselineState": "unchanged",
-          "properties": {
-            "qodanaSeverity": "Critical",
-            "tags": [
-              "C#",
-              ".NET 10.0"
-            ]
-          }
-        },
-        {
-          "ruleId": "CC0097",
-          "ruleIndex": 109,
-          "kind": "fail",
-          "level": "error",
-          "message": {
-            "text": "You have missing/unexistent parameters in Xml Docs"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/AppBuilderTests.cs",
-                  "uriBaseId": "solutionDir",
-                  "index": 2
-                },
-                "region": {
-                  "startLine": 552,
-                  "startColumn": 8,
-                  "endLine": 562,
-                  "endColumn": 1,
-                  "charOffset": 27905,
+                  "charOffset": 41879,
                   "charLength": 672,
                   "snippet": {
                     "text": " <summary>\n    ///     Returns the <c>Console.CancelKeyPress</c> handler <see cref=\"AppBuilder.Create\" /> installed.\n    /// </summary>\n    /// <remarks>\n    ///     Reached through the field rather than the event because <c>Console.CancelKeyPress</c> cannot be raised from\n    ///     a test and the handler itself is a local function inside <c>Create</c>. The alternative — spawning a child\n    ///     process and sending it a real interrupt — is operating-system specific and flaky under CI, and would test\n    ///     the harness as much as the handler. The behaviour asserted here is genuinely observable; only the route to\n    ///     it is not.\n    /// </remarks>\n"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 552,
+                  "startLine": 765,
                   "startColumn": 8,
-                  "endLine": 562,
+                  "endLine": 775,
                   "endColumn": 1,
-                  "charOffset": 27905,
+                  "charOffset": 41879,
                   "charLength": 672,
                   "snippet": {
                     "text": " <summary>\n    ///     Returns the <c>Console.CancelKeyPress</c> handler <see cref=\"AppBuilder.Create\" /> installed.\n    /// </summary>\n    /// <remarks>\n    ///     Reached through the field rather than the event because <c>Console.CancelKeyPress</c> cannot be raised from\n    ///     a test and the handler itself is a local function inside <c>Create</c>. The alternative — spawning a child\n    ///     process and sending it a real interrupt — is operating-system specific and flaky under CI, and would test\n    ///     the harness as much as the handler. The behaviour asserted here is genuinely observable; only the route to\n    ///     it is not.\n    /// </remarks>\n"
@@ -81291,22 +81231,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 570,
+                  "startLine": 783,
                   "startColumn": 8,
-                  "endLine": 571,
+                  "endLine": 784,
                   "endColumn": 1,
-                  "charOffset": 29008,
+                  "charOffset": 42982,
                   "charLength": 100,
                   "snippet": {
                     "text": " <summary>Returns the cancellation source <see cref=\"AppBuilder.Create\" /> made and owns.</summary>\n"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 569,
+                  "startLine": 782,
                   "startColumn": 1,
-                  "endLine": 572,
+                  "endLine": 785,
                   "endColumn": 6,
-                  "charOffset": 29000,
+                  "charOffset": 42974,
                   "charLength": 208,
                   "snippet": {
                     "text": "\n    /// <summary>Returns the cancellation source <see cref=\"AppBuilder.Create\" /> made and owns.</summary>\n    private static CancellationTokenSource GetOwnedCancellationTokenSource(AppBuilder builder)\n    {"
@@ -81715,22 +81655,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 622,
+                  "startLine": 835,
                   "startColumn": 26,
-                  "endLine": 622,
+                  "endLine": 835,
                   "endColumn": 38,
-                  "charOffset": 31313,
+                  "charOffset": 45287,
                   "charLength": 12,
                   "snippet": {
                     "text": "ProbeCommand"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 621,
+                  "startLine": 834,
                   "startColumn": 1,
-                  "endLine": 623,
+                  "endLine": 836,
                   "endColumn": 33,
-                  "charOffset": 31287,
+                  "charOffset": 45261,
                   "charLength": 177,
                   "snippet": {
                     "text": "\n    private sealed class ProbeCommand(IConfiguration configuration, CancellationTokenSource cancellationTokenSource, IServiceProvider services)\n        : Command<ProbeSettings>"
@@ -81768,22 +81708,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 618,
+                  "startLine": 831,
                   "startColumn": 26,
-                  "endLine": 618,
+                  "endLine": 831,
                   "endColumn": 39,
-                  "charOffset": 31243,
+                  "charOffset": 45217,
                   "charLength": 13,
                   "snippet": {
                     "text": "ProbeSettings"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 617,
+                  "startLine": 830,
                   "startColumn": 1,
-                  "endLine": 619,
+                  "endLine": 832,
                   "endColumn": 6,
-                  "charOffset": 31217,
+                  "charOffset": 45191,
                   "charLength": 63,
                   "snippet": {
                     "text": "\n    private sealed class ProbeSettings : CommandSettings\n    {"
@@ -81874,22 +81814,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 495,
+                  "startLine": 702,
                   "startColumn": 77,
-                  "endLine": 495,
+                  "endLine": 702,
                   "endColumn": 84,
-                  "charOffset": 25011,
+                  "charOffset": 38493,
                   "charLength": 7,
                   "snippet": {
                     "text": "builder"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 494,
+                  "startLine": 701,
                   "startColumn": 1,
-                  "endLine": 496,
+                  "endLine": 703,
                   "endColumn": 76,
-                  "charOffset": 24839,
+                  "charOffset": 38321,
                   "charLength": 266,
                   "snippet": {
                     "text": "                                                                            callbackRan = true;\n                                                                            builder.Dispose();\n                                                                        });"
@@ -81927,22 +81867,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 46,
+                  "startLine": 60,
                   "startColumn": 29,
-                  "endLine": 46,
+                  "endLine": 60,
                   "endColumn": 33,
-                  "charOffset": 2077,
+                  "charOffset": 3077,
                   "charLength": 4,
                   "snippet": {
                     "text": "this"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 45,
+                  "startLine": 59,
                   "startColumn": 1,
-                  "endLine": 47,
+                  "endLine": 61,
                   "endColumn": 6,
-                  "charOffset": 2021,
+                  "charOffset": 3021,
                   "charLength": 68,
                   "snippet": {
                     "text": "        _console.Dispose();\n        GC.SuppressFinalize(this);\n    }"
@@ -82086,22 +82026,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 46,
+                  "startLine": 60,
                   "startColumn": 29,
-                  "endLine": 46,
+                  "endLine": 60,
                   "endColumn": 33,
-                  "charOffset": 2077,
+                  "charOffset": 3077,
                   "charLength": 4,
                   "snippet": {
                     "text": "this"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 45,
+                  "startLine": 59,
                   "startColumn": 1,
-                  "endLine": 47,
+                  "endLine": 61,
                   "endColumn": 6,
-                  "charOffset": 2021,
+                  "charOffset": 3021,
                   "charLength": 68,
                   "snippet": {
                     "text": "        _console.Dispose();\n        GC.SuppressFinalize(this);\n    }"
@@ -82774,22 +82714,22 @@
                   "uriBaseId": "solutionDir"
                 },
                 "region": {
-                  "startLine": 183,
+                  "startLine": 189,
                   "startColumn": 59,
-                  "endLine": 183,
+                  "endLine": 189,
                   "endColumn": 61,
-                  "charOffset": 10674,
+                  "charOffset": 11005,
                   "charLength": 2,
                   "snippet": {
                     "text": "&&"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 182,
+                  "startLine": 188,
                   "startColumn": 1,
-                  "endLine": 184,
+                  "endLine": 190,
                   "endColumn": 26,
-                  "charOffset": 10540,
+                  "charOffset": 10871,
                   "charLength": 193,
                   "snippet": {
                     "text": "                        // release, now that nothing is running against it.\n                        if (interruptGate.DisposeDeferred && !interruptGate.SourceReleased)\n                        {"
@@ -83145,22 +83085,22 @@
                   "index": 25
                 },
                 "region": {
-                  "startLine": 59,
+                  "startLine": 175,
                   "startColumn": 38,
-                  "endLine": 59,
+                  "endLine": 175,
                   "endColumn": 45,
-                  "charOffset": 2309,
+                  "charOffset": 7245,
                   "charLength": 7,
                   "snippet": {
                     "text": "default"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 58,
+                  "startLine": 174,
                   "startColumn": 1,
-                  "endLine": 60,
+                  "endLine": 176,
                   "endColumn": 47,
-                  "charOffset": 2217,
+                  "charOffset": 7153,
                   "charLength": 147,
                   "snippet": {
                     "text": "        using var cts = new CancellationTokenSource();\n        CancellationToken received = default;\n        var command = new StubCommand(token =>"
@@ -83198,22 +83138,22 @@
                   "index": 26
                 },
                 "region": {
-                  "startLine": 52,
+                  "startLine": 53,
                   "startColumn": 38,
-                  "endLine": 52,
+                  "endLine": 53,
                   "endColumn": 45,
-                  "charOffset": 1958,
+                  "charOffset": 1969,
                   "charLength": 7,
                   "snippet": {
                     "text": "default"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 51,
+                  "startLine": 52,
                   "startColumn": 1,
-                  "endLine": 53,
+                  "endLine": 54,
                   "endColumn": 50,
-                  "charOffset": 1866,
+                  "charOffset": 1877,
                   "charLength": 150,
                   "snippet": {
                     "text": "        using var cts = new CancellationTokenSource();\n        CancellationToken received = default;\n        var command = CreateCommand((_, token) =>"
@@ -83463,22 +83403,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 567,
+                  "startLine": 780,
                   "startColumn": 48,
-                  "endLine": 567,
+                  "endLine": 780,
                   "endColumn": 49,
-                  "charOffset": 28972,
+                  "charOffset": 42946,
                   "charLength": 1,
                   "snippet": {
                     "text": "!"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 566,
+                  "startLine": 779,
                   "startColumn": 1,
-                  "endLine": 568,
+                  "endLine": 781,
                   "endColumn": 6,
-                  "charOffset": 28924,
+                  "charOffset": 42898,
                   "charLength": 75,
                   "snippet": {
                     "text": "\n        return (ConsoleCancelEventHandler)field!.GetValue(builder)!;\n    }"
@@ -83516,22 +83456,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 576,
+                  "startLine": 789,
                   "startColumn": 46,
-                  "endLine": 576,
+                  "endLine": 789,
                   "endColumn": 47,
-                  "charOffset": 29416,
+                  "charOffset": 43390,
                   "charLength": 1,
                   "snippet": {
                     "text": "!"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 575,
+                  "startLine": 788,
                   "startColumn": 1,
-                  "endLine": 577,
+                  "endLine": 790,
                   "endColumn": 6,
-                  "charOffset": 29370,
+                  "charOffset": 43344,
                   "charLength": 73,
                   "snippet": {
                     "text": "\n        return (CancellationTokenSource)field!.GetValue(builder)!;\n    }"
@@ -83834,22 +83774,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 619,
+                  "startLine": 832,
                   "startColumn": 5,
-                  "endLine": 620,
+                  "endLine": 833,
                   "endColumn": 6,
-                  "charOffset": 31279,
+                  "charOffset": 45253,
                   "charLength": 7,
                   "snippet": {
                     "text": "{\n    }"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 618,
+                  "startLine": 831,
                   "startColumn": 1,
-                  "endLine": 621,
+                  "endLine": 834,
                   "endColumn": 1,
-                  "charOffset": 31218,
+                  "charOffset": 45192,
                   "charLength": 69,
                   "snippet": {
                     "text": "    private sealed class ProbeSettings : CommandSettings\n    {\n    }\n"
@@ -83887,22 +83827,22 @@
                   "index": 25
                 },
                 "region": {
-                  "startLine": 84,
+                  "startLine": 231,
                   "startColumn": 5,
-                  "endLine": 85,
+                  "endLine": 232,
                   "endColumn": 6,
-                  "charOffset": 3077,
+                  "charOffset": 9016,
                   "charLength": 7,
                   "snippet": {
                     "text": "{\n    }"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 83,
+                  "startLine": 230,
                   "startColumn": 1,
-                  "endLine": 86,
+                  "endLine": 233,
                   "endColumn": 1,
-                  "charOffset": 3017,
+                  "charOffset": 8956,
                   "charLength": 68,
                   "snippet": {
                     "text": "    private sealed class StubSettings : CommandSettings\n    {\n    }\n"
@@ -83940,22 +83880,22 @@
                   "index": 25
                 },
                 "region": {
-                  "startLine": 84,
+                  "startLine": 231,
                   "startColumn": 5,
-                  "endLine": 85,
+                  "endLine": 232,
                   "endColumn": 6,
-                  "charOffset": 3077,
+                  "charOffset": 9016,
                   "charLength": 7,
                   "snippet": {
                     "text": "{\n    }"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 83,
+                  "startLine": 230,
                   "startColumn": 1,
-                  "endLine": 86,
+                  "endLine": 233,
                   "endColumn": 1,
-                  "charOffset": 3017,
+                  "charOffset": 8956,
                   "charLength": 68,
                   "snippet": {
                     "text": "    private sealed class StubSettings : CommandSettings\n    {\n    }\n"
@@ -85519,22 +85459,22 @@
                   "index": 6
                 },
                 "region": {
-                  "startLine": 157,
+                  "startLine": 162,
                   "startColumn": 108,
-                  "endLine": 157,
+                  "endLine": 162,
                   "endColumn": 117,
-                  "charOffset": 6453,
+                  "charOffset": 6644,
                   "charLength": 9,
                   "snippet": {
                     "text": "separator"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 156,
+                  "startLine": 161,
                   "startColumn": 1,
-                  "endLine": 158,
+                  "endLine": 163,
                   "endColumn": 6,
-                  "charOffset": 6300,
+                  "charOffset": 6491,
                   "charLength": 169,
                   "snippet": {
                     "text": "    [MemberData(nameof(DirectorySeparators))]\n    public void ConfigureSerilog_should_not_write_outside_the_log_directory_for_a_traversing_log_name(char separator)\n    {"
@@ -85572,22 +85512,22 @@
                   "index": 6
                 },
                 "region": {
-                  "startLine": 26,
+                  "startLine": 31,
                   "startColumn": 19,
-                  "endLine": 26,
+                  "endLine": 31,
                   "endColumn": 35,
-                  "charOffset": 1349,
+                  "charOffset": 1540,
                   "charLength": 16,
                   "snippet": {
                     "text": "TheoryData<char>"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 25,
+                  "startLine": 30,
                   "startColumn": 1,
-                  "endLine": 27,
+                  "endLine": 32,
                   "endColumn": 6,
-                  "charOffset": 1312,
+                  "charOffset": 1503,
                   "charLength": 81,
                   "snippet": {
                     "text": "    /// </summary>\n    public static TheoryData<char> DirectorySeparators()\n    {"
@@ -86261,22 +86201,22 @@
                   "index": 2
                 },
                 "region": {
-                  "startLine": 410,
+                  "startLine": 617,
                   "startColumn": 9,
-                  "endLine": 410,
+                  "endLine": 617,
                   "endColumn": 15,
-                  "charOffset": 20655,
+                  "charOffset": 34137,
                   "charLength": 6,
                   "snippet": {
                     "text": "Action"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 409,
+                  "startLine": 616,
                   "startColumn": 1,
-                  "endLine": 411,
+                  "endLine": 618,
                   "endColumn": 1,
-                  "charOffset": 20646,
+                  "charOffset": 34128,
                   "charLength": 48,
                   "snippet": {
                     "text": "\n        Action disposeAgain = builder.Dispose;\n"
@@ -86727,59 +86667,6 @@
           "kind": "fail",
           "level": "note",
           "message": {
-            "text": "Method 'GetFormattedExceptionText' is never used"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/Spectre/CommandLine.Spectre/Output/Win32ExceptionMessageFormatter.cs",
-                  "uriBaseId": "solutionDir",
-                  "index": 44
-                },
-                "region": {
-                  "startLine": 15,
-                  "startColumn": 40,
-                  "endLine": 15,
-                  "endColumn": 65,
-                  "charOffset": 639,
-                  "charLength": 25,
-                  "snippet": {
-                    "text": "GetFormattedExceptionText"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 14,
-                  "startColumn": 1,
-                  "endLine": 16,
-                  "endColumn": 103,
-                  "charOffset": 526,
-                  "charLength": 270,
-                  "snippet": {
-                    "text": "    /// <returns>A formattable string describing the exception.</returns>\n    protected static FormattableString GetFormattedExceptionText(Win32Exception exception) =>\n        $\"[{exception.GetType().Name}] [Error Code: {exception.NativeErrorCode}] {exception.Message}\";"
-                  }
-                }
-              }
-            }
-          ],
-          "partialFingerprints": {
-            "equalIndicator/v1": "05E08B52622C44DAB5FBD6E7AA82A8FD966E202F074328CD5FEBE78EC03D4788"
-          },
-          "baselineState": "unchanged",
-          "properties": {
-            "qodanaSeverity": "Moderate",
-            "tags": [
-              "C#",
-              ".NET 10.0"
-            ]
-          }
-        },
-        {
-          "ruleId": "UnusedMember.Global",
-          "ruleIndex": 2931,
-          "kind": "fail",
-          "level": "note",
-          "message": {
             "text": "Property 'Arg' is never used"
           },
           "locations": [
@@ -86841,14 +86728,14 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/ICommandAppConfigurator.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 45
+                  "index": 44
                 },
                 "region": {
                   "startLine": 15,
                   "startColumn": 25,
                   "endLine": 15,
                   "endColumn": 34,
-                  "charOffset": 592,
+                  "charOffset": 594,
                   "charLength": 9,
                   "snippet": {
                     "text": "Configure"
@@ -86859,7 +86746,7 @@
                   "startColumn": 1,
                   "endLine": 16,
                   "endColumn": 2,
-                  "charOffset": 475,
+                  "charOffset": 477,
                   "charLength": 166,
                   "snippet": {
                     "text": "    /// <returns>An executor that can run the configured command-line application.</returns>\n    ICommandAppExecutor Configure(Action<IConfigurator> configuration);\n}"
@@ -86894,7 +86781,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 21,
@@ -86947,7 +86834,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/ICommandAppExecutor.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 47
+                  "index": 46
                 },
                 "region": {
                   "startLine": 23,
@@ -87000,7 +86887,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IMessageWriter.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 48
+                  "index": 47
                 },
                 "region": {
                   "startLine": 61,
@@ -87053,7 +86940,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 35,
@@ -87106,7 +86993,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 60,
@@ -87159,7 +87046,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 76,
@@ -87267,22 +87154,22 @@
                   "uriBaseId": "solutionDir"
                 },
                 "region": {
-                  "startLine": 421,
+                  "startLine": 476,
                   "startColumn": 12,
-                  "endLine": 421,
+                  "endLine": 476,
                   "endColumn": 22,
-                  "charOffset": 22803,
+                  "charOffset": 28206,
                   "charLength": 10,
                   "snippet": {
                     "text": "AppBuilder"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 420,
+                  "startLine": 475,
                   "startColumn": 1,
-                  "endLine": 422,
+                  "endLine": 477,
                   "endColumn": 6,
-                  "charOffset": 22701,
+                  "charOffset": 28104,
                   "charLength": 202,
                   "snippet": {
                     "text": "    /// <returns>The same <see cref=\"AppBuilder\" /> instance, to allow chaining.</returns>\n    public AppBuilder AddServicesBundle<TServicesBundle>() where TServicesBundle : IServicesBundle, new()\n    {"
@@ -87317,7 +87204,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 21,
@@ -87357,59 +87244,6 @@
           }
         },
         {
-          "ruleId": "UnusedMethodReturnValue.Global",
-          "ruleIndex": 2937,
-          "kind": "fail",
-          "level": "note",
-          "message": {
-            "text": "Method 'MarkupLineInterpolated' return value is never used"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
-                  "uriBaseId": "solutionDir",
-                  "index": 46
-                },
-                "region": {
-                  "startLine": 28,
-                  "startColumn": 5,
-                  "endLine": 28,
-                  "endColumn": 12,
-                  "charOffset": 1038,
-                  "charLength": 7,
-                  "snippet": {
-                    "text": "IOutput"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 27,
-                  "startColumn": 1,
-                  "endLine": 29,
-                  "endColumn": 1,
-                  "charOffset": 958,
-                  "charLength": 137,
-                  "snippet": {
-                    "text": "    /// <returns>The current output instance for method chaining.</returns>\n    IOutput MarkupLineInterpolated(FormattableString value);\n"
-                  }
-                }
-              }
-            }
-          ],
-          "partialFingerprints": {
-            "equalIndicator/v1": "9DC3D719A77D740BAE4CAD0D24FCD633730252236D7C53F45FB25FEE494BB70B"
-          },
-          "baselineState": "unchanged",
-          "properties": {
-            "qodanaSeverity": "Moderate",
-            "tags": [
-              "C#",
-              ".NET 10.0"
-            ]
-          }
-        },
-        {
           "ruleId": "UnusedMemberInSuper.Global",
           "ruleIndex": 2935,
           "kind": "fail",
@@ -87423,7 +87257,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 60,
@@ -87476,7 +87310,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 76,
@@ -87529,7 +87363,7 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/IOutput.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 46
+                  "index": 45
                 },
                 "region": {
                   "startLine": 84,
@@ -87582,25 +87416,25 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Commands/AppCommand.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 49
+                  "index": 48
                 },
                 "region": {
-                  "startLine": 62,
+                  "startLine": 90,
                   "startColumn": 58,
-                  "endLine": 62,
+                  "endLine": 90,
                   "endColumn": 65,
-                  "charOffset": 3128,
+                  "charOffset": 4967,
                   "charLength": 7,
                   "snippet": {
                     "text": "context"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 61,
+                  "startLine": 89,
                   "startColumn": 1,
-                  "endLine": 63,
+                  "endLine": 91,
                   "endColumn": 2,
-                  "charOffset": 2983,
+                  "charOffset": 4822,
                   "charLength": 213,
                   "snippet": {
                     "text": "    /// <returns>An exit code indicating the result of the command execution.</returns>\n    protected abstract ExitCode DoExecute(CommandContext context, TSettings settings, CancellationToken cancellationToken);\n}"
@@ -87635,25 +87469,25 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Commands/AsyncAppCommand.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 50
+                  "index": 49
                 },
                 "region": {
-                  "startLine": 78,
+                  "startLine": 87,
                   "startColumn": 69,
-                  "endLine": 78,
+                  "endLine": 87,
                   "endColumn": 76,
-                  "charOffset": 4147,
+                  "charOffset": 4978,
                   "charLength": 7,
                   "snippet": {
                     "text": "context"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 77,
+                  "startLine": 86,
                   "startColumn": 1,
-                  "endLine": 79,
+                  "endLine": 88,
                   "endColumn": 2,
-                  "charOffset": 3979,
+                  "charOffset": 4810,
                   "charLength": 236,
                   "snippet": {
                     "text": "    /// <returns>A task representing the asynchronous operation that returns an ExitCode.</returns>\n    protected abstract Task<ExitCode> DoExecuteAsync(CommandContext context, TSettings settings, CancellationToken cancellationToken);\n}"
@@ -87741,25 +87575,25 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Commands/AppCommand.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 49
+                  "index": 48
                 },
                 "region": {
-                  "startLine": 62,
+                  "startLine": 90,
                   "startColumn": 58,
-                  "endLine": 62,
+                  "endLine": 90,
                   "endColumn": 65,
-                  "charOffset": 3128,
+                  "charOffset": 4967,
                   "charLength": 7,
                   "snippet": {
                     "text": "context"
                   }
                 },
                 "contextRegion": {
-                  "startLine": 61,
+                  "startLine": 89,
                   "startColumn": 1,
-                  "endLine": 63,
+                  "endLine": 91,
                   "endColumn": 2,
-                  "charOffset": 2983,
+                  "charOffset": 4822,
                   "charLength": 213,
                   "snippet": {
                     "text": "    /// <returns>An exit code indicating the result of the command execution.</returns>\n    protected abstract ExitCode DoExecute(CommandContext context, TSettings settings, CancellationToken cancellationToken);\n}"
@@ -87847,7 +87681,7 @@
                 "artifactLocation": {
                   "uri": "tests/Spectre/CommandLine.Spectre.FluentValidation.Tests/TestAsyncCommand.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 51
+                  "index": 50
                 },
                 "region": {
                   "startLine": 7,
@@ -87940,6 +87774,59 @@
           }
         },
         {
+          "ruleId": "CC0097",
+          "ruleIndex": 109,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "You have missing/unexistent parameters in Xml Docs"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/Spectre/CommandLine.Spectre.Tests/AppBuilderTests.cs",
+                  "uriBaseId": "solutionDir",
+                  "index": 2
+                },
+                "region": {
+                  "startLine": 740,
+                  "startColumn": 8,
+                  "endLine": 746,
+                  "endColumn": 1,
+                  "charOffset": 40476,
+                  "charLength": 422,
+                  "snippet": {
+                    "text": " <summary>\n    ///     Builds an application configured by <paramref name=\"configure\" /> and runs a probe command through it.\n    ///     The probe reports back through a static slot rather than a registered service, so that the helper's own\n    ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly\n    ///     the registrations the test made.\n    /// </summary>\n"
+                  }
+                },
+                "contextRegion": {
+                  "startLine": 737,
+                  "startColumn": 75,
+                  "endLine": 744,
+                  "endColumn": 27,
+                  "charOffset": 40348,
+                  "charLength": 512,
+                  "snippet": {
+                    "text": "tring value) =>\n        configuration.AddInMemoryCollection(new Dictionary<string, string?> { [\"probe:key\"] = value });\n\n    /// <summary>\n    ///     Builds an application configured by <paramref name=\"configure\" /> and runs a probe command through it.\n    ///     The probe reports back through a static slot rather than a registered service, so that the helper's own\n    ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly\n    ///     the registrati"
+                  }
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "equalIndicator/v1": "DB5D8F6EFCACABF153D472A231467B809D059183D341B7676A0F525D2319F665"
+          },
+          "baselineState": "unchanged",
+          "properties": {
+            "qodanaSeverity": "Critical",
+            "tags": [
+              "C#",
+              ".NET 10.0"
+            ]
+          }
+        },
+        {
           "ruleId": "VirtualMemberNeverOverridden.Global",
           "ruleIndex": 3109,
           "kind": "fail",
@@ -87953,14 +87840,14 @@
                 "artifactLocation": {
                   "uri": "src/Spectre/CommandLine.Spectre/Output/TypeMessageFormatter.cs",
                   "uriBaseId": "solutionDir",
-                  "index": 52
+                  "index": 51
                 },
                 "region": {
                   "startLine": 12,
-                  "startColumn": 12,
+                  "startColumn": 14,
                   "endLine": 12,
-                  "endColumn": 19,
-                  "charOffset": 537,
+                  "endColumn": 21,
+                  "charOffset": 539,
                   "charLength": 7,
                   "snippet": {
                     "text": "virtual"
@@ -87972,16 +87859,16 @@
                   "endLine": 13,
                   "endColumn": 1,
                   "charOffset": 507,
-                  "charLength": 62,
+                  "charLength": 64,
                   "snippet": {
-                    "text": "    /// </summary>\n    public virtual bool IsWriter => false;\n"
+                    "text": "    /// </summary>\n    internal virtual bool IsWriter => false;\n"
                   }
                 }
               }
             }
           ],
           "partialFingerprints": {
-            "equalIndicator/v1": "2357FC847FFFAE78C640A9A789FCD30BFA9C91B970A5DB91FD4757803E499F5B"
+            "equalIndicator/v1": "11188C11771DF7840E37F3C943C813521D3D1FAA8562507623CD367F27BC8299"
           },
           "baselineState": "unchanged",
           "properties": {
@@ -87994,10 +87881,10 @@
         }
       ],
       "automationDetails": {
-        "id": "QDNETC/qodana/2026-09-19",
-        "guid": "289da268-97a6-4f85-a97f-432b342378c7",
+        "id": "QDNETC/qodana/2026-10-13",
+        "guid": "81b32a5b-21af-41a0-8ff2-ce10735022ce",
         "properties": {
-          "jobUrl": "https://github.com/mrploch/ploch-commandline/actions/runs/35415409894"
+          "jobUrl": "https://github.com/mrploch/ploch-commandline/actions/runs/38343745009"
         }
       },
       "newlineSequences": [
