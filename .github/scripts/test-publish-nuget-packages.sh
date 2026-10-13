@@ -61,12 +61,27 @@ if ! echo "$list_output" | grep -q "src/ProjectA/bin/Release/ProjectA.1.0.0.nupk
 fi
 echo "  --list functionality OK"
 
-echo "Testing publish execution..."
+# SYMBOLS_REQUIRED=true and every package has its .snupkg: the missing-symbols array stays
+# empty, which is the path bash 3.2 under `set -u` must get through (it rejects "${arr[@]}" of
+# an empty array, not "${#arr[@]}"), and both the package and its symbols must be pushed.
+echo "Testing publish execution (required symbols all present)..."
 "$BASH" "$ORIG_DIR/.github/scripts/publish-nuget-packages.sh" "https://mock.feed" > output.log
 
 # Verify output
 grep -q "Publishing ./src/ProjectA/bin/Release/ProjectA.1.0.0.nupkg" output.log || { echo "Failed to find ProjectA"; exit 1; }
 grep -q "Publishing ./src/ProjectA/bin/Release/ProjectA.1.0.0.snupkg" output.log || { echo "Failed to find ProjectA symbols"; exit 1; }
+push_count=$(grep -c "^MOCK DOTNET: nuget push" output.log)
+if [[ "$push_count" -ne 2 ]]; then
+    echo "::error::expected exactly 2 pushes (package + symbols) with all symbols present, got $push_count" >&2
+    cat output.log
+    exit 1
+fi
+if grep -qi "missing" output.log; then
+    echo "::error::no symbol package should be reported missing when all are present" >&2
+    cat output.log
+    exit 1
+fi
+echo "  publish with required symbols all present OK"
 
 # Should NOT contain tests or samples (case insensitive)
 if grep -qi "test" output.log; then

@@ -390,6 +390,13 @@ jobs:
       # pull_request trigger has no base-branch filter, every stacked PR builds -
       # but a PR onto another feature branch is an intermediate step, and publishing
       # a validation package for each one would just fill the feed with noise.
+      #
+      # A newer push to the pull request can cancel this run mid-publish (see the
+      # concurrency block). That leaves a partial set under the superseded commit's own
+      # version - every PR commit gets a distinct NBGV version, so the replacement run
+      # publishes a complete set under its version and nothing is ever mixed. PR packages
+      # are throwaway validation builds; a partial set for a commit nobody will consume is
+      # accepted rather than exempting the publish from cancellation.
       - name: Publish PR packages to GitHub Packages
         if: success() && github.event_name == 'pull_request' && github.base_ref == 'main'
         env:

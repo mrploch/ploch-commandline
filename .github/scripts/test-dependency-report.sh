@@ -551,6 +551,13 @@ for property in PropertyPkgVersion SpacedPkgVersion InactiveVersion MultiPkgVers
 done
 [[ "$main_evaluation" != *ObsoleteVersion* ]] \
   || fail 'a property named only inside an XML comment must not be requested'
+# The sample names no $(Property), so its referenced-properties list is empty: the evaluation
+# must still run and carry only the pinning probe. This is the empty-array path of the guarded
+# expansion, which bash 3.2 under `set -u` must get through.
+sample_evaluation="$(grep '^msbuild .*samples.*Directory\.Packages\.props.*-getItem' "$CALLS" | grep -v -- "$probe_switch" || true)"
+[[ -n "$sample_evaluation" ]] || fail 'expected the sample version file to be evaluated'
+[[ "$(grep -o -- '-getProperty:' <<<"$sample_evaluation" | grep -c .)" -eq 1 ]] \
+  || fail "expected the sample evaluation to request only the pinning property: $sample_evaluation"
 
 # --- Scenario: clean --------------------------------------------------------------------
 echo 'Scenario: nothing vulnerable'
