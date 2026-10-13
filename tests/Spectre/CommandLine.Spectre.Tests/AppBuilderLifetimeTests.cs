@@ -133,6 +133,8 @@ public sealed class AppBuilderLifetimeTests : IDisposable
         public CancellationTokenSource? SecondCancellationTokenSource { get; set; }
     }
 
+    // ReSharper disable once ClassNeverInstantiated.Local - Spectre binds it through the container.
+    // ReSharper disable once RedundantTypeDeclarationBody - StyleCop SA1106 rejects the semicolon body.
     private sealed class LifetimeProbeSettings : CommandSettings
     {
     }
@@ -141,6 +143,7 @@ public sealed class AppBuilderLifetimeTests : IDisposable
     ///     Derives from <see cref="AppCommand{TSettings}" /> so the run exercises the framework pipeline the library
     ///     registers, not just Spectre's own resolution of the command.
     /// </summary>
+    // ReSharper disable once ClassNeverInstantiated.Local - Spectre resolves it through the container.
     private sealed class LifetimeProbeCommand(CommandArgumentsRootProcessor settingsProcessor,
                                               ICommandSettingsValidator<LifetimeProbeSettings> validator,
                                               IExceptionHandler exceptionHandler,

@@ -52,6 +52,7 @@ public class DependencyInjectionTypeRegistrarTests
         var second = resolver.Resolve(typeof(ServiceWithDependency)).Should().BeOfType<ServiceWithDependency>().Subject;
 
         first.Dependency.Should().NotBeSameAs(second.Dependency, "a transient dependency must not be captured for the life of the host by the command that consumes it");
+        first.Dependency.Id.Should().NotBe(second.Dependency.Id);
     }
 
     [Fact]

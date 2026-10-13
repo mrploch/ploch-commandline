@@ -123,12 +123,12 @@ public sealed class AppServicesBundleTests
     private sealed class OutputSettings : CommandSettings
     {
         [SupportsTokens]
-        public string? OutputPath { get; set; }
+        public string? OutputPath { get; init; }
     }
 
     private sealed class ReportSettings : CommandSettings
     {
         [SupportsTokens]
-        public string? ReportName { get; set; }
+        public string? ReportName { get; init; }
     }
 }
