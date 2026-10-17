@@ -24,7 +24,7 @@ public sealed class AppBuilderLifetimeTests : IDisposable
     private readonly LifetimeRecorder _recorder = new();
 
     /// <summary>
-    ///     Initialises an isolated console and environment for each lifetime probe.
+    ///     Initializes a new instance of the <see cref="AppBuilderLifetimeTests"/> class with an isolated console and environment for each lifetime probe.
     /// </summary>
     public AppBuilderLifetimeTests()
     {
