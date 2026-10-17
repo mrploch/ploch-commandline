@@ -25,17 +25,14 @@ public class AppServicesBundle : ConfigurableServicesBundle
     /// <summary>
     ///     Configures the service collection with required services for a Spectre.Console-based command-line application.
     /// </summary>
-    /// <param name="configuration">
-    ///     Optional configuration to be used during service registration.
-    ///     If provided, it will be passed to dependent service bundles.
-    /// </param>
+    /// <param name="configuration">The configuration supplied to the bundle.</param>
     /// <remarks>
     ///     This method registers:
-    ///     - Spectre.Console components (Console, Input, Cursor, ExclusivityMode, Profile)
-    ///     - Serilog configuration through SerilogConfigurationBundle
-    ///     - Command settings validation services
-    ///     - Exception handling services
-    ///     - Console logging.
+    ///     - Spectre.Console input, cursor, exclusivity mode, and profile as singletons
+    ///     - CommandArgumentsRootProcessor and the TokensArgumentsProcessor implementation of ICommandSettingsProcessor
+    ///       as transient services, so each resolution receives a fresh instance
+    ///     - Command settings validation and exception handling services as singletons
+    ///     - Logging services.
     /// </remarks>
     protected override void Configure(IConfiguration configuration)
     {
@@ -45,7 +42,11 @@ public class AppServicesBundle : ConfigurableServicesBundle
                 .AddSingleton(AnsiConsole.Console.Cursor)
                 .AddSingleton(AnsiConsole.Console.ExclusivityMode)
                 .AddSingleton(AnsiConsole.Console.Profile)
-                .AddSingleton<CommandArgumentsRootProcessor>()
+
+                // Transient, like the processors it aggregates: a singleton root processor would resolve the
+                // transient ICommandSettingsProcessor instances once and share them between every command in the
+                // host, so one command's processing state would leak into the next.
+                .AddTransient<CommandArgumentsRootProcessor>()
                 .AddTransient<ICommandSettingsProcessor, TokensArgumentsProcessor>()
 
                 .AddSingleton(typeof(ICommandSettingsValidator<>), typeof(CommandSettingsValidator<>))

@@ -6,10 +6,15 @@ namespace Ploch.CommandLine.Spectre.Tests.DependencyInjection;
 
 /// <summary>
 ///     Cover for the bridge between Spectre.Console.Cli's type registry and Microsoft.Extensions.DependencyInjection.
-///     Every registration made here has to be visible from the resolver the registrar builds.
+///     Every registration made here has to be visible from the resolver the registrar builds, with the lifetime the
+///     registrar promises: <c>Register</c> is transient, <c>RegisterInstance</c> and <c>RegisterLazy</c> are
+///     singletons (PLO-781).
 /// </summary>
 public class DependencyInjectionTypeRegistrarTests
 {
+    /// <summary>
+    ///     Verifies that the built resolver supplies the implementation registered for a service contract.
+    /// </summary>
     [Fact]
     public void Register_should_make_the_implementation_resolvable_through_the_built_resolver()
     {
@@ -22,8 +27,84 @@ public class DependencyInjectionTypeRegistrarTests
         resolved.Describe().Should().Be(nameof(Service), "the registered implementation is what the resolver hands back");
     }
 
+    /// <summary>
+    ///     Verifies that a type registration creates a separate service instance for each resolution.
+    /// </summary>
     [Fact]
-    public void RegisterInstance_should_return_the_very_same_instance()
+    public void Register_should_create_a_new_instance_for_every_resolution()
+    {
+        var registrar = new DependencyInjectionTypeRegistrar(CreateHostBuilder());
+        registrar.Register(typeof(ServiceContract), typeof(Service));
+
+        using var resolver = (DependencyInjectionTypeResolver)registrar.Build();
+
+        var first = resolver.Resolve(typeof(ServiceContract));
+        var second = resolver.Resolve(typeof(ServiceContract));
+
+        first.Should().NotBeSameAs(second, "a type Spectre registers - a command or a settings type - is transient, so two resolutions never share state");
+    }
+
+    /// <summary>
+    ///     Verifies that each resolved service receives its own transient dependency.
+    /// </summary>
+    [Fact]
+    public void Register_should_give_each_resolution_a_fresh_transient_dependency()
+    {
+        var hostBuilder = CreateHostBuilder();
+        hostBuilder.ConfigureServices(services => services.AddTransient<Dependency>());
+        var registrar = new DependencyInjectionTypeRegistrar(hostBuilder);
+        registrar.Register(typeof(ServiceWithDependency), typeof(ServiceWithDependency));
+
+        using var resolver = (DependencyInjectionTypeResolver)registrar.Build();
+
+        var first = resolver.Resolve(typeof(ServiceWithDependency)).Should().BeOfType<ServiceWithDependency>().Subject;
+        var second = resolver.Resolve(typeof(ServiceWithDependency)).Should().BeOfType<ServiceWithDependency>().Subject;
+
+        first.Dependency.Should().NotBeSameAs(second.Dependency, "a transient dependency must not be captured for the life of the host by the command that consumes it");
+        first.Dependency.Id.Should().NotBe(second.Dependency.Id);
+    }
+
+    /// <summary>
+    ///     Verifies that the registrar's later transient registration overrides an earlier singleton registration.
+    /// </summary>
+    [Fact]
+    public void Register_should_take_precedence_over_an_earlier_singleton_registration_of_the_same_service()
+    {
+        var hostBuilder = CreateHostBuilder();
+        hostBuilder.ConfigureServices(services => services.AddSingleton<ServiceContract, Service>());
+        var registrar = new DependencyInjectionTypeRegistrar(hostBuilder);
+        registrar.Register(typeof(ServiceContract), typeof(Service));
+
+        using var resolver = (DependencyInjectionTypeResolver)registrar.Build();
+
+        var first = resolver.Resolve(typeof(ServiceContract));
+        var second = resolver.Resolve(typeof(ServiceContract));
+
+        first.Should()
+             .NotBeSameAs(second, "Spectre registers its types after every ConfigureServices delegate and the last registration wins, so a command cannot be pinned as a singleton from ConfigureServices");
+    }
+
+    /// <summary>
+    ///     Verifies that disposing the resolver disposes transient services created by its host.
+    /// </summary>
+    [Fact]
+    public void Register_should_let_the_resolver_dispose_the_instances_it_created()
+    {
+        var registrar = new DependencyInjectionTypeRegistrar(CreateHostBuilder());
+        registrar.Register(typeof(DisposableService), typeof(DisposableService));
+        var resolver = (DependencyInjectionTypeResolver)registrar.Build();
+        var service = resolver.Resolve(typeof(DisposableService)).Should().BeOfType<DisposableService>().Subject;
+
+        resolver.Dispose();
+
+        service.IsDisposed.Should().BeTrue("the root provider tracks the transient disposables it creates and releases them with the host Spectre disposes after a run");
+    }
+
+    /// <summary>
+    ///     Verifies that every instance-registration resolution returns the supplied object.
+    /// </summary>
+    [Fact]
+    public void RegisterInstance_should_return_the_very_same_instance_on_every_resolution()
     {
         var instance = new Service();
         var registrar = new DependencyInjectionTypeRegistrar(CreateHostBuilder());
@@ -32,8 +113,12 @@ public class DependencyInjectionTypeRegistrarTests
         using var resolver = (DependencyInjectionTypeResolver)registrar.Build();
 
         resolver.Resolve(typeof(ServiceContract)).Should().BeSameAs(instance);
+        resolver.Resolve(typeof(ServiceContract)).Should().BeSameAs(instance, "Spectre's contract is that an instance registration hands back the instance it was given");
     }
 
+    /// <summary>
+    ///     Verifies that a lazy factory is first invoked when its service is resolved, after the host is built.
+    /// </summary>
     [Fact]
     public void RegisterLazy_should_defer_the_factory_until_the_service_is_resolved()
     {
@@ -54,6 +139,34 @@ public class DependencyInjectionTypeRegistrarTests
         invocations.Should().Be(1);
     }
 
+    /// <summary>
+    ///     Verifies that a lazy registration invokes its factory once and shares the resulting instance.
+    /// </summary>
+    [Fact]
+    public void RegisterLazy_should_invoke_the_factory_once_and_share_the_result()
+    {
+        var invocations = 0;
+        var registrar = new DependencyInjectionTypeRegistrar(CreateHostBuilder());
+        registrar.RegisterLazy(typeof(ServiceContract),
+                               () =>
+                               {
+                                   invocations++;
+
+                                   return new Service();
+                               });
+
+        using var resolver = (DependencyInjectionTypeResolver)registrar.Build();
+
+        var first = resolver.Resolve(typeof(ServiceContract));
+        var second = resolver.Resolve(typeof(ServiceContract));
+
+        invocations.Should().Be(1, "a lazy registration is a lazily created singleton, not a factory invoked per resolution");
+        first.Should().BeSameAs(second);
+    }
+
+    /// <summary>
+    ///     Verifies that a null lazy factory is rejected with an argument exception.
+    /// </summary>
     [Fact]
     public void RegisterLazy_should_reject_a_null_factory()
     {
@@ -64,16 +177,48 @@ public class DependencyInjectionTypeRegistrarTests
         act.Should().Throw<ArgumentNullException>();
     }
 
+    /// <summary>
+    ///     Creates a host builder for an isolated registrar test.
+    /// </summary>
+    /// <returns>A new host builder without default application configuration.</returns>
     private static HostBuilder CreateHostBuilder() => new();
 
     private class ServiceContract
     {
+        /// <summary>
+        ///     Returns the identity of the service contract used by the resolution test.
+        /// </summary>
+        /// <returns>The service contract type name.</returns>
         public virtual string Describe() => nameof(ServiceContract);
     }
 
     private sealed class Service : ServiceContract
     {
+        /// <summary>
+        ///     Returns the implementation identity used to distinguish it from the service contract.
+        /// </summary>
+        /// <returns>The registered implementation type name.</returns>
         public override string Describe() => nameof(Service);
+    }
+
+    private sealed class Dependency
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+    }
+
+    private sealed class ServiceWithDependency(Dependency dependency)
+    {
+        public Dependency Dependency => dependency;
+    }
+
+    private sealed class DisposableService : IDisposable
+    {
+        public bool IsDisposed { get; private set; }
+
+        /// <summary>
+        ///     Records that the host has disposed this transient service.
+        /// </summary>
+        public void Dispose() => IsDisposed = true;
     }
 }
 

@@ -92,7 +92,6 @@ Findings of the 2026-10-05 review that have no issue of their own. They are trac
 | Core depends on the Serilog package; logging to files is on for everyone | `Ploch.CommandLine.Spectre.csproj`, `AppServicesBundle.cs` |
 | Public types with no caller: `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`, `CommandAppConfigurator` | `src/Spectre/CommandLine.Spectre/` |
 | Host is built but never started; hosted services do not run | `DependencyInjectionTypeRegistrar.cs` |
-| Commands and settings are singletons and capture transient services | `DependencyInjectionTypeRegistrar.cs` |
 | Validation failure exits `-1`; `ExitCode.InvalidInput` is 2 | `ExitCode.cs`, `DocumentationSite/index.md` |
 | `OperationCanceledException` is treated as cancellation without checking the token | `AppCommand.cs`, `AsyncAppCommand.cs` |
 | `IOutput.Write(string)` parses markup and throws on `[` in user data | `AnsiConsoleMarkupOutput.cs` |
