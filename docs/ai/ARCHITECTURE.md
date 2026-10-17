@@ -120,7 +120,9 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 5. The executor permits one execution attempt. An attempt may build the host and
    `IHostBuilder.Build` can only be called once, so a second `Run` or `RunAsync` on the same
    executor throws `InvalidOperationException` before reaching Spectre, whatever the first
-   attempt's outcome; another `ConfigureCommandApp` call on the same builder builds a fresh one
+   attempt's outcome; another `ConfigureCommandApp` call on the same builder builds a fresh one,
+   unless the builder's cancellation source has already been cancelled, in which case that call
+   throws `InvalidOperationException` and a rerun starts from a new builder or a fresh source
    (PLO-756).
 
 `args` is passed twice on purpose: to `Create` for host configuration and to `Run` for parsing.
