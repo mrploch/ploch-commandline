@@ -67,7 +67,9 @@ have been retired.
   executor constructed directly or through `CommandAppConfigurator` needs a
   newly configured `ICommandApp`, because `Configure` wraps the same one. After
   a cancelled attempt the same builder's cancellation source stays cancelled,
-  so a run after Ctrl+C starts from a new builder or a fresh source.
+  so `ConfigureCommandApp` on that builder throws `InvalidOperationException`
+  instead of building an executor over an already-cancelled token; a run after
+  Ctrl+C starts from a new builder or a fresh source.
   Previously the second run reached Spectre, which, once the first run had
   built the host, rendered the host builder's "Build can only be called once"
   error and returned -1; an attempt may build that host and it can only be

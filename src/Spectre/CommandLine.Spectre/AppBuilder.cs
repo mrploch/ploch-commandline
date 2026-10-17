@@ -249,7 +249,10 @@ public class AppBuilder : IDisposable
     /// <returns>An instance of <see cref="ICommandAppExecutor" /> allowing execution of the app.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="configurator" /> is <see langword="null" />.</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the builder has been disposed.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the application info has no name.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the application info has no name, or when the builder's <see cref="CancellationTokenSource" /> has
+    ///     already been cancelled.
+    /// </exception>
     /// <remarks>
     ///     <para>
     ///         The returned executor permits one execution attempt: an attempt may build the host behind it and
@@ -258,9 +261,10 @@ public class AppBuilder : IDisposable
     ///         <see cref="InvalidOperationException" />. Call this method again to build a fresh executor for another run; it
     ///         replays the same recorded configuration over the same cancellation source. Cancellation is permanent, so
     ///         after an attempt that was cancelled - by Ctrl+C or through the registered
-    ///         <see cref="CancellationTokenSource" /> - an executor from this builder starts with an already-cancelled
-    ///         token; to run again after cancellation, start from a new builder (<see cref="Create" />) or pass a fresh
-    ///         source to the constructor.
+    ///         <see cref="CancellationTokenSource" /> - this method throws <see cref="InvalidOperationException" />
+    ///         rather than hand out an executor whose every command would start with an already-cancelled token. To run
+    ///         again after cancellation, start from a new builder (<see cref="Create" />) or pass a fresh source to the
+    ///         constructor.
     ///     </para>
     ///     <para>
     ///         Every <see cref="ConfigureServices(Action{HostBuilderContext, IServiceCollection})" />,
@@ -296,6 +300,15 @@ public class AppBuilder : IDisposable
     {
         configurator.NotNull();
         ObjectDisposedException.ThrowIf(_disposed, this);
+
+        // Cancellation is permanent: an executor built over a cancelled source would hand every cancellation-aware
+        // command a token that is already signalled, so the run would end with exit code 130 before doing any work.
+        // Failing here names the cause instead of leaving the caller to work it out from a silently empty run.
+        if (_cancellationTokenSource.IsCancellationRequested)
+        {
+            throw new InvalidOperationException("The cancellation source this builder was created with has already been cancelled, so an executor built from it would start every command with a cancelled token. "
+                                                + "To run again after cancellation, create a new builder with AppBuilder.Create or pass a fresh CancellationTokenSource to the constructor.");
+        }
 
         _appInfo.Validate();
         _appInfo.PrintAppInfo();

@@ -701,6 +701,20 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     [Fact]
+    public void ConfigureCommandApp_should_reject_a_builder_whose_cancellation_source_is_already_cancelled()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        cancellationTokenSource.Cancel();
+
+        var act = () => builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
+
+        act.Should()
+           .Throw<InvalidOperationException>("cancellation is permanent, so an executor built now would hand every command an already-cancelled token")
+           .WithMessage("*already been cancelled*");
+    }
+
+    [Fact]
     public void CancelKeyPress_should_cancel_the_token_and_suppress_termination_on_the_first_interrupt()
     {
         using var builder = AppBuilder.Create().WithName("Widget Tool");
