@@ -192,8 +192,9 @@ Note what the base class gives you and what you therefore never write in `DoExec
   step 9).
 - **Exceptions** never escape. Anything thrown goes to the injected `IExceptionHandler`, whose
   return value becomes the exit code.
-- **Cancellation** is separated from failure: an `OperationCanceledException` is not treated as a
-  fault, it returns `ExitCode.Cancelled`.
+- **Cancellation** is separated from failure: when the token the command received has been
+  cancelled, an `OperationCanceledException` is not treated as a fault, it returns
+  `ExitCode.Cancelled`. One raised while that token is still live is a fault like any other.
 - **`ExitCode`, not `int`.** The base class casts for you.
 
 Before `DoExecute` runs, the base class prints a short `Executing command …` /
@@ -747,8 +748,13 @@ protected override async Task<ExitCode> DoExecuteAsync(CommandContext context,
 }
 ```
 
-The base class treats cancellation as an outcome rather than a fault: an `OperationCanceledException`
-is not passed to `IExceptionHandler`, it becomes `ExitCode.Cancelled` (130).
+The base class treats cancellation as an outcome rather than a fault, but only when it was
+requested through the token the command received: an `OperationCanceledException` thrown while
+that token has cancellation requested is not passed to `IExceptionHandler`, it becomes
+`ExitCode.Cancelled` (130). An `OperationCanceledException` raised while the token is still live
+— a `TaskCanceledException` from an `HttpClient` timeout, or an inner token the command created
+and cancelled itself — is a fault nobody asked for, so it goes to the exception handler like any
+other exception.
 
 ### Where the token comes from
 
@@ -769,6 +775,19 @@ of the shutdown being requested.
 
 `EnvironmentSettings.PauseBeforeExit` is skipped after cancellation: prompting for Enter on the way
 out of a shutdown the user just asked for would turn it into a hang.
+
+### One run per executor
+
+`ConfigureCommandApp` returns an executor that permits one execution attempt. An attempt may build
+the host behind it, and that host cannot be built again, so every attempt consumes the executor
+whatever its outcome: a second `Run` / `RunAsync` on the same executor throws
+`InvalidOperationException`. To run again, call `ConfigureCommandApp` on the builder once more; it
+configures a fresh host builder over the same recorded configuration and the same cancellation
+source — the host itself is built when the new executor runs. Cancellation is permanent, so a source
+that was cancelled stays cancelled, and `ConfigureCommandApp` on the same builder after Ctrl+C throws
+`InvalidOperationException` rather than hand out an executor whose every command would start with an
+already-cancelled token; to run again after cancellation, start from a new builder
+(`AppBuilder.Create`) or pass a fresh `CancellationTokenSource` to the constructor.
 
 ## 13. Logging with Serilog
 
@@ -860,8 +879,12 @@ Two things worth testing that are easy to overlook:
 - **Token expansion.** Give the processor a `TokensArgumentsProcessor`
   (`new CommandArgumentsRootProcessor([new TokensArgumentsProcessor()])`) and assert the setting was
   rewritten.
-- **Cancellation.** Pass an already-cancelled token and assert `ExitCode.Cancelled`, plus that the
-  exception handler was never called — that proves cancellation is not being reported as a failure.
+- **Cancellation.** Pass an already-cancelled token to an implementation that observes it (for
+  example one that calls `cancellationToken.ThrowIfCancellationRequested()`) and assert
+  `ExitCode.Cancelled`, plus that the exception handler was never called — that proves cancellation
+  is not being reported as a failure. Then throw an `OperationCanceledException` with the token
+  still live and assert the handler received it — that proves a cancellation nobody asked for is
+  not reported as one.
 
 ## 15. Development conveniences
 

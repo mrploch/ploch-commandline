@@ -58,8 +58,16 @@ public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
 }
 ```
 
+`ConfigureCommandApp` returns an executor that permits one execution attempt; call it again to
+build another executor for another run. Cancellation is permanent: once the builder's cancellation
+source has been cancelled, `ConfigureCommandApp` throws `InvalidOperationException`, so a run after
+Ctrl+C starts from a new builder (`AppBuilder.Create`) or a fresh `CancellationTokenSource` passed
+to the constructor.
+
 `AppCommand<TSettings>` validates the settings, runs the registered argument processors, and turns
-exceptions and cancellation into exit codes, so `DoExecute` holds only the command's own work.
+exceptions and cancellation into exit codes — cancellation only when the command's own token was
+cancelled; see the Getting Started guide's Cancellation section — so `DoExecute` holds only the
+command's own work.
 
 ## Getting Started
 
