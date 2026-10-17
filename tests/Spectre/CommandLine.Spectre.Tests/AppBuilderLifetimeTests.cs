@@ -23,12 +23,18 @@ public sealed class AppBuilderLifetimeTests : IDisposable
     private readonly RecordingConsole _console = new();
     private readonly LifetimeRecorder _recorder = new();
 
+    /// <summary>
+    ///     Initialises an isolated console and environment for each lifetime probe.
+    /// </summary>
     public AppBuilderLifetimeTests()
     {
         AnsiConsole.Console = _console.Console;
         EnvironmentSettings.Current = new EnvironmentSettings(isDebugging: false, pauseBeforeExit: false, new Dictionary<string, string?>());
     }
 
+    /// <summary>
+    ///     Restores the global console, resets the environment and disposes the recording console.
+    /// </summary>
     public void Dispose()
     {
         AnsiConsole.Console = _originalConsole;
@@ -36,6 +42,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
         _console.Dispose();
     }
 
+    /// <summary>
+    ///     Verifies that the lifetime probe completes successfully through the application pipeline.
+    /// </summary>
     [Fact]
     public void Run_should_execute_the_probe_command()
     {
@@ -44,6 +53,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
         _recorder.ExitCode.Should().Be((int)ExitCode.Success);
     }
 
+    /// <summary>
+    ///     Verifies that resolving the command creates an instance distinct from the executing command.
+    /// </summary>
     [Fact]
     public void Run_should_resolve_a_different_command_instance_for_every_resolution()
     {
@@ -54,6 +66,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
                  .And.NotBeSameAs(_recorder.ExecutingCommand, "Spectre registers the command type as transient through the registrar");
     }
 
+    /// <summary>
+    ///     Verifies that resolving settings creates an instance distinct from the executing settings.
+    /// </summary>
     [Fact]
     public void Run_should_resolve_a_different_settings_instance_for_every_resolution()
     {
@@ -64,6 +79,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
                  .And.NotBeSameAs(_recorder.ExecutingSettings, "Spectre registers the settings type as transient through the registrar");
     }
 
+    /// <summary>
+    ///     Verifies that execution receives the parsed option while separately resolved settings remain unbound.
+    /// </summary>
     [Fact]
     public void Run_should_hand_the_command_the_bound_settings_and_the_container_an_unbound_instance()
     {
@@ -73,6 +91,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
         _recorder.SettingsResolvedFromContainer!.Tag.Should().BeNull("a settings instance resolved from the container is a fresh, unbound one");
     }
 
+    /// <summary>
+    ///     Verifies that each resolution creates a separate root settings processor.
+    /// </summary>
     [Fact]
     public void Run_should_resolve_a_fresh_settings_processor_for_every_resolution()
     {
@@ -81,6 +102,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
         _recorder.FirstProcessor.Should().NotBeNull().And.NotBeSameAs(_recorder.SecondProcessor);
     }
 
+    /// <summary>
+    ///     Verifies that output resolutions within the host share the same instance.
+    /// </summary>
     [Fact]
     public void Run_should_share_the_output_between_resolutions()
     {
@@ -89,6 +113,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
         _recorder.FirstOutput.Should().NotBeNull().And.BeSameAs(_recorder.SecondOutput, "the output is shared infrastructure and stays a singleton");
     }
 
+    /// <summary>
+    ///     Verifies that cancellation source resolutions within the host share the same instance.
+    /// </summary>
     [Fact]
     public void Run_should_share_the_cancellation_source_between_resolutions()
     {
@@ -99,6 +126,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
                  .And.BeSameAs(_recorder.SecondCancellationTokenSource, "the application's cancellation source stays a singleton");
     }
 
+    /// <summary>
+    ///     Runs the probe with a bound tag option and records its exit code and service resolutions.
+    /// </summary>
     private void RunProbe()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -163,6 +193,13 @@ public sealed class AppBuilderLifetimeTests : IDisposable
                                               LifetimeRecorder recorder)
         : AppCommand<LifetimeProbeSettings>(settingsProcessor, validator, exceptionHandler, output)
     {
+        /// <summary>
+        ///     Records the executing command and settings alongside services resolved from the same host.
+        /// </summary>
+        /// <param name="context">The context supplied by Spectre for the probe invocation.</param>
+        /// <param name="settings">The settings containing the parsed probe options.</param>
+        /// <param name="cancellationToken">The cancellation token supplied to command execution.</param>
+        /// <returns>The success exit code after recording the lifetime observations.</returns>
         protected override ExitCode DoExecute(CommandContext context, LifetimeProbeSettings settings, CancellationToken cancellationToken)
         {
             recorder.ExecutingCommand = this;

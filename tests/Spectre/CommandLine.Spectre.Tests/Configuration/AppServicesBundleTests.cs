@@ -21,6 +21,9 @@ namespace Ploch.CommandLine.Spectre.Tests.Configuration;
 [Collection(GlobalConsoleState.Name)]
 public sealed class AppServicesBundleTests
 {
+    /// <summary>
+    ///     Verifies that the root processor registration cannot capture transient processors as a singleton.
+    /// </summary>
     [Fact]
     public void Bundle_should_register_the_root_settings_processor_as_transient()
     {
@@ -31,6 +34,9 @@ public sealed class AppServicesBundleTests
         descriptor.Lifetime.Should().Be(ServiceLifetime.Transient, "a singleton root processor would capture the transient processors it aggregates");
     }
 
+    /// <summary>
+    ///     Verifies that the bundle registers the token processor with a transient lifetime.
+    /// </summary>
     [Fact]
     public void Bundle_should_register_the_token_processor_as_transient()
     {
@@ -42,6 +48,9 @@ public sealed class AppServicesBundleTests
         descriptor.Lifetime.Should().Be(ServiceLifetime.Transient);
     }
 
+    /// <summary>
+    ///     Verifies that resolving the root settings processor twice produces separate instances.
+    /// </summary>
     [Fact]
     public void Bundle_should_resolve_a_fresh_root_settings_processor_for_every_resolution()
     {
@@ -53,6 +62,9 @@ public sealed class AppServicesBundleTests
         first.Should().NotBeSameAs(second);
     }
 
+    /// <summary>
+    ///     Verifies that resolving the token processor twice produces separate instances.
+    /// </summary>
     [Fact]
     public void Bundle_should_resolve_a_fresh_token_processor_for_every_resolution()
     {
@@ -64,6 +76,9 @@ public sealed class AppServicesBundleTests
         first.Should().NotBeSameAs(second);
     }
 
+    /// <summary>
+    ///     Verifies that two settings pipelines expand tokens while retaining separate collected-property state.
+    /// </summary>
     [Fact]
     public void ProcessArguments_should_not_share_token_processor_state_between_two_invocations()
     {
@@ -105,6 +120,10 @@ public sealed class AppServicesBundleTests
         secondSettings.ReportName.Should().NotContain("{date}");
     }
 
+    /// <summary>
+    ///     Creates a service collection configured with the application bundle and an empty configuration.
+    /// </summary>
+    /// <returns>The service registrations used to inspect and resolve the settings pipeline.</returns>
     private static IServiceCollection BuildServices()
     {
         IServiceCollection services = new ServiceCollection();
