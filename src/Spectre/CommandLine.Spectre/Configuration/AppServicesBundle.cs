@@ -29,10 +29,11 @@ public class AppServicesBundle : ConfigurableServicesBundle
     /// <remarks>
     ///     This method registers:
     ///     - Spectre.Console input, cursor, exclusivity mode, and profile as singletons
+    ///     - Serilog configuration through SerilogConfigurationBundle
     ///     - CommandArgumentsRootProcessor and the TokensArgumentsProcessor implementation of ICommandSettingsProcessor
     ///       as transient services, so each resolution receives a fresh instance
     ///     - Command settings validation and exception handling services as singletons
-    ///     - Logging services.
+    ///     - The logging services, with Serilog as the provider through the dependency bundle.
     /// </remarks>
     protected override void Configure(IConfiguration configuration)
     {
@@ -52,7 +53,7 @@ public class AppServicesBundle : ConfigurableServicesBundle
                 .AddSingleton(typeof(ICommandSettingsValidator<>), typeof(CommandSettingsValidator<>))
                 .AddSingleton<IExceptionHandler, DefaultExceptionHandler>();
 
-        // No AddConsole() here: SerilogConfigurationBundle already installs a console sink, and adding the
+        // No AddConsole() here: SerilogConfigurationBundle already installs the Spectre.Console sink, and adding the
         // Microsoft console logger as well duplicated every log line on the terminal.
         Services.AddLogging();
     }

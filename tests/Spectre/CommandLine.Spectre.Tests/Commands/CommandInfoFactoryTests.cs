@@ -1,37 +1,63 @@
 ﻿using Ploch.CommandLine.Spectre.Commands;
-using Spectre.Console;
-using Spectre.Console.Cli;
 
 namespace Ploch.CommandLine.Spectre.Tests.Commands;
 
-public class TestCommandSettings : CommandSettings
+/// <summary>
+///     Cover for <see cref="CommandInfoFactory" />. The attribute-carrying path previously threw
+///     <see cref="NotImplementedException" /> — which is the entire purpose of the factory — and no test
+///     exercised it.
+/// </summary>
+public class CommandInfoFactoryTests
 {
-    [CommandArgument(0, "[arg]")]
-    public string? Arg { get; set; }
-}
-
-[Command(nameof(TestCommand), "tc", "Test command for unit testing purposes.", "arg1 some-value")]
-public class TestCommand : Command<TestCommandSettings>
-{
-    public bool Executed { get; private set; }
-
-    public bool Validated { get; private set; }
-
-    public override int Execute(CommandContext context, TestCommandSettings settings, CancellationToken cancellationToken)
+    [Fact]
+    public void CreateFromType_should_map_every_attribute_value_onto_the_command_info()
     {
-        Executed = true;
+        var result = CommandInfoFactory.CreateFromType(typeof(FullyAttributedCommand));
 
-        return (int)ExitCode.Success;
+        result.Name.Should().Be("full");
+        result.Alias.Should().Be("f");
+        result.Description.Should().Be("A fully attributed command.");
+        result.Examples.Should().BeEquivalentTo("full --one", "full --two");
     }
 
-    public override ValidationResult Validate(CommandContext context, TestCommandSettings settings)
+    [Fact]
+    public void CreateFromType_should_fall_back_to_the_type_name_when_the_attribute_is_absent()
     {
-        Validated = true;
+        var result = CommandInfoFactory.CreateFromType(typeof(UnattributedCommand));
 
-        return ValidationResult.Success();
+        result.Name.Should().Be(nameof(UnattributedCommand));
+        result.Alias.Should().BeNull();
+        result.Description.Should().BeNull();
+        result.Examples.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CreateFromType_should_carry_the_hidden_flag()
+    {
+        var result = CommandInfoFactory.CreateFromType(typeof(HiddenCommand));
+
+        result.IsHidden.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromType_should_default_to_visible_when_the_attribute_does_not_hide_the_command()
+    {
+        var result = CommandInfoFactory.CreateFromType(typeof(FullyAttributedCommand));
+
+        result.IsHidden.Should().BeFalse();
+    }
+
+    [Command("full", "f", "A fully attributed command.", "full --one", "full --two")]
+    private sealed class FullyAttributedCommand
+    {
+    }
+
+    [Command("hidden", IsHidden = true)]
+    private sealed class HiddenCommand
+    {
+    }
+
+    private sealed class UnattributedCommand
+    {
     }
 }
-
-[Command(nameof(TestCommand), "tc", "Test command for unit testing purposes.", "arg1 some-value")]
-public class InheritedTestCommand : TestCommand
-{ }

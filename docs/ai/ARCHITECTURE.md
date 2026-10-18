@@ -120,6 +120,10 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 `args` is passed twice on purpose: to `Create` for host configuration and to `Run` for parsing.
 The canonical call site is `samples/SampleApp/src/SampleApp/Program.cs`.
 
+Step 4 builds the host only once parsing has succeeded and a command is being resolved — a parse
+failure or `--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and never
+starts it; see **Hosting** in section 5.
+
 ### 4.2 Command execution
 
 1. Spectre binds the settings and calls the command's `Validate` override, which delegates to the
@@ -137,7 +141,7 @@ The synchronous and asynchronous bases behave identically apart from `await`.
 
 | Package | Mechanism |
 |---|---|
-| Serilog | Always registered: `AppServicesBundle` declares `SerilogConfigurationBundle` as a dependency. Call `services.AddSerilog(configuration, logName:, logPath:)` to customise |
+| Serilog | Always registered: `AppServicesBundle` declares `SerilogConfigurationBundle` as a dependency. Call `services.AddSerilog(configuration, logName:, logPath:)` to customise. `configuration` is optional: without one the bundle skips the base class's null check and registers the predefined sinks (rolling file, warnings-and-above file, Spectre.Console) at the `Information` minimum level |
 | FluentValidation | `services.AddCommandLineSettingsFluentValidation(b => b.AddAssembly(...))` registers an open-generic `ICommandSettingsValidator<>` after the default one, so it wins |
 | UseCases | Derive from `UseCaseAsyncCommand<...>`, implement `CreateRequest`, register the use case in DI |
 
@@ -165,7 +169,8 @@ them in `Dispose`. A builder made with the public constructor owns neither.
 validation failures before a command runs.
 
 **Output and markup.** `FormattableString` messages have their holes escaped. Plain `string`
-messages are parsed as markup. `WriteBold` and `WriteError` escape content before wrapping it.
+messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in to parsing.
+`WriteBold` and `WriteError` escape content before wrapping it in a tag and rendering it as markup.
 Handler selection is "most derived type wins; first registration wins ties".
 
 **Service lifetimes.** `DependencyInjectionTypeRegistrar` registers everything Spectre asks for
@@ -182,6 +187,15 @@ FluentValidation's default scoped lifetime and are resolved in a scope per valid
 registrations are queued when the
 application runs, after every `ConfigureServices` delegate, and the last registration wins, so a
 caller cannot turn a command back into a singleton from `ConfigureServices`.
+
+**Hosting.** The host is built once a run reaches command resolution — a parse failure or
+`--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and the library
+never starts it: it exists for dependency injection, configuration and logging, and a CLI command
+is the unit of work. `IHost.StartAsync` is not called, so a registered `IHostedService` is neither
+started nor stopped by the library, and a host that was built is disposed when the run ends
+(PLO-780, pinned by
+`AppBuilderTests.ConfigureCommandApp_should_not_start_the_host_so_a_registered_hosted_service_never_runs`).
+Starting the host around the command is a possible 1.x feature, tracked as PLO-785.
 
 ## 6. Extension points
 
@@ -203,9 +217,7 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
-| Hosting | The host is built but never started; hosted services do not run |
 | Cancellation | `catch (OperationCanceledException)` does not check that the token was cancelled |
-| Output | `IOutput.Write(string)` throws on user data containing `[` |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
 | Public API | `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`, `CommandAppConfigurator` have no caller in `src/` |

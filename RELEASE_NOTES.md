@@ -30,8 +30,21 @@ have been retired.
 - An output pipeline built on `IOutput` and `IMessageFormatterProcessor`, with
   type-based formatters and writers.
 - `UseCaseAsyncCommand`, bridging commands to `IResultUseCase`.
+- `IOutput.Markup(string)` and `IOutput.MarkupLine(string)`, the explicit entry
+  points for rendering a string as Spectre markup, next to the existing
+  `MarkupInterpolated` / `MarkupLineInterpolated`.
 
 ### Changed
+
+- **Breaking:** `IOutput.Write(string)` and `WriteLine(string)` write the text
+  verbatim instead of parsing it as Spectre markup, following Spectre.Console's
+  own split between `Write(string)` and `Markup(string)`. A caller that relied on
+  `Write("[green]ok[/]")` rendering green text should call `Markup` /
+  `MarkupLine`, or `MarkupLineInterpolated` for a string with values in it.
+  `FormattableString` messages are unchanged and still render as interpolated
+  markup with their holes escaped.
+- **Breaking:** `IOutput` gains the two `Markup` / `MarkupLine` members, so a
+  custom implementation of the interface must add them.
 
 - **Breaking:** `AppCommand<TSettings>.DoExecute` and
   `AsyncAppCommand<TSettings>.DoExecuteAsync` accept a `CancellationToken`.
@@ -73,6 +86,10 @@ have been retired.
   constructor-injects its own settings type now receives a fresh, unbound instance
   rather than the bound one Spectre passes to `Execute`
   ([PLO-781](https://linear.app/ploch/issue/PLO-781)).
+- `Ploch.CommandLine.Spectre` no longer declares the eight `Serilog.*` packages as
+  direct dependencies. They were duplicates of what its `Ploch.CommandLine.Spectre.Serilog`
+  dependency already declares, so the resolved package graph of a consumer is unchanged;
+  only the package's own dependency list is shorter.
 
 ### Removed
 
@@ -88,6 +105,15 @@ have been retired.
 
 ### Fixed
 
+- `services.AddSerilog()` called without an `IConfiguration` threw
+  `InvalidOperationException` ("configuration was not initialized"), although the
+  method's documentation showed exactly that call. `SerilogConfigurationBundle` now
+  registers the logger with its predefined sinks and the `Information` minimum level
+  when no configuration is supplied; its `Configure` hook runs in that case too, so a
+  subclass override receives `null` instead of being skipped. **Breaking (source,
+  nullability):** the override's parameter is now declared `IConfiguration?`; with
+  nullable warnings enabled, a subclass override with a non-nullable parameter produces
+  CS8765 on recompilation and should declare `IConfiguration?` as well.
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.
@@ -97,6 +123,10 @@ have been retired.
 - `AnsiConsoleMarkupOutput.Write` printed every writer-handled message twice.
 - `DefaultExceptionHandler` could throw while reporting a `Win32Exception`, whose
   text contains `[` sequences that Spectre parses as markup.
+- `IOutput.Write(string)` and `WriteLine(string)` threw `InvalidOperationException`
+  for any text that was not well-formed markup — a path such as `C:\logs[1].txt`
+  or user input echoed back — because every string was sent through the markup
+  parser.
 - The Serilog error-log sink sat outside its filtered sub-logger, so the "errors"
   file received every event.
 - `IOutput.Write` threw `InvalidCastException` whenever the registered writer for

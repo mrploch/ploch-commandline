@@ -39,6 +39,11 @@ public sealed class DependencyInjectionTypeRegistrar(IHostBuilder builder) : ITy
     ///     Builds and returns a type resolver that can resolve types from the configured service provider.
     /// </summary>
     /// <returns>An <see cref="ITypeResolver" /> implementation that resolves types from the built host.</returns>
+    /// <remarks>
+    ///     The host is built here but not started, so an <see cref="IHostedService" /> registered with it has neither
+    ///     <c>StartAsync</c> nor <c>StopAsync</c> invoked by the library; the returned resolver disposes the host. See
+    ///     the remarks on <see cref="AppBuilder.ConfigureCommandApp" />.
+    /// </remarks>
     public ITypeResolver Build() => new DependencyInjectionTypeResolver(builder.Build());
 
     /// <summary>

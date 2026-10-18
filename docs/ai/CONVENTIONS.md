@@ -131,5 +131,3 @@ section 10 says so.
 | Committed `commits.md`, `branch-naming.md`, `traceability.md` and `work-traceability.md` rules require GitHub issues and `#<n>` references | Linear issues and `PLO-<n>` are used | The committed rule copies are stale |
 | Sub-packages include Autofac | No Autofac package exists | Removed before the rewrite |
 | Test stack lists AutoFixture | AutoFixture is used only through `[AutoMockData]` | Indirect |
-| One test class per file, named after it | Three test files hold differently named or multiple classes | Listed in `BACKLOG.md` |
-| Pull request template covers the process | Template is generic and asks about "analytics" | Listed in `AGENT-CONFIG.md` |
