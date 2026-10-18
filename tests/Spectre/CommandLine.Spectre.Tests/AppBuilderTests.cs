@@ -56,6 +56,7 @@ public sealed class AppBuilderTests : IDisposable
     public void Dispose()
     {
         ProbeCommand.Recorder = null;
+        ProbeHostedService.Reset();
         AnsiConsole.Console = _originalConsole;
         EnvironmentSettings.Reset();
         _console.Dispose();
@@ -199,6 +200,30 @@ public sealed class AppBuilderTests : IDisposable
 
         recorder.ExitCode.Should().Be(0);
         recorder.Marker.Should().NotBeNull("the bundle registers the marker in the container the command resolves from");
+    }
+
+    /// <summary>
+    ///     Pins the decision recorded in PLO-780: the host exists for dependency injection, configuration and logging
+    ///     and is never started, so a hosted service a consumer registers does not run. Resolving the service from the
+    ///     container proves the registration reached the host; the counters prove nothing started or stopped it.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_not_start_the_host_so_a_registered_hosted_service_never_runs()
+    {
+        // Dispose resets the counters after every test; resetting here as well keeps an aborted earlier run from
+        // leaking a count into this one.
+        ProbeHostedService.Reset();
+
+        var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddHostedService<ProbeHostedService>()));
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.HostedServiceTypes
+                .Should()
+                .ContainSingle(type => type == typeof(ProbeHostedService),
+                               "the registration must reach the container the command resolves from, or this test proves nothing");
+        ProbeHostedService.StartCalls.Should().Be(0, "a CLI command is the unit of work; the host is built, never started (PLO-785 tracks starting it)");
+        ProbeHostedService.StopCalls.Should().Be(0, "a host that was never started is not stopped either");
+        ProbeHostedService.DisposeCalls.Should().Be(1, "the host, and with it the singleton it constructed, is disposed when the run ends");
     }
 
     [Fact]
@@ -876,6 +901,9 @@ public sealed class AppBuilderTests : IDisposable
 
         public string? SecondConfigurationValue { get; set; }
 
+        /// <summary>The hosted services the container holds, so a test can tell "registered" from "started".</summary>
+        public List<Type> HostedServiceTypes { get; } = [];
+
         public CancellationTokenSource? CancellationTokenSource { get; set; }
 
         /// <summary>
@@ -904,6 +932,7 @@ public sealed class AppBuilderTests : IDisposable
             recorder.ExecutionToken = cancellationToken;
             recorder.MarkerNames.AddRange(services.GetServices<Marker>().Select(marker => marker.Name));
             recorder.Marker = services.GetService<Marker>();
+            recorder.HostedServiceTypes.AddRange(services.GetServices<IHostedService>().Select(service => service.GetType()));
 
             return 0;
         }
@@ -980,5 +1009,42 @@ public sealed class AppBuilderTests : IDisposable
     private sealed class MarkerServicesBundle : ServicesBundle
     {
         public override void DoConfigure() => Services.AddSingleton(new Marker());
+    }
+
+    /// <summary>
+    ///     Counts the lifecycle calls a started host would make, and the disposal the host's own disposal causes. The
+    ///     counters are static because the host constructs the instance; that is safe because this class runs in a
+    ///     non-parallel collection and <see cref="AppBuilderTests.Dispose" /> resets them.
+    /// </summary>
+    private sealed class ProbeHostedService : IHostedService, IDisposable
+    {
+        public static int StartCalls { get; private set; }
+
+        public static int StopCalls { get; private set; }
+
+        public static int DisposeCalls { get; private set; }
+
+        public static void Reset()
+        {
+            StartCalls = 0;
+            StopCalls = 0;
+            DisposeCalls = 0;
+        }
+
+        public void Dispose() => DisposeCalls++;
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            StartCalls++;
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            StopCalls++;
+
+            return Task.CompletedTask;
+        }
     }
 }

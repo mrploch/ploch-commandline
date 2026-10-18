@@ -120,6 +120,10 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 `args` is passed twice on purpose: to `Create` for host configuration and to `Run` for parsing.
 The canonical call site is `samples/SampleApp/src/SampleApp/Program.cs`.
 
+Step 4 builds the host only once parsing has succeeded and a command is being resolved — a parse
+failure or `--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and never
+starts it; see **Hosting** in section 5.
+
 ### 4.2 Command execution
 
 1. Spectre binds the settings and calls the command's `Validate` override, which delegates to the
@@ -172,6 +176,15 @@ Handler selection is "most derived type wins; first registration wins ties".
 **Service lifetimes.** The registrar registers everything Spectre asks for as a singleton, so
 commands and settings are singletons resolved from the root provider.
 
+**Hosting.** The host is built once a run reaches command resolution — a parse failure or
+`--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and the library
+never starts it: it exists for dependency injection, configuration and logging, and a CLI command
+is the unit of work. `IHost.StartAsync` is not called, so a registered `IHostedService` is neither
+started nor stopped by the library, and a host that was built is disposed when the run ends
+(PLO-780, pinned by
+`AppBuilderTests.ConfigureCommandApp_should_not_start_the_host_so_a_registered_hosted_service_never_runs`).
+Starting the host around the command is a possible 1.x feature, tracked as PLO-785.
+
 ## 6. Extension points
 
 | To change | Do this |
@@ -192,7 +205,6 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
-| Hosting | The host is built but never started; hosted services do not run |
 | Lifetimes | Singleton commands capture transient services, including `TokensArgumentsProcessor` |
 | Cancellation | `catch (OperationCanceledException)` does not check that the token was cancelled |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
