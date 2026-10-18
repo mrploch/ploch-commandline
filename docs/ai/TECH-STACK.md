@@ -74,8 +74,9 @@ Things that do not work as you might expect:
 
 - `dotnet list package --outdated`, `--vulnerable` and `--deprecated` exit 1 without a token unless
   `--source` is given.
-- `.github/scripts/test-*.sh` need bash 4 or later (`mapfile`); they fail under the stock macOS
-  bash 3.2.
+- `.github/scripts/*.sh` and their `test-*.sh` fixture tests run under the stock macOS bash 3.2 as
+  well as bash 5; keep them free of `mapfile`, associative arrays and unguarded expansions of
+  arrays that may be empty.
 - Every build of the main solution packs NuGet packages, Debug included
   (`GeneratePackageOnBuild=true` for its non-test projects). The sample sets it to `false`.
 
@@ -184,6 +185,12 @@ Facts worth knowing:
   defined as empty: NuGet on Linux rejects an empty feed password in `dotnet tool restore` and
   `dotnet restore`, before any fallback. Result steps run after a failed test step, not a skipped
   or cancelled one.
+- `build-dotnet.yml`, `codeql.yml` and `qodana_code_quality.yml` each run under a concurrency group
+  keyed by workflow and pull-request number, so a later push to an open pull request cancels the
+  run it supersedes. Every other event (push to `main` or `releases/*`, schedule, dispatch) is keyed
+  by run id instead - a group of its own - so this configuration never cancels or displaces them;
+  the package publish and code-scanning upload keep their existing success conditions. A
+  superseded pull-request run can be cancelled before its upload, which is the point.
 - Review bots that comment on pull requests are configured outside the repository.
 - On the verification date every workflow's recent history was green.
 
@@ -222,8 +229,6 @@ Facts worth knowing:
 | File-name casing | `directory.build.targets` is lower-case and fully commented out; the solution lists `NuGet.Config` for `nuget.config` |
 | Enforcement gap | Workflow comments call SonarCloud a required gate; the ruleset does not require it |
 | Stale comments | NBGV version in `build-dotnet.yml`, feed description in `codeql.yml`, branch name in `release.yml` |
-| Linux-only scripts | `mapfile` in `.github/scripts/` |
 | Vestigial items | `samples/Directory.Packages.props`, `IsReleaseBuild`, an empty `Models` folder entry, eight duplicated Serilog references in core |
 | Noisy build | `PrintSettings` prints ten lines per project; every Debug build packs |
 | Pending majors | xunit.v3 4, Roslynator 5; StyleCop 1.1.118 predates C# 12 |
-| No concurrency cancellation | Superseded PR runs are not cancelled |
