@@ -62,10 +62,13 @@ SYMBOLS_REQUIRED="${SYMBOLS_REQUIRED:-false}"
 # produced four levels down. An unmatched glob is then passed through literally and
 # `dotnet nuget push` exits 0 on it - the step reports success having published nothing.
 #
-# Restricted to bin/Release: Directory.Build.props sets GeneratePackageOnBuild=true for every
-# non-test project, so a library packs on EVERY build, not only the Release one. The workflow
-# builds these projects more than once, and a Debug pack therefore sits beside the Release pack
-# carrying the identical version. Unfiltered, `sort` orders 'bin/Debug' before 'bin/Release', so
+# Restricted to bin/Release when searching the tree (--dir trusts the given pack output directory
+# and only excludes bin/Debug): Directory.Build.props used to set GeneratePackageOnBuild=true for
+# every non-test project, so a library packed on EVERY build, not only the Release one, and the
+# workflow builds these projects more than once - a Debug pack therefore sat beside the Release
+# pack carrying the identical version. Debug builds no longer pack (PLO-758), but the filter
+# stays, because a stale bin/Debug left by an older checkout would otherwise be eligible again.
+# Unfiltered, `sort` orders 'bin/Debug' before 'bin/Release', so
 # the Debug artefact claims the version on the feed and --skip-duplicate silently swallows the
 # Release one that follows. That is not hypothetical: run 33169218883 on this very branch pushed
 # the Debug build of all four packages and reported success --

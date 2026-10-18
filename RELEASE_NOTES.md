@@ -71,6 +71,10 @@ have been retired.
   earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
   now registered after every caller service delegate, including those added
   through `ConfigureHost`.
+- `Ploch.CommandLine.Spectre` no longer declares the eight `Serilog.*` packages as
+  direct dependencies. They were duplicates of what its `Ploch.CommandLine.Spectre.Serilog`
+  dependency already declares, so the resolved package graph of a consumer is unchanged;
+  only the package's own dependency list is shorter.
 
 ### Removed
 

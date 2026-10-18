@@ -55,13 +55,13 @@ jobs:
 
       # build-mode: none analyses the source directly, with no compilation.
       #
-      # This is the deciding constraint for this repository: the solution reaches sibling
-      # repositories through relative ProjectReference paths (../ploch-common and
-      # ../mrploch-development), so any build-based mode would have to reproduce that whole
-      # workspace layout - clone both siblings, restore .NET tools for Nerdbank.GitVersioning,
-      # and supply GH_PACKAGES_TOKEN for the private feed - exactly as build-dotnet.yml does.
-      # Carrying that setup a second time buys nothing here: buildless extraction is supported
-      # for C# and needs none of it, so the scan cannot break when the sibling layout changes.
+      # This is the deciding constraint for this repository: the build depends on the sibling
+      # checkout ../mrploch-development (Directory.Packages.props imports the shared version
+      # files from it) and on a NuGet restore for Nerdbank.GitVersioning and every other package,
+      # so any build-based mode would have to reproduce that workspace layout and restore exactly
+      # as build-dotnet.yml does. Carrying that setup a second time buys nothing here: buildless
+      # extraction is supported for C# and needs none of it, so the scan cannot break when the
+      # sibling layout changes.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
