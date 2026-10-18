@@ -17,7 +17,8 @@ namespace Ploch.CommandLine.Spectre;
 ///     The <see cref="AppBuilder" /> class allows for the creation and customization of a command-line application
 ///     by specifying its name, description, version, and other configurations. It integrates with the Spectre.Console.Cli
 ///     library for command-line interface functionality and Microsoft.Extensions.Hosting for dependency injection and
-///     configuration.
+///     configuration. The host it configures is built for those purposes once a run reaches command resolution, and
+///     the library never starts it; see <see cref="ConfigureCommandApp" />.
 /// </remarks>
 public class AppBuilder : IDisposable
 {
@@ -295,6 +296,16 @@ public class AppBuilder : IDisposable
     ///         factory, which run later still, could. The token handed to running commands always comes from the
     ///         builder's own source, whatever the container holds.
     ///     </para>
+    ///     <para>
+    ///         The host is built once a run of the returned executor has parsed its arguments and resolves the
+    ///         command — a parse failure or <c>--version</c> returns before any host exists — and it exists for
+    ///         dependency injection, configuration and logging only: the library never starts it. A CLI command is
+    ///         the unit of work, so <see cref="IHost.StartAsync" /> is not called, and an <see cref="IHostedService" />
+    ///         registered through <c>ConfigureServices</c> — with <c>AddHostedService</c>, for instance — has neither
+    ///         its <see cref="IHostedService.StartAsync" /> nor its <see cref="IHostedService.StopAsync" /> invoked by
+    ///         the library. A host that was built is disposed when the run ends. Starting the host around the command
+    ///         is a possible 1.x feature, tracked as <see href="https://linear.app/ploch/issue/PLO-785">PLO-785</see>.
+    ///     </para>
     /// </remarks>
     public ICommandAppExecutor ConfigureCommandApp(Action<IConfigurator> configurator)
     {
@@ -431,6 +442,10 @@ public class AppBuilder : IDisposable
     ///         later call. Other host builder phases keep their own fixed order; see <see cref="ConfigureCommandApp" />
     ///         for the full ordering guarantee.
     ///     </para>
+    ///     <para>
+    ///         The host the delegate configures is built once a run reaches command resolution and is never started by
+    ///         the library, so a hosted service registered through it does not run; see <see cref="ConfigureCommandApp" />.
+    ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
                      "UnusedMember.Global",
@@ -461,6 +476,11 @@ public class AppBuilder : IDisposable
     ///         <see cref="ConfigureHost" /> call and yields to one made by a later call. See
     ///         <see cref="ConfigureCommandApp" /> for the full ordering guarantee.
     ///     </para>
+    ///     <para>
+    ///         The host these services go into is built once a run reaches command resolution and is never started by
+    ///         the library, so a hosted service registered here — with <c>AddHostedService</c>, for instance — does not
+    ///         run; see <see cref="ConfigureCommandApp" />.
+    ///     </para>
     /// </remarks>
     [SuppressMessage("ReSharper",
                      "UnusedMember.Global",
@@ -490,6 +510,11 @@ public class AppBuilder : IDisposable
     ///         <see cref="ConfigureHost" />, so a registration made here takes precedence over one made by an earlier
     ///         <see cref="ConfigureHost" /> call and yields to one made by a later call. See
     ///         <see cref="ConfigureCommandApp" /> for the full ordering guarantee.
+    ///     </para>
+    ///     <para>
+    ///         The host these services go into is built once a run reaches command resolution and is never started by
+    ///         the library, so a hosted service registered here — with <c>AddHostedService</c>, for instance — does not
+    ///         run; see <see cref="ConfigureCommandApp" />.
     ///     </para>
     /// </remarks>
     public AppBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> servicesConfigurator)

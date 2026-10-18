@@ -14,11 +14,13 @@ namespace Ploch.CommandLine.Spectre;
 ///     <see cref="CancellationToken" /> stops when they do.
 /// </param>
 /// <remarks>
-///     The token is taken rather than the <see cref="CancellationTokenSource" /> behind it. This type only ever
-///     observes cancellation, it never requests it, so it has no use for the source. Taking the token also decouples
-///     execution from the source's lifetime: <see cref="CancellationTokenSource.Token" /> throws
-///     <see cref="ObjectDisposedException" /> once the source is disposed, whereas a token captured beforehand stays
-///     usable.
+///     <para>
+///         The token is taken rather than the <see cref="CancellationTokenSource" /> behind it. This type only ever
+///         observes cancellation, it never requests it, so it has no use for the source. Taking the token also
+///         decouples execution from the source's lifetime: <see cref="CancellationTokenSource.Token" /> throws
+///         <see cref="ObjectDisposedException" /> once the source is disposed, whereas a token captured beforehand
+///         stays usable.
+///     </para>
 ///     <para>
 ///         An executor permits one execution attempt. An attempt may build the host behind the type registrar, and
 ///         <see cref="IHostBuilder.Build" /> cannot be called again, so every attempt consumes the executor whatever its
@@ -28,6 +30,13 @@ namespace Ploch.CommandLine.Spectre;
 ///         through <see cref="AppBuilder" />. An executor constructed directly, or through
 ///         <see cref="CommandAppConfigurator" />, wraps an <see cref="ICommandApp" /> the caller owns, so the caller
 ///         configures a new one.
+///     </para>
+///     <para>
+///         For an executor returned by <see cref="AppBuilder.ConfigureCommandApp" />, a run that reaches command
+///         resolution builds the host for dependency injection, configuration and logging — a parse failure or
+///         <c>--version</c> returns before any host exists. The library never starts the host, so a registered
+///         <see cref="Microsoft.Extensions.Hosting.IHostedService" /> does not run, and a host that was built is
+///         disposed when the run ends. See the remarks on <see cref="AppBuilder.ConfigureCommandApp" />.
 ///     </para>
 /// </remarks>
 public class CommandAppExecutor(ICommandApp commandApp, CancellationToken cancellationToken) : ICommandAppExecutor

@@ -38,12 +38,14 @@ There is no database, container image or external runtime service.
 
 ## 3. Commands
 
-Observed on 2026-10-05 with SDK 10.0.401 and no `GH_PACKAGES_TOKEN`.
+Observed on 2026-10-05 with SDK 10.0.401 and no `GH_PACKAGES_TOKEN`; the two `dotnet build` rows
+were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds packing.
 
 | Command | Result |
 |---|---|
 | `dotnet restore Ploch.CommandLine.Spectre.slnx` | Succeeds; warns `401` from GitHub Packages, falls back to nuget.org |
-| `dotnet build Ploch.CommandLine.Spectre.slnx` | 0 warnings, 0 errors, about 5 s; also packs the 4 packages and their symbol packages |
+| `dotnet build Ploch.CommandLine.Spectre.slnx` | 0 warnings, 0 errors, about 5 s; produces no packages |
+| `dotnet build Ploch.CommandLine.Spectre.slnx -c Release` | 0 warnings, 0 errors; also packs the 4 packages and their symbol packages into `bin/Release` |
 | `dotnet test Ploch.CommandLine.Spectre.slnx` | 289 passed, about 5 s |
 | Sample build, CI mode (below) | Succeeds, about 18 s |
 | Sample test, CI mode | 49 passed |
@@ -74,10 +76,13 @@ Things that do not work as you might expect:
 
 - `dotnet list package --outdated`, `--vulnerable` and `--deprecated` exit 1 without a token unless
   `--source` is given.
-- `.github/scripts/test-*.sh` need bash 4 or later (`mapfile`); they fail under the stock macOS
-  bash 3.2.
-- Every build of the main solution packs NuGet packages, Debug included
-  (`GeneratePackageOnBuild=true` for its non-test projects). The sample sets it to `false`.
+- `.github/scripts/*.sh` and their `test-*.sh` fixture tests run under the stock macOS bash 3.2 as
+  well as bash 5; keep them free of `mapfile`, associative arrays and unguarded expansions of
+  arrays that may be empty.
+- Only a Release build of the main solution packs NuGet packages (`GeneratePackageOnBuild` is
+  `true` for its non-test projects when `Configuration` is `Release`); a Debug build produces no
+  `.nupkg`. The sample sets it to `false`. The per-project settings dump (`PrintSettings`) is
+  opt-in: `dotnet build -p:PrintPlochBuildSettings=true`.
 
 ## 4. Dependencies
 
@@ -93,11 +98,11 @@ verification date; "newer" is the latest stable on nuget.org that day.
 | Spectre.Console.Cli | 0.53.1 | S/Spectre.Console | core | 0.57.2 |
 | Microsoft.Extensions.Hosting | 10.0.5 | S/MicrosoftExtensions.Net9 | core | 10.0.12 |
 | Microsoft.Extensions.Configuration.Json | 10.0.5 | S/MicrosoftExtensions.Net9 | core | 10.0.12 |
-| Serilog | 4.3.0 | S/Serilog.Logging | core, Serilog | 4.4.0 |
-| Serilog.Settings.Configuration | 10.0.0 | S/Serilog.Logging | core, Serilog | 10.0.1 |
-| Serilog.Sinks.SpectreConsole | 0.3.3 | S/Serilog.Logging | core, Serilog | 0.4.0 |
-| Serilog.Sinks.File, .Sinks.Console, .Enrichers.Thread | 7.0.0, 6.1.1, 4.0.0 | S/Serilog.Logging | core, Serilog | current |
-| Serilog.Extensions.Hosting, .Extensions.Logging | 10.0.0 | S/Serilog.Logging | core, Serilog | current |
+| Serilog | 4.3.0 | S/Serilog.Logging | Serilog (core transitively) | 4.4.0 |
+| Serilog.Settings.Configuration | 10.0.0 | S/Serilog.Logging | Serilog (core transitively) | 10.0.1 |
+| Serilog.Sinks.SpectreConsole | 0.3.3 | S/Serilog.Logging | Serilog (core transitively) | 0.4.0 |
+| Serilog.Sinks.File, .Sinks.Console, .Enrichers.Thread | 7.0.0, 6.1.1, 4.0.0 | S/Serilog.Logging | Serilog (core transitively) | current |
+| Serilog.Extensions.Hosting, .Extensions.Logging | 10.0.0 | S/Serilog.Logging | Serilog (core transitively) | current |
 | FluentValidation.DependencyInjectionExtensions | 12.1.1 | L | FluentValidation | current |
 | Ardalis.Result | 10.1.0 | S/Common | UseCases | current |
 | Ploch.Common, Ploch.Common.DependencyInjection | 4.0.47 | S/Ploch | core, Serilog, FluentValidation | current |
@@ -184,6 +189,12 @@ Facts worth knowing:
   defined as empty: NuGet on Linux rejects an empty feed password in `dotnet tool restore` and
   `dotnet restore`, before any fallback. Result steps run after a failed test step, not a skipped
   or cancelled one.
+- `build-dotnet.yml`, `codeql.yml` and `qodana_code_quality.yml` each run under a concurrency group
+  keyed by workflow and pull-request number, so a later push to an open pull request cancels the
+  run it supersedes. Every other event (push to `main` or `releases/*`, schedule, dispatch) is keyed
+  by run id instead - a group of its own - so this configuration never cancels or displaces them;
+  the package publish and code-scanning upload keep their existing success conditions. A
+  superseded pull-request run can be cancelled before its upload, which is the point.
 - Review bots that comment on pull requests are configured outside the repository.
 - On the verification date every workflow's recent history was green.
 
@@ -219,11 +230,6 @@ Facts worth knowing:
 |---|---|
 | Cross-repository coupling | Target framework and versions come from another repository's moving branch |
 | Misleading names | `MicrosoftExtensions.Net9.Packages.props` defines net10; `TargetFrameworkVersion` shadows a well-known MSBuild name |
-| File-name casing | `directory.build.targets` is lower-case and fully commented out; the solution lists `NuGet.Config` for `nuget.config` |
 | Enforcement gap | Workflow comments call SonarCloud a required gate; the ruleset does not require it |
-| Stale comments | NBGV version in `build-dotnet.yml`, feed description in `codeql.yml`, branch name in `release.yml` |
-| Linux-only scripts | `mapfile` in `.github/scripts/` |
-| Vestigial items | `samples/Directory.Packages.props`, `IsReleaseBuild`, an empty `Models` folder entry, eight duplicated Serilog references in core |
-| Noisy build | `PrintSettings` prints ten lines per project; every Debug build packs |
+| Vestigial items | `IsReleaseBuild` in `Directory.Build.props` is set but never read |
 | Pending majors | xunit.v3 4, Roslynator 5; StyleCop 1.1.118 predates C# 12 |
-| No concurrency cancellation | Superseded PR runs are not cancelled |

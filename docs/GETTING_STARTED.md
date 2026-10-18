@@ -47,13 +47,17 @@ dotnet add package Ploch.CommandLine.Spectre
 dotnet add package Spectre.Console.Cli
 ```
 
-Add the optional packages as you reach the steps that need them:
+`Ploch.CommandLine.Spectre` is the only Ploch package you need to start. It depends on
+`Ploch.CommandLine.Spectre.Serilog` and registers its `SerilogConfigurationBundle` through
+`AppServicesBundle`, so logging goes through Serilog from the first run;
+[section 13](#13-logging-with-serilog) shows how to configure it. Add the remaining packages as
+you reach the steps that need them:
 
 | Package | Adds |
 |---|---|
 | `Ploch.CommandLine.Spectre` | `AppBuilder`, the command base classes, `IOutput`, exit codes, token processing |
 | `Ploch.CommandLine.Spectre.FluentValidation` | FluentValidation-backed settings validation |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog wiring with console and rolling-file sinks |
+| `Ploch.CommandLine.Spectre.Serilog` | Serilog wiring with the Spectre.Console console sink and two rolling log files — installed with the core package |
 | `Ploch.CommandLine.UseCases` | `IResultUseCase<,>` and `UseCaseAsyncCommand<,,,>` |
 
 ## 3. Bootstrap the application with AppBuilder
@@ -85,7 +89,13 @@ Three things happen here that you do not have to write yourself:
 - **Application banner.** The name is rendered as FIGlet text, followed by the version and
   description, before any command runs.
 - **Hosting.** `Host.CreateDefaultBuilder` supplies configuration, logging and the service
-  provider. Anything you register with `ConfigureServices` is injectable into commands.
+  provider. Anything you register with `ConfigureServices` is injectable into commands. The host
+  is built once the run reaches command resolution (a parse failure or `--version` returns before
+  that) and the library never starts it: a CLI command is the unit of work, so an `IHostedService`
+  you register (`services.AddHostedService<T>()`) has neither `StartAsync` nor `StopAsync` called
+  by the library, and a host that was built is disposed when the run ends. Starting the host around
+  the command is a possible 1.x feature, tracked as
+  [PLO-785](https://linear.app/ploch/issue/PLO-785); say so there if you need it.
 - **Ctrl+C.** `AppBuilder.Create` installs a `Console.CancelKeyPress` handler over a
   `CancellationTokenSource`, and that source's token is the one your commands receive (see
   [Cancellation](#12-cancellation)). The **first** interrupt cancels it cooperatively instead of
@@ -392,8 +402,22 @@ table.AddRow(user.Id.ToString(), Markup.Escape(user.Name), Markup.Escape(user.Em
 `MarkupLineInterpolated` escapes its interpolation holes automatically — that is the difference
 between it and building a `Markup` from an interpolated string, which does not.
 
-**`IOutput.Write` dispatches on the type of the message.** A `FormattableString`, a `string` and an
-`IRenderable` are rendered directly; anything else is offered to the registered `IMessageWriter`s,
+**`Write` and `WriteLine` print a string as-is; markup is an explicit opt-in.** This mirrors the
+split Spectre.Console makes between `IAnsiConsole.Write(string)` and `IAnsiConsole.Markup(string)`:
+
+```csharp
+Output.WriteLine(@"C:\logs[1].txt");            // prints C:\logs[1].txt - the bracket is text
+Output.MarkupLine("[green]Done.[/]");           // parsed as markup: a green "Done."
+Output.MarkupLineInterpolated($"[green]{path}[/]"); // markup around an escaped value
+```
+
+Because `Markup` and `MarkupLine` parse everything they are given, a value that did not originate
+in your source file goes through `Markup.Escape(...)` first, or through the `…Interpolated` overloads,
+which escape it for you.
+
+**`IOutput.Write` dispatches on the type of the message.** A `FormattableString` is rendered as
+interpolated markup, a `string` is written verbatim and an `IRenderable` is rendered by the
+console; anything else is offered to the registered `IMessageWriter`s,
 and the writer whose message type matches receives the message itself along with the
 `IMessageFormatterProcessor`, so the writer decides how the value is formatted. Writing an
 `Exception` therefore renders the full exception through `ExceptionMessageWriter`, and writing a
@@ -694,6 +718,9 @@ Two exit codes do **not** come from this enumeration:
 - **Whatever `IExceptionHandler` returns** — an unhandled exception inside a command is routed to
   the handler, and the handler's return value is the exit code.
 
+The [exit codes summary](https://commandline.github.ploch.dev/#exit-codes) on the documentation site
+lists the same codes.
+
 Return `InvalidInput` from a command when the input parses fine but is not acceptable — a value
 outside a supported set, a file that does not exist, mutually exclusive flags:
 
@@ -791,8 +818,10 @@ already-cancelled token; to run again after cancellation, start from a new build
 
 ## 13. Logging with Serilog
 
-`Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with a console sink
-and two rolling files — everything, and errors and warnings only:
+`Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with the
+Spectre.Console console sink and two rolling files — everything, and warnings and above. The
+core package registers it with log files named after the process; call `AddSerilog` to choose
+your own name and directory:
 
 ```csharp
 using Ploch.CommandLine.Spectre.Serilog;
@@ -843,8 +872,10 @@ $ cat logs/sample-errors.log
 
 Commands are ordinary classes with constructor dependencies, so they are tested without a host.
 Construct the command with test doubles, build a `CommandContext`, and call the public
-`Execute` / `ExecuteAsync` — that path exercises validation, exception handling and cancellation as
-well as your `DoExecute` body.
+`Execute` / `ExecuteAsync` — that path runs the settings processor and turns exceptions and
+cancellation into exit codes, as well as your `DoExecute` body. It does not run validation:
+`Spectre.Console.Cli` calls `Validate` before `Execute`, so a direct call skips it. Test `Validate`
+(or the `ICommandSettingsValidator<TSettings>` behind it) separately.
 
 ```csharp
 public class UserListCommandTests

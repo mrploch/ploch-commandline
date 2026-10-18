@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Ploch.CommandLine.Spectre.Commands;
+using Ploch.CommandLine.Spectre.Output;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 using Ploch.Common.DependencyInjection;
 using Spectre.Console;
@@ -54,6 +56,7 @@ public sealed class AppBuilderTests : IDisposable
     public void Dispose()
     {
         ProbeCommand.Recorder = null;
+        ProbeHostedService.Reset();
         AnsiConsole.Console = _originalConsole;
         EnvironmentSettings.Reset();
         _console.Dispose();
@@ -197,6 +200,30 @@ public sealed class AppBuilderTests : IDisposable
 
         recorder.ExitCode.Should().Be(0);
         recorder.Marker.Should().NotBeNull("the bundle registers the marker in the container the command resolves from");
+    }
+
+    /// <summary>
+    ///     Pins the decision recorded in PLO-780: the host exists for dependency injection, configuration and logging
+    ///     and is never started, so a hosted service a consumer registers does not run. Resolving the service from the
+    ///     container proves the registration reached the host; the counters prove nothing started or stopped it.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_not_start_the_host_so_a_registered_hosted_service_never_runs()
+    {
+        // Dispose resets the counters after every test; resetting here as well keeps an aborted earlier run from
+        // leaking a count into this one.
+        ProbeHostedService.Reset();
+
+        var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddHostedService<ProbeHostedService>()));
+
+        recorder.ExitCode.Should().Be(0);
+        recorder.HostedServiceTypes
+                .Should()
+                .ContainSingle(type => type == typeof(ProbeHostedService),
+                               "the registration must reach the container the command resolves from, or this test proves nothing");
+        ProbeHostedService.StartCalls.Should().Be(0, "a CLI command is the unit of work; the host is built, never started (PLO-785 tracks starting it)");
+        ProbeHostedService.StopCalls.Should().Be(0, "a host that was never started is not stopped either");
+        ProbeHostedService.DisposeCalls.Should().Be(1, "the host, and with it the singleton it constructed, is disposed when the run ends");
     }
 
     [Fact]
@@ -619,6 +646,61 @@ public sealed class AppBuilderTests : IDisposable
         disposeAgain.Should().NotThrow("Dispose has to be idempotent - a using block around an already-disposed builder is legal");
     }
 
+    /// <summary>
+    ///     Pins the exit code the documentation gives for settings that fail their own <c>Validate</c>: Spectre.Console.Cli
+    ///     rejects them while binding, before the command is even constructed, reports the error itself and returns its
+    ///     own <c>-1</c>, so <see cref="ExitCode.InvalidInput" /> is never involved.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_return_spectres_minus_one_when_the_settings_reject_themselves()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        RejectingCommand.Executed = false;
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  // Spectre.Console.Cli renders its errors through a process-wide console it captures the first time
+                                  // it needs one. Handing it this test's console keeps the rendering out of a console an
+                                  // earlier test has already disposed.
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<RejectingCommand>("reject");
+                              })
+                              .Run("reject");
+
+        exitCode.Should().Be(-1, "Spectre.Console.Cli short-circuits a failed Validate with its own exit code");
+        _console.Output.Should().Contain("rejected by Validate", "Spectre reports the rejection; nothing else produced the -1");
+        RejectingCommand.Executed.Should().BeFalse("a command whose settings fail validation never runs");
+    }
+
+    /// <summary>
+    ///     The same exit code when the settings are fine but the registered
+    ///     <see cref="ICommandSettingsValidator{TSettings}" /> rejects them. This is the path through the base class's
+    ///     <c>Validate</c> override, which Spectre calls after binding and before <c>Execute</c>; the direct
+    ///     <c>Execute</c> call that unit tests make skips it, as the Getting Started guide says.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_return_spectres_minus_one_when_the_registered_validator_rejects_the_settings()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
+            .ConfigureServices(services => services.AddSingleton<ICommandSettingsValidator<AcceptingSettings>, RejectingValidator>());
+        AcceptingCommand.Executed = false;
+        RejectingValidator.Calls = 0;
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<AcceptingCommand>("accept");
+                              })
+                              .Run("accept");
+
+        exitCode.Should().Be(-1, "a validator failure is reported through the command's Validate override and short-circuited by Spectre");
+        RejectingValidator.Calls.Should().Be(1, "Spectre calls the command's Validate override exactly once, and it delegates to the registered validator");
+        _console.Output.Should().Contain("rejected by the validator");
+        AcceptingCommand.Executed.Should().BeFalse("a command whose validator rejects the settings never runs");
+    }
+
     [Fact]
     public void Constructor_should_reject_a_null_app_info()
     {
@@ -901,6 +983,9 @@ public sealed class AppBuilderTests : IDisposable
 
         public string? SecondConfigurationValue { get; set; }
 
+        /// <summary>The hosted services the container holds, so a test can tell "registered" from "started".</summary>
+        public List<Type> HostedServiceTypes { get; } = [];
+
         public CancellationTokenSource? CancellationTokenSource { get; set; }
 
         /// <summary>
@@ -929,13 +1014,119 @@ public sealed class AppBuilderTests : IDisposable
             recorder.ExecutionToken = cancellationToken;
             recorder.MarkerNames.AddRange(services.GetServices<Marker>().Select(marker => marker.Name));
             recorder.Marker = services.GetService<Marker>();
+            recorder.HostedServiceTypes.AddRange(services.GetServices<IHostedService>().Select(service => service.GetType()));
 
             return 0;
+        }
+    }
+
+    // Rejects itself while Spectre binds it, so the command registered for it is never constructed.
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed class RejectingSettings : CommandSettings
+    {
+        public override ValidationResult Validate() => ValidationResult.Error("rejected by Validate");
+    }
+
+    /// <summary>
+    ///     Registered for <see cref="RejectingSettings" />; Spectre never gets as far as constructing it. It derives from
+    ///     the framework base so the registration mirrors a real command.
+    /// </summary>
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed class RejectingCommand(CommandArgumentsRootProcessor settingsProcessor,
+                                          ICommandSettingsValidator<RejectingSettings> validator,
+                                          IExceptionHandler exceptionHandler,
+                                          IOutput output)
+        : AppCommand<RejectingSettings>(settingsProcessor, validator, exceptionHandler, output)
+    {
+        /// <summary>Set by the command if it ever runs; the tests expect it never does.</summary>
+        public static bool Executed { get; set; }
+
+        protected override ExitCode DoExecute(CommandContext context, RejectingSettings settings, CancellationToken cancellationToken)
+        {
+            Executed = true;
+
+            return ExitCode.Success;
+        }
+    }
+
+    // Binds and validates itself fine; only the registered validator below rejects it.
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed class AcceptingSettings : CommandSettings
+    {
+    }
+
+    /// <summary>Constructed by Spectre through the host, which the inspection cannot see; must never execute in the tests.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed class AcceptingCommand(CommandArgumentsRootProcessor settingsProcessor,
+                                          ICommandSettingsValidator<AcceptingSettings> validator,
+                                          IExceptionHandler exceptionHandler,
+                                          IOutput output)
+        : AppCommand<AcceptingSettings>(settingsProcessor, validator, exceptionHandler, output)
+    {
+        /// <summary>Set by the command if it ever runs; the tests expect it never does.</summary>
+        public static bool Executed { get; set; }
+
+        protected override ExitCode DoExecute(CommandContext context, AcceptingSettings settings, CancellationToken cancellationToken)
+        {
+            Executed = true;
+
+            return ExitCode.Success;
+        }
+    }
+
+    /// <summary>Replaces the default validator for <see cref="AcceptingSettings" /> and counts how often Spectre asks it.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed class RejectingValidator : ICommandSettingsValidator<AcceptingSettings>
+    {
+        public static int Calls { get; set; }
+
+        public ValidationResult Validate(CommandContext context, AcceptingSettings settings)
+        {
+            Calls++;
+
+            return ValidationResult.Error("rejected by the validator");
         }
     }
 
     private sealed class MarkerServicesBundle : ServicesBundle
     {
         public override void DoConfigure() => Services.AddSingleton(new Marker());
+    }
+
+    /// <summary>
+    ///     Counts the lifecycle calls a started host would make, and the disposal the host's own disposal causes. The
+    ///     counters are static because the host constructs the instance; that is safe because this class runs in a
+    ///     non-parallel collection and <see cref="AppBuilderTests.Dispose" /> resets them.
+    /// </summary>
+    private sealed class ProbeHostedService : IHostedService, IDisposable
+    {
+        public static int StartCalls { get; private set; }
+
+        public static int StopCalls { get; private set; }
+
+        public static int DisposeCalls { get; private set; }
+
+        public static void Reset()
+        {
+            StartCalls = 0;
+            StopCalls = 0;
+            DisposeCalls = 0;
+        }
+
+        public void Dispose() => DisposeCalls++;
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            StartCalls++;
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            StopCalls++;
+
+            return Task.CompletedTask;
+        }
     }
 }

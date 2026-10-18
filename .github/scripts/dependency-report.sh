@@ -12,6 +12,10 @@
 #
 # Requires the workspace layout: ../mrploch-development must exist beside the repository
 # root, because Directory.Packages.props imports the shared version files from it.
+#
+# Runs under the bash 3.2 that ships with macOS as well as bash 5 on ubuntu-latest, because the
+# fixture test (test-dependency-report.sh) is run locally: no `mapfile`/`readarray`, no
+# associative arrays, and no unguarded expansion of an array that may be empty.
 set -euo pipefail
 
 if [[ $# -eq 0 ]]; then
@@ -281,7 +285,7 @@ package_owner() {
 report_solution() {
   local solution="$1" version_file
   local outdated="$work/outdated.tsv" vulnerable="$work/vulnerable.tsv" rows="$work/rows.md"
-  local id resolved latest severity advisory transitive
+  local id resolved latest severity advisory transitive property
   local -a properties=()
 
   echo "## \`$solution\`" >>"$report"
@@ -306,9 +310,16 @@ report_solution() {
   probes_dir="$work/probes/$solution_count"
   mkdir -p "$probes_dir"
 
-  mapfile -t properties < <(referenced_properties)
+  # `|| [[ -n ... ]]` keeps an unterminated last line, as `mapfile` would.
+  while IFS= read -r property || [[ -n "$property" ]]; do
+    properties+=("$property")
+  done < <(referenced_properties)
+  # A solution whose declarations name no property leaves the array empty, and bash before 4.4
+  # treats "${properties[@]}" of an empty array as unbound under `set -u`; the `+` form expands
+  # to nothing instead.
   if ! run_sdk "$work/evaluation.json" dotnet msbuild "$version_file" -nologo \
-         -getProperty:CentralPackageTransitivePinningEnabled "${properties[@]/#/-getProperty:}" \
+         -getProperty:CentralPackageTransitivePinningEnabled \
+         ${properties[@]+"${properties[@]/#/-getProperty:}"} \
          -getItem:PackageVersion -getItem:GlobalPackageReference; then
     report_unchecked 'the governing Directory.Packages.props could not be evaluated.'
     return 0
