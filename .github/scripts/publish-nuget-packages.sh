@@ -13,6 +13,10 @@
 # Why a script and not two inline `run:` blocks: the main-branch and pull-request publish
 # steps previously carried a copy each of this logic, and the `./**/*.nupkg` glob bug that
 # published nothing was therefore present twice. One implementation cannot drift from itself.
+#
+# Runs under the bash 3.2 that ships with macOS as well as bash 5 on ubuntu-latest, because the
+# fixture test (test-publish-nuget-packages.sh) is run locally: no `mapfile`/`readarray`, no
+# associative arrays, and no unguarded expansion of an array that may be empty.
 set -euo pipefail
 
 LIST_ONLY="false"
@@ -88,8 +92,8 @@ find_packages() {
   fi
 }
 
-# Captured into a variable rather than piped into `mapfile` through a process substitution:
-# `mapfile < <(find ...)` discards find's exit status, so a traversal error that occurred
+# Captured into a variable rather than read through a process substitution:
+# `while read ... < <(find ...)` discards find's exit status, so a traversal error that occurred
 # after a partial result would publish a subset of the packages and report success.
 # `set -o pipefail` makes the failing `find` fail the whole `find | sort` pipeline.
 if ! packages_found=$(find_packages '*.nupkg'); then
@@ -102,7 +106,11 @@ if [[ -z "$packages_found" ]]; then
   exit 1
 fi
 
-mapfile -t packages <<< "$packages_found"
+# `|| [[ -n ... ]]` keeps an unterminated last line, as `mapfile` would.
+packages=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  packages+=("$line")
+done <<< "$packages_found"
 
 if [[ "$SYMBOLS_REQUIRED" == "true" ]]; then
   if ! symbols_found=$(find_packages '*.snupkg'); then
@@ -155,7 +163,10 @@ for pkg in "${packages[@]}"; do
 done
 
 if [[ -n "$symbols_found" ]]; then
-  mapfile -t symbols <<< "$symbols_found"
+  symbols=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    symbols+=("$line")
+  done <<< "$symbols_found"
   for sym in "${symbols[@]}"; do
     echo "Publishing $sym"
     if [[ "$SYMBOLS_REQUIRED" == "true" ]]; then

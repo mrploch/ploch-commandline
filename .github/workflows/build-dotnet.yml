@@ -12,6 +12,15 @@ on:
   # gets a full build regardless of what it targets; the publishing steps stay gated below.
   pull_request:
   workflow_dispatch:
+# One run at a time per pull request: a later push to an open pull request cancels the run it
+# supersedes. Every other event (push to main, workflow_dispatch) gets a group of its own, keyed
+# by run id, so this configuration never cancels or displaces them - a shared per-ref group would
+# let a dispatch, or a third rapid push, replace a waiting main run and with it that commit's
+# GitHub Packages publish. The conditional cancel-in-progress is belt and braces for the same
+# reason. The publish steps keep their own success conditions.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   SONAR_PROJECT_KEY: mrploch_ploch-commandline
   SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
@@ -382,6 +391,13 @@ jobs:
       # pull_request trigger has no base-branch filter, every stacked PR builds -
       # but a PR onto another feature branch is an intermediate step, and publishing
       # a validation package for each one would just fill the feed with noise.
+      #
+      # A newer push to the pull request can cancel this run mid-publish (see the
+      # concurrency block). That leaves a partial set under the superseded commit's own
+      # version - every PR commit gets a distinct NBGV version, so the replacement run
+      # publishes a complete set under its version and nothing is ever mixed. PR packages
+      # are throwaway validation builds; a partial set for a commit nobody will consume is
+      # accepted rather than exempting the publish from cancellation.
       - name: Publish PR packages to GitHub Packages
         if: success() && github.event_name == 'pull_request' && github.base_ref == 'main'
         env:
