@@ -137,7 +137,7 @@ The synchronous and asynchronous bases behave identically apart from `await`.
 
 | Package | Mechanism |
 |---|---|
-| Serilog | Always registered: `AppServicesBundle` declares `SerilogConfigurationBundle` as a dependency. Call `services.AddSerilog(configuration, logName:, logPath:)` to customise |
+| Serilog | Always registered: `AppServicesBundle` declares `SerilogConfigurationBundle` as a dependency. Call `services.AddSerilog(configuration, logName:, logPath:)` to customise. `configuration` is optional: without one the bundle skips the base class's null check and registers the predefined sinks (rolling file, warnings-and-above file, Spectre.Console) at the `Information` minimum level |
 | FluentValidation | `services.AddCommandLineSettingsFluentValidation(b => b.AddAssembly(...))` registers an open-generic `ICommandSettingsValidator<>` after the default one, so it wins |
 | UseCases | Derive from `UseCaseAsyncCommand<...>`, implement `CreateRequest`, register the use case in DI |
 

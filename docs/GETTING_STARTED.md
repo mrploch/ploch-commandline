@@ -47,13 +47,17 @@ dotnet add package Ploch.CommandLine.Spectre
 dotnet add package Spectre.Console.Cli
 ```
 
-Add the optional packages as you reach the steps that need them:
+`Ploch.CommandLine.Spectre` is the only Ploch package you need to start. It depends on
+`Ploch.CommandLine.Spectre.Serilog` and registers its `SerilogConfigurationBundle` through
+`AppServicesBundle`, so logging goes through Serilog from the first run;
+[section 13](#13-logging-with-serilog) shows how to configure it. Add the remaining packages as
+you reach the steps that need them:
 
 | Package | Adds |
 |---|---|
 | `Ploch.CommandLine.Spectre` | `AppBuilder`, the command base classes, `IOutput`, exit codes, token processing |
 | `Ploch.CommandLine.Spectre.FluentValidation` | FluentValidation-backed settings validation |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog wiring with console and rolling-file sinks |
+| `Ploch.CommandLine.Spectre.Serilog` | Serilog wiring with the Spectre.Console console sink and two rolling log files — installed with the core package |
 | `Ploch.CommandLine.UseCases` | `IResultUseCase<,>` and `UseCaseAsyncCommand<,,,>` |
 
 ## 3. Bootstrap the application with AppBuilder
@@ -693,6 +697,9 @@ Two exit codes do **not** come from this enumeration:
 - **Whatever `IExceptionHandler` returns** — an unhandled exception inside a command is routed to
   the handler, and the handler's return value is the exit code.
 
+The [exit codes summary](https://commandline.github.ploch.dev/#exit-codes) on the documentation site
+lists the same codes.
+
 Return `InvalidInput` from a command when the input parses fine but is not acceptable — a value
 outside a supported set, a file that does not exist, mutually exclusive flags:
 
@@ -772,8 +779,10 @@ out of a shutdown the user just asked for would turn it into a hang.
 
 ## 13. Logging with Serilog
 
-`Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with a console sink
-and two rolling files — everything, and errors and warnings only:
+`Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with the
+Spectre.Console console sink and two rolling files — everything, and warnings and above. The
+core package registers it with log files named after the process; call `AddSerilog` to choose
+your own name and directory:
 
 ```csharp
 using Ploch.CommandLine.Spectre.Serilog;
@@ -824,8 +833,10 @@ $ cat logs/sample-errors.log
 
 Commands are ordinary classes with constructor dependencies, so they are tested without a host.
 Construct the command with test doubles, build a `CommandContext`, and call the public
-`Execute` / `ExecuteAsync` — that path exercises validation, exception handling and cancellation as
-well as your `DoExecute` body.
+`Execute` / `ExecuteAsync` — that path runs the settings processor and turns exceptions and
+cancellation into exit codes, as well as your `DoExecute` body. It does not run validation:
+`Spectre.Console.Cli` calls `Validate` before `Execute`, so a direct call skips it. Test `Validate`
+(or the `ICommandSettingsValidator<TSettings>` behind it) separately.
 
 ```csharp
 public class UserListCommandTests
