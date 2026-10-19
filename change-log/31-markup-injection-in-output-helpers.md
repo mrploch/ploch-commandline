@@ -42,7 +42,7 @@
   `WritesLineTerminator`. Replace `if (processor.WriteMessage(x))` with
   `if (processor.WriteMessage(x) is not null)` (#31).
 
-Markup written by the caller is unaffected: `Write`, `WriteLine`,
-`MarkupInterpolated` and `MarkupLineInterpolated` still interpret markup in a
-string the caller supplies. Only the tag this library adds on the caller's
-behalf now escapes the content it wraps.
+Only the tag this library adds on the caller's behalf escapes the content it
+wraps; `MarkupInterpolated` and `MarkupLineInterpolated` still interpret the
+markup in the string the caller supplies. (`Write` and `WriteLine` stopped
+parsing a plain string as markup in PLO-755 — see that entry.)

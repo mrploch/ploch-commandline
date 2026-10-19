@@ -19,7 +19,7 @@ stable releases go to [NuGet.org](https://www.nuget.org/profiles/mrploch).
 | Package | Purpose |
 |---|---|
 | `Ploch.CommandLine.Spectre` | Core framework — `AppBuilder`, command base classes, settings pipeline, output pipeline. |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog integration, including a `SerilogConfigurationBundle` for structured logging. |
+| `Ploch.CommandLine.Spectre.Serilog` | Serilog integration, including a `SerilogConfigurationBundle` for structured logging. The core package depends on it and `AppServicesBundle` registers the bundle, so it is installed and active without a separate `dotnet add package`. |
 | `Ploch.CommandLine.Spectre.FluentValidation` | Declarative validation of command settings using FluentValidation validators. |
 | `Ploch.CommandLine.UseCases` | Bridges commands to `IResultUseCase` for a Clean Architecture style, built on `Ardalis.Result`. |
 
@@ -104,7 +104,8 @@ HELLO, ALICE!
 ### `AppBuilder`
 
 `AppBuilder.Create(args)` starts the chain. It wraps a `HostBuilder`, so the
-usual hosting extension points are available:
+usual host-builder configuration entry points are available (the library never
+starts the host; see below):
 
 - `WithName`, `WithVersion`, `WithDescription` — application metadata, also used to render the startup banner.
 - `ConfigureServices` — register services into the container that resolves your commands.
@@ -125,6 +126,13 @@ leave the application unkillable from the keyboard.
 `ConfigureCommandApp` terminates the chain and returns an `ICommandAppExecutor`,
 which exposes `Run` and `RunAsync`.
 
+The host is built once a run reaches command resolution — a parse failure or `--version` returns
+before that — and the library never starts it. It exists for dependency injection, configuration
+and logging; a CLI command is the unit of work, so the library neither starts nor stops an
+`IHostedService` you register, and a host that was built is disposed when the run ends. Starting
+the host around the command is a possible 1.x feature, tracked as
+[PLO-785](https://linear.app/ploch/issue/PLO-785).
+
 ### Command base classes
 
 | Base class | Use for |
@@ -133,10 +141,13 @@ which exposes `Run` and `RunAsync`.
 | `AsyncAppCommand<TSettings>` | Asynchronous commands. Implement `DoExecuteAsync`. |
 | `UseCaseAsyncCommand<...>` | Commands that delegate to an `IResultUseCase`. |
 
-Each base class validates the settings, invokes your implementation, and routes any
+`Spectre.Console.Cli` calls each base class's `Validate` override first; `Execute` / `ExecuteAsync`
+then runs the settings processor, invokes your implementation, and routes any
 exception to the configured `IExceptionHandler`. Cancellation is handled separately from
-failure: an `OperationCanceledException` returns `ExitCode.Cancelled` and never reaches the
-exception handler.
+failure: when the token the command received has been cancelled, an `OperationCanceledException`
+returns `ExitCode.Cancelled` without reaching the exception handler. One raised while that token
+is still live (an `HttpClient` timeout, a cancelled inner token) is a fault and goes to the
+handler like any other exception.
 
 Every base class also runs the settings-processing pipeline: `AppCommand<TSettings>`,
 `AsyncAppCommand<TSettings>` and `UseCaseAsyncCommand<...>` all take a
@@ -151,8 +162,16 @@ differs.
 |---|---|---|
 | `ExitCode.Success` | 0 | Completed normally. |
 | `ExitCode.Error` | 1 | Unhandled failure. |
-| `ExitCode.InvalidInput` | 2 | Settings failed validation. |
+| `ExitCode.InvalidInput` | 2 | Returned by a command that rejects the input it was given — a value outside a supported set, a missing file, mutually exclusive flags. |
 | `ExitCode.Cancelled` | 130 | Cancelled before completing — the conventional shell code for termination by SIGINT (128 + 2). |
+
+A failed `Validate` never reaches this table. `Spectre.Console.Cli` runs validation before the
+command, reports the errors itself and, under its default error handling, exits with its own `-1`
+(`255` in a POSIX shell), so `InvalidInput` only comes from your own code: `DoExecute` /
+`DoExecuteAsync`, a `UseCaseAsyncCommand.ProcessFailureResponse` override that returns it, or an
+`IExceptionHandler` that chooses it for an exception. The same applies to a command line Spectre
+cannot bind, such as an unknown command or a missing required argument. The
+[Getting Started guide](../docs/GETTING_STARTED.md#11-exit-codes) walks through both kinds of exit code.
 
 ### Token substitution
 

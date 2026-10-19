@@ -7,7 +7,13 @@ real application: dependency injection, configuration, logging, and validation.
 ## Dependency injection
 
 `AppBuilder` builds on `Microsoft.Extensions.Hosting`, so commands are resolved
-from the same container as everything else. Register your services with
+from the same container as everything else. The host exists for that container,
+configuration and logging; it is built once a run reaches command resolution, and
+the library never starts it: a CLI command is the unit of work, so the library
+neither starts nor stops an `IHostedService` you register, and a host that was
+built is disposed when the run ends (starting the host around the command is a
+possible 1.x feature, tracked as [PLO-785](https://linear.app/ploch/issue/PLO-785)).
+Register your services with
 `ConfigureServices` and take them as constructor parameters:
 
 ```csharp
@@ -57,9 +63,12 @@ container, as are options types registered with `services.Configure<T>(...)`.
 
 ## Logging with Serilog
 
-Add the `Ploch.CommandLine.Spectre.Serilog` package and call `AddSerilog` from
-`ConfigureServices`. It configures Serilog against the application's
-configuration and routes framework logging through it:
+`Ploch.CommandLine.Spectre.Serilog` ships with the core package: `Ploch.CommandLine.Spectre`
+depends on it, and `AppServicesBundle` registers its `SerilogConfigurationBundle`, so framework
+logging already goes through Serilog, configured from the application's `Serilog` section and
+writing log files named after the process. Call `AddSerilog` from `ConfigureServices` to choose
+the log name and directory, or to change the output template and the culture the files are
+written with:
 
 ```csharp
 .ConfigureServices((context, services) =>
@@ -102,8 +111,11 @@ public class UserAddSettingsValidator : AbstractValidator<UserAddSettings>
 }
 ```
 
-Validation runs before `DoExecute`/`DoExecuteAsync`. A failure short-circuits
-the command and returns `ExitCode.InvalidInput` (2) without your code running.
+Validation runs before `DoExecute`/`DoExecuteAsync`. A failure short-circuits the command
+before your code runs: `Spectre.Console.Cli` reports the errors and exits with its own `-1`
+(`255` in a POSIX shell), not with `ExitCode.InvalidInput`. Reserve `InvalidInput` for input
+that parses and validates but which the command itself rejects — see
+[exit codes](../../docs/GETTING_STARTED.md#11-exit-codes) in the Getting Started guide.
 
 ## Composing sub-commands
 

@@ -13,6 +13,10 @@ internal class NoOpOutput : IOutput
 {
     public virtual IOutput EndLine() => this;
 
+    public virtual IOutput Markup(string value) => this;
+
+    public virtual IOutput MarkupLine(string value) => this;
+
     public virtual IOutput MarkupInterpolated(FormattableString value) => this;
 
     public virtual IOutput MarkupLineInterpolated(FormattableString value) => this;

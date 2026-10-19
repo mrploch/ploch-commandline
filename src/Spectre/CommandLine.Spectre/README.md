@@ -32,6 +32,7 @@ dotnet add package Ploch.CommandLine.Spectre
 ## Quick example
 
 ```csharp
+using System.ComponentModel;
 using Ploch.CommandLine.Spectre;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
@@ -44,22 +45,44 @@ var executor = appBuilder.ConfigureCommandApp(config => config.AddCommand<HelloC
 
 return executor.Run(args);
 
-public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
-                          ICommandSettingsValidator<CommandSettings> validator,
-                          IExceptionHandler exceptionHandler,
-                          IOutput output) : AppCommand<CommandSettings>(settingsProcessor, validator, exceptionHandler, output)
+// CommandSettings is abstract, so every command needs a concrete settings class of its own.
+public class HelloCommandSettings : CommandSettings
 {
-    protected override ExitCode DoExecute(CommandContext? context, CommandSettings settings, CancellationToken cancellationToken)
+    [CommandArgument(0, "[name]")]
+    [Description("Who to greet.")]
+    public string Name { get; init; } = "world";
+}
+
+public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
+                          ICommandSettingsValidator<HelloCommandSettings> validator,
+                          IExceptionHandler exceptionHandler,
+                          IOutput output) : AppCommand<HelloCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
+{
+    protected override ExitCode DoExecute(CommandContext context, HelloCommandSettings settings, CancellationToken cancellationToken)
     {
-        Output.MarkupLineInterpolated($"[bold cyan]Hello![/]");
+        Output.MarkupLineInterpolated($"[bold cyan]Hello, {settings.Name}![/]");
 
         return ExitCode.Success;
     }
 }
 ```
 
-`AppCommand<TSettings>` validates the settings, runs the registered argument processors, and turns
-exceptions and cancellation into exit codes, so `DoExecute` holds only the command's own work.
+`ConfigureCommandApp` returns an executor that permits one execution attempt; call it again to
+build another executor for another run. Cancellation is permanent: once the builder's cancellation
+source has been cancelled, `ConfigureCommandApp` throws `InvalidOperationException`, so a run after
+Ctrl+C starts from a new builder (`AppBuilder.Create`) or a fresh `CancellationTokenSource` passed
+to the constructor.
+
+`AppCommand<TSettings>` runs the registered argument processors and turns exceptions and
+cancellation into exit codes — cancellation only when the command's own token was cancelled; see
+the Getting Started guide's Cancellation section — so `DoExecute` holds only the command's own work.
+Its `Validate` override hands the settings to the `ICommandSettingsValidator<TSettings>`;
+`Spectre.Console.Cli` calls it before `Execute`, and a failure exits with Spectre's own `-1` rather
+than `ExitCode.InvalidInput`.
+
+`IOutput.Write` and `WriteLine` print a string as-is, so a path or user input containing `[` is safe
+to pass straight through. Markup is an explicit opt-in: `Markup` / `MarkupLine` parse their argument
+as Spectre markup, and `MarkupInterpolated` / `MarkupLineInterpolated` escape the interpolated values.
 
 ## Getting Started
 
@@ -79,4 +102,8 @@ This project provides following services bundles:
 
 - `AppServicesBundle` - registers services required for the app to run
 - `OutputServicesBundle` - registers services required for output formatting
+
+`AppServicesBundle` depends on `SerilogConfigurationBundle` from `Ploch.CommandLine.Spectre.Serilog`, which this
+package references, so every application built with `AppBuilder` logs through Serilog without adding another
+package. Call `AddSerilog` to set the log name, directory, output template or culture.
 

@@ -115,10 +115,22 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
    6. wraps the host builder in `DependencyInjectionTypeRegistrar` and creates `CommandApp`;
    7. returns a `CommandAppExecutor` holding the builder's cancellation token.
 4. `executor.Run(args)` hands over to Spectre, which registers its own types, builds the host
-   through the registrar, resolves the command, runs it and disposes the resolver.
+   through the registrar, resolves the command, runs it and disposes the resolver, and with it
+   the host.
+5. The executor permits one execution attempt. An attempt may build the host and
+   `IHostBuilder.Build` can only be called once, so a second `Run` or `RunAsync` on the same
+   executor throws `InvalidOperationException` before reaching Spectre, whatever the first
+   attempt's outcome; another `ConfigureCommandApp` call on the same builder builds a fresh one,
+   unless the builder's cancellation source has already been cancelled, in which case that call
+   throws `InvalidOperationException` and a rerun starts from a new builder or a fresh source
+   (PLO-756).
 
 `args` is passed twice on purpose: to `Create` for host configuration and to `Run` for parsing.
 The canonical call site is `samples/SampleApp/src/SampleApp/Program.cs`.
+
+Step 4 builds the host only once parsing has succeeded and a command is being resolved — a parse
+failure or `--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and never
+starts it; see **Hosting** in section 5.
 
 ### 4.2 Command execution
 
@@ -129,7 +141,10 @@ The canonical call site is `samples/SampleApp/src/SampleApp/Program.cs`.
    1. writes an "Executing command" banner and "Processing arguments...";
    2. runs `CommandArgumentsRootProcessor.ProcessArguments(settings)`;
    3. calls `DoExecute` / `DoExecuteAsync` and casts the returned `ExitCode` to `int`.
-3. `OperationCanceledException` returns 130. Any other exception goes to `IExceptionHandler`.
+3. `OperationCanceledException` returns 130 only when the token the command received has
+   cancellation requested. Any other exception, including an `OperationCanceledException` raised
+   while that token is live (an `HttpClient` timeout, a cancelled inner token), goes to
+   `IExceptionHandler` (PLO-756).
 
 The synchronous and asynchronous bases behave identically apart from `await`.
 
@@ -137,7 +152,7 @@ The synchronous and asynchronous bases behave identically apart from `await`.
 
 | Package | Mechanism |
 |---|---|
-| Serilog | Always registered: `AppServicesBundle` declares `SerilogConfigurationBundle` as a dependency. Call `services.AddSerilog(configuration, logName:, logPath:)` to customise |
+| Serilog | Always registered: `AppServicesBundle` declares `SerilogConfigurationBundle` as a dependency. Call `services.AddSerilog(configuration, logName:, logPath:)` to customise. `configuration` is optional: without one the bundle skips the base class's null check and registers the predefined sinks (rolling file, warnings-and-above file, Spectre.Console) at the `Information` minimum level |
 | FluentValidation | `services.AddCommandLineSettingsFluentValidation(b => b.AddAssembly(...))` registers an open-generic `ICommandSettingsValidator<>` after the default one, so it wins |
 | UseCases | Derive from `UseCaseAsyncCommand<...>`, implement `CreateRequest`, register the use case in DI |
 
@@ -165,11 +180,21 @@ them in `Dispose`. A builder made with the public constructor owns neither.
 validation failures before a command runs.
 
 **Output and markup.** `FormattableString` messages have their holes escaped. Plain `string`
-messages are parsed as markup. `WriteBold` and `WriteError` escape content before wrapping it.
+messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in to parsing.
+`WriteBold` and `WriteError` escape content before wrapping it in a tag and rendering it as markup.
 Handler selection is "most derived type wins; first registration wins ties".
 
 **Service lifetimes.** The registrar registers everything Spectre asks for as a singleton, so
 commands and settings are singletons resolved from the root provider.
+
+**Hosting.** The host is built once a run reaches command resolution — a parse failure or
+`--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and the library
+never starts it: it exists for dependency injection, configuration and logging, and a CLI command
+is the unit of work. `IHost.StartAsync` is not called, so a registered `IHostedService` is neither
+started nor stopped by the library, and a host that was built is disposed when the run ends
+(PLO-780, pinned by
+`AppBuilderTests.ConfigureCommandApp_should_not_start_the_host_so_a_registered_hosted_service_never_runs`).
+Starting the host around the command is a possible 1.x feature, tracked as PLO-785.
 
 ## 6. Extension points
 
@@ -191,15 +216,14 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
-| Hosting | The host is built but never started; hosted services do not run |
 | Lifetimes | Singleton commands capture transient services, including `TokensArgumentsProcessor` |
-| Cancellation | `catch (OperationCanceledException)` does not check that the token was cancelled |
-| Output | `IOutput.Write(string)` throws on user data containing `[` |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
-| Guards | `ConfigureCommandApp`, `EnvironmentSettings.Initialize` and the public constructor do not null-check |
-| Reuse | `UNVERIFIED`: a second `Run` on one executor probably fails, because it builds the host again |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
+
+Resolved since the review: the cancellation catch now checks the supplied token, the three
+entry points null-check, and a second `Run` on one executor fails with a clear
+`InvalidOperationException` (PLO-756; see sections 4.1 and 4.2).
 
 ## 8. Where to look
 

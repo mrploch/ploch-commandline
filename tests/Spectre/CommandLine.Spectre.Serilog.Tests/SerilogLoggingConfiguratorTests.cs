@@ -2,7 +2,8 @@ using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+using Microsoft.Extensions.Logging;
+using ILogger = Serilog.ILogger;
 
 namespace Ploch.CommandLine.Spectre.Serilog.Tests;
 
@@ -43,6 +44,35 @@ public sealed class SerilogLoggingConfiguratorTests : IDisposable
         services.Count(descriptor => descriptor.ServiceType == typeof(ILogger))
                 .Should()
                 .Be(1, "a second registration would build the logger again and discard the first configuration");
+    }
+
+    [Fact]
+    public void AddSerilog_should_accept_a_missing_configuration()
+    {
+        // The XML example on AddSerilog shows it called with no arguments. Serilog has complete defaults, so a
+        // missing IConfiguration must not stop the logger from being registered.
+        var services = new ServiceCollection();
+
+        var registration = () => services.AddSerilog(logName: "unconfigured", logPath: _logDirectory, template: Template);
+
+        registration.Should().NotThrow("Serilog does not need an IConfiguration to be configured");
+        services.Count(descriptor => descriptor.ServiceType == typeof(ILogger)).Should().Be(1);
+    }
+
+    [Fact]
+    public void AddSerilog_should_log_through_the_default_configuration_when_no_configuration_is_supplied()
+    {
+        var services = new ServiceCollection();
+        services.AddSerilog(logName: "unconfigured", logPath: _logDirectory, template: Template);
+
+        // Logging through the Microsoft factory, not the resolved Serilog.ILogger: the latter is a non-owning wrapper
+        // whose Dispose leaves the root logger open, whereas disposing the provider disposes the factory and the sinks.
+        using (var provider = services.BuildServiceProvider())
+        {
+            provider.GetRequiredService<ILoggerFactory>().CreateLogger<SerilogLoggingConfiguratorTests>().LogInformation("an unconfigured message");
+        }
+
+        ReadLogFile("unconfigured.log").Should().Contain("REGISTERED|INF|an unconfigured message", "the predefined setup applies without an IConfiguration");
     }
 
     [Fact]

@@ -13,6 +13,10 @@
 # Why a script and not two inline `run:` blocks: the main-branch and pull-request publish
 # steps previously carried a copy each of this logic, and the `./**/*.nupkg` glob bug that
 # published nothing was therefore present twice. One implementation cannot drift from itself.
+#
+# Runs under the bash 3.2 that ships with macOS as well as bash 5 on ubuntu-latest, because the
+# fixture test (test-publish-nuget-packages.sh) is run locally: no `mapfile`/`readarray`, no
+# associative arrays, and no unguarded expansion of an array that may be empty.
 set -euo pipefail
 
 LIST_ONLY="false"
@@ -58,10 +62,13 @@ SYMBOLS_REQUIRED="${SYMBOLS_REQUIRED:-false}"
 # produced four levels down. An unmatched glob is then passed through literally and
 # `dotnet nuget push` exits 0 on it - the step reports success having published nothing.
 #
-# Restricted to bin/Release: Directory.Build.props sets GeneratePackageOnBuild=true for every
-# non-test project, so a library packs on EVERY build, not only the Release one. The workflow
-# builds these projects more than once, and a Debug pack therefore sits beside the Release pack
-# carrying the identical version. Unfiltered, `sort` orders 'bin/Debug' before 'bin/Release', so
+# Restricted to bin/Release when searching the tree (--dir trusts the given pack output directory
+# and only excludes bin/Debug): Directory.Build.props used to set GeneratePackageOnBuild=true for
+# every non-test project, so a library packed on EVERY build, not only the Release one, and the
+# workflow builds these projects more than once - a Debug pack therefore sat beside the Release
+# pack carrying the identical version. Debug builds no longer pack (PLO-758), but the filter
+# stays, because a stale bin/Debug left by an older checkout would otherwise be eligible again.
+# Unfiltered, `sort` orders 'bin/Debug' before 'bin/Release', so
 # the Debug artefact claims the version on the feed and --skip-duplicate silently swallows the
 # Release one that follows. That is not hypothetical: run 33169218883 on this very branch pushed
 # the Debug build of all four packages and reported success --
@@ -85,8 +92,8 @@ find_packages() {
   fi
 }
 
-# Captured into a variable rather than piped into `mapfile` through a process substitution:
-# `mapfile < <(find ...)` discards find's exit status, so a traversal error that occurred
+# Captured into a variable rather than read through a process substitution:
+# `while read ... < <(find ...)` discards find's exit status, so a traversal error that occurred
 # after a partial result would publish a subset of the packages and report success.
 # `set -o pipefail` makes the failing `find` fail the whole `find | sort` pipeline.
 if ! packages_found=$(find_packages '*.nupkg'); then
@@ -99,7 +106,11 @@ if [[ -z "$packages_found" ]]; then
   exit 1
 fi
 
-mapfile -t packages <<< "$packages_found"
+# `|| [[ -n ... ]]` keeps an unterminated last line, as `mapfile` would.
+packages=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  packages+=("$line")
+done <<< "$packages_found"
 
 if [[ "$SYMBOLS_REQUIRED" == "true" ]]; then
   if ! symbols_found=$(find_packages '*.snupkg'); then
@@ -152,7 +163,10 @@ for pkg in "${packages[@]}"; do
 done
 
 if [[ -n "$symbols_found" ]]; then
-  mapfile -t symbols <<< "$symbols_found"
+  symbols=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    symbols+=("$line")
+  done <<< "$symbols_found"
   for sym in "${symbols[@]}"; do
     echo "Publishing $sym"
     if [[ "$SYMBOLS_REQUIRED" == "true" ]]; then

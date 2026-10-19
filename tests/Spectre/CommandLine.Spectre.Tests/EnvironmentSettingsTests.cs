@@ -93,6 +93,32 @@ public sealed class EnvironmentSettingsTests : IDisposable
     }
 
     [Fact]
+    public void Initialize_should_reject_a_null_loader_and_keep_the_configured_one()
+    {
+        EnvironmentSettings.Reset();
+        var loader = new CountingLoader(new(false, true, new Dictionary<string, string?>()));
+        EnvironmentSettings.Initialize(loader);
+
+        var act = () => EnvironmentSettings.Initialize(null!);
+
+        act.Should().Throw<ArgumentNullException>("a null loader stored now would only fail on the first read of Current").WithParameterName("settingsLoader");
+        EnvironmentSettings.Current.PauseBeforeExit.Should().BeTrue("the rejected call must not have replaced the configured loader");
+        loader.LoadCount.Should().Be(1);
+    }
+
+    /// <summary>Argument validation comes before the state check, so a null is reported as the caller's error whatever the state.</summary>
+    [Fact]
+    public void Initialize_should_reject_a_null_loader_even_after_the_settings_have_been_loaded()
+    {
+        EnvironmentSettings.Reset();
+        _ = EnvironmentSettings.Current;
+
+        var act = () => EnvironmentSettings.Initialize(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("settingsLoader");
+    }
+
+    [Fact]
     public void Reset_should_allow_a_loader_to_be_supplied_again()
     {
         EnvironmentSettings.Reset();

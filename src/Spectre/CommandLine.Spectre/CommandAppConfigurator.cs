@@ -19,6 +19,12 @@ internal sealed class CommandAppConfigurator(ICommandApp commandApp, Cancellatio
     /// <param name="configuration">An action that configures the command-line application's commands, options, and behaviors.</param>
     /// <returns>An executor that can run the configured command-line application.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration" /> is null.</exception>
+    /// <remarks>
+    ///     The returned executor permits one execution attempt. Calling this method again wraps the same
+    ///     <see cref="ICommandApp" />; it does not create a fresh application or reset the lifecycle of whatever host
+    ///     that application builds, so it is not a way to run again. Configure a new <see cref="ICommandApp" /> for
+    ///     another run.
+    /// </remarks>
     public ICommandAppExecutor Configure(Action<IConfigurator> configuration)
     {
         commandApp.Configure(configuration.NotNull());

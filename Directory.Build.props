@@ -57,12 +57,20 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <PropertyGroup Condition="!$(IsTestProject)">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <!--
+      Pack on build only in Release. The Release build is the one CI publishes from
+      (publish-nuget-packages.sh finds */bin/Release/*.nupkg, and release.yml packs with
+      -c Release), so a Debug pack was only ever noise next to it: a second .nupkg with the
+      identical version in bin/Debug, produced on every local build.
+    -->
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release'">true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
-  <Target Name="PrintSettings" BeforeTargets="Build">
+  <!-- Opt-in build diagnostics: dotnet build -p:PrintPlochBuildSettings=true. Off by default so CI logs stay readable. -->
+  <Target Name="PrintSettings" BeforeTargets="Build" Condition="'$(PrintPlochBuildSettings)' == 'true'">
     <Message Text="Building $(MSBuildProjectName) with settings:" Importance="high" />
     <Message Text="MSBuildProjectName -> '$(MSBuildProjectName)'" Importance="high" />
     <Message Text="Configuration -> '$(Configuration)' " Importance="high" />
