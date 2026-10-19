@@ -67,10 +67,18 @@ public class HelloCommand(CommandArgumentsRootProcessor settingsProcessor,
 }
 ```
 
+`ConfigureCommandApp` returns an executor that permits one execution attempt; call it again to
+build another executor for another run. Cancellation is permanent: once the builder's cancellation
+source has been cancelled, `ConfigureCommandApp` throws `InvalidOperationException`, so a run after
+Ctrl+C starts from a new builder (`AppBuilder.Create`) or a fresh `CancellationTokenSource` passed
+to the constructor.
+
 `AppCommand<TSettings>` runs the registered argument processors and turns exceptions and
-cancellation into exit codes, so `DoExecute` holds only the command's own work. Its `Validate`
-override hands the settings to the `ICommandSettingsValidator<TSettings>`; `Spectre.Console.Cli`
-calls it before `Execute`, and a failure exits with Spectre's own `-1` rather than `ExitCode.InvalidInput`.
+cancellation into exit codes — cancellation only when the command's own token was cancelled; see
+the Getting Started guide's Cancellation section — so `DoExecute` holds only the command's own work.
+Its `Validate` override hands the settings to the `ICommandSettingsValidator<TSettings>`;
+`Spectre.Console.Cli` calls it before `Execute`, and a failure exits with Spectre's own `-1` rather
+than `ExitCode.InvalidInput`.
 
 `IOutput.Write` and `WriteLine` print a string as-is, so a path or user input containing `[` is safe
 to pass straight through. Markup is an explicit opt-in: `Markup` / `MarkupLine` parse their argument
