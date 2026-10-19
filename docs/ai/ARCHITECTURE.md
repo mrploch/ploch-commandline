@@ -115,7 +115,15 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
    6. wraps the host builder in `DependencyInjectionTypeRegistrar` and creates `CommandApp`;
    7. returns a `CommandAppExecutor` holding the builder's cancellation token.
 4. `executor.Run(args)` hands over to Spectre, which registers its own types, builds the host
-   through the registrar, resolves the command, runs it and disposes the resolver.
+   through the registrar, resolves the command, runs it and disposes the resolver, and with it
+   the host.
+5. The executor permits one execution attempt. An attempt may build the host and
+   `IHostBuilder.Build` can only be called once, so a second `Run` or `RunAsync` on the same
+   executor throws `InvalidOperationException` before reaching Spectre, whatever the first
+   attempt's outcome; another `ConfigureCommandApp` call on the same builder builds a fresh one,
+   unless the builder's cancellation source has already been cancelled, in which case that call
+   throws `InvalidOperationException` and a rerun starts from a new builder or a fresh source
+   (PLO-756).
 
 `args` is passed twice on purpose: to `Create` for host configuration and to `Run` for parsing.
 The canonical call site is `samples/SampleApp/src/SampleApp/Program.cs`.
@@ -133,7 +141,10 @@ starts it; see **Hosting** in section 5.
    1. writes an "Executing command" banner and "Processing arguments...";
    2. runs `CommandArgumentsRootProcessor.ProcessArguments(settings)`;
    3. calls `DoExecute` / `DoExecuteAsync` and casts the returned `ExitCode` to `int`.
-3. `OperationCanceledException` returns 130. Any other exception goes to `IExceptionHandler`.
+3. `OperationCanceledException` returns 130 only when the token the command received has
+   cancellation requested. Any other exception, including an `OperationCanceledException` raised
+   while that token is live (an `HttpClient` timeout, a cancelled inner token), goes to
+   `IExceptionHandler` (PLO-756).
 
 The synchronous and asynchronous bases behave identically apart from `await`.
 
@@ -217,13 +228,14 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
-| Cancellation | `catch (OperationCanceledException)` does not check that the token was cancelled |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
 | Public API | `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`, `CommandAppConfigurator` have no caller in `src/` |
-| Guards | `ConfigureCommandApp`, `EnvironmentSettings.Initialize` and the public constructor do not null-check |
-| Reuse | `UNVERIFIED`: a second `Run` on one executor probably fails, because it builds the host again |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
+
+Resolved since the review: the cancellation catch now checks the supplied token, the three
+entry points null-check, and a second `Run` on one executor fails with a clear
+`InvalidOperationException` (PLO-756; see sections 4.1 and 4.2).
 
 ## 8. Where to look
 

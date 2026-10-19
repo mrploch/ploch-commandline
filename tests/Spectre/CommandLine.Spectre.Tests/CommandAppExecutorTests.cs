@@ -1,4 +1,5 @@
-﻿using Moq;
+﻿using Microsoft.Extensions.Hosting;
+using Moq;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -165,6 +166,131 @@ public sealed class CommandAppExecutorTests : IDisposable
 
         input.ReadLineCount.Should().Be(0, "Run and RunAsync must honour cancellation identically");
         console.Output.Should().NotContain("Press Enter to exit...");
+    }
+
+    /// <summary>
+    ///     PLO-756: an executor runs once. The host behind Spectre's type registrar is built on the first run and
+    ///     <see cref="IHostBuilder.Build" /> is single-shot, so a second run could only ever fail; it now fails
+    ///     up front with a message that says what to do instead of Spectre rendering "Build can only be called once".
+    /// </summary>
+    [Fact]
+    public void Run_should_throw_when_called_a_second_time()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).Returns(0);
+        SetPauseBeforeExit(false);
+        var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
+        executor.Run("build");
+
+        var secondRun = () => executor.Run("build");
+
+        secondRun.Should().Throw<InvalidOperationException>().WithMessage("*ConfigureCommandApp*", "the message has to say how to run again");
+        commandApp.Verify(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once, "a rejected run must never reach Spectre");
+    }
+
+    // Invoked through an Action and asserted with Throw, not ThrowAsync: the rejection is a usage error and is meant to
+    // throw synchronously, before any task is handed back. ThrowAsync would also accept a faulted task, so it could not
+    // tell the two apart. (A plain comment: Qodana's documentation rules would demand <returns> on an async test.)
+    [Fact]
+    public async Task RunAsync_should_throw_synchronously_when_called_a_second_time()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        SetPauseBeforeExit(false);
+        var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
+        await executor.RunAsync("build");
+
+        Action secondRun = () => _ = executor.RunAsync("build");
+
+        secondRun.Should()
+                 .Throw<InvalidOperationException>("a usage error throws before the task is created rather than faulting the task")
+                 .WithMessage("*ConfigureCommandApp*");
+        commandApp.Verify(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void RunAsync_should_throw_synchronously_when_Run_has_already_been_called()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).Returns(0);
+        SetPauseBeforeExit(false);
+        var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
+        executor.Run("build");
+
+        Action secondRun = () => _ = executor.RunAsync("build");
+
+        secondRun.Should().Throw<InvalidOperationException>("Run and RunAsync share the one attempt the executor has");
+        commandApp.Verify(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Run_should_throw_when_RunAsync_has_already_been_called()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        SetPauseBeforeExit(false);
+        var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
+        await executor.RunAsync("build");
+
+        var secondRun = () => executor.Run("build");
+
+        secondRun.Should().Throw<InvalidOperationException>();
+        commandApp.Verify(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>
+    ///     The run is consumed on entry, not on success: a run that threw may already have built the host, so a retry
+    ///     on the same executor cannot be allowed to look like a fresh start.
+    /// </summary>
+    [Fact]
+    public void Run_should_not_be_retryable_after_the_command_app_threw()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        commandApp.Setup(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).Throws(new IOException("console gone"));
+        SetPauseBeforeExit(false);
+        var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
+        var firstRun = () => executor.Run("build");
+        firstRun.Should().Throw<IOException>();
+
+        var secondRun = () => executor.Run("build");
+
+        secondRun.Should().Throw<InvalidOperationException>("the executor is used up by the attempt, whatever its outcome");
+        commandApp.Verify(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RunAsync_should_not_be_retryable_after_the_command_app_faulted()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+                  .ThrowsAsync(new IOException("console gone"));
+        SetPauseBeforeExit(false);
+        var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
+        var firstRun = () => executor.RunAsync("build");
+        await firstRun.Should().ThrowAsync<IOException>();
+
+        Action secondRun = () => _ = executor.RunAsync("build");
+
+        secondRun.Should().Throw<InvalidOperationException>("the rejection is synchronous after a faulted attempt too");
+        commandApp.Verify(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Run_should_throw_while_a_RunAsync_is_still_in_progress()
+    {
+        var commandApp = new Mock<ICommandApp>();
+        var running = new TaskCompletionSource<int>();
+        commandApp.Setup(app => app.RunAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).Returns(running.Task);
+        SetPauseBeforeExit(false);
+        var executor = new CommandAppExecutor(commandApp.Object, CancellationToken.None);
+        var pending = executor.RunAsync("build");
+
+        var overlappingRun = () => executor.Run("build");
+
+        overlappingRun.Should().Throw<InvalidOperationException>("the run is claimed on entry, so an overlapping call is rejected rather than racing the first");
+        running.SetResult(0);
+        (await pending).Should().Be(0);
+        commandApp.Verify(app => app.Run(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static void SetPauseBeforeExit(bool pauseBeforeExit) =>

@@ -144,8 +144,10 @@ the host around the command is a possible 1.x feature, tracked as
 `Spectre.Console.Cli` calls each base class's `Validate` override first; `Execute` / `ExecuteAsync`
 then runs the settings processor, invokes your implementation, and routes any
 exception to the configured `IExceptionHandler`. Cancellation is handled separately from
-failure: an `OperationCanceledException` returns `ExitCode.Cancelled` and never reaches the
-exception handler.
+failure: when the token the command received has been cancelled, an `OperationCanceledException`
+returns `ExitCode.Cancelled` without reaching the exception handler. One raised while that token
+is still live (an `HttpClient` timeout, a cancelled inner token) is a fault and goes to the
+handler like any other exception.
 
 Every base class also runs the settings-processing pipeline: `AppCommand<TSettings>`,
 `AsyncAppCommand<TSettings>` and `UseCaseAsyncCommand<...>` all take a

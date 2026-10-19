@@ -702,6 +702,74 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     [Fact]
+    public void Constructor_should_reject_a_null_app_info()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        var act = () => new AppBuilder(null!, cancellationTokenSource);
+
+        act.Should().Throw<ArgumentNullException>("a null stored now would only surface as a NullReferenceException inside ConfigureCommandApp")
+           .WithParameterName("appInfo");
+    }
+
+    [Fact]
+    public void Constructor_should_reject_a_null_cancellation_token_source()
+    {
+        var act = () => new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("cancellationTokenSource");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_reject_a_null_configurator()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+
+        var act = () => builder.ConfigureCommandApp(null!);
+
+        act.Should().Throw<ArgumentNullException>("a null delegate would otherwise fail as a NullReferenceException inside Spectre")
+           .WithParameterName("configurator");
+    }
+
+    /// <summary>Pins the precedence between the two guards, so it is a decision rather than an accident.</summary>
+    [Fact]
+    public void ConfigureCommandApp_should_reject_a_null_configurator_before_checking_for_disposal()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        builder.Dispose();
+
+        var act = () => builder.ConfigureCommandApp(null!);
+
+        act.Should().Throw<ArgumentNullException>("arguments are validated before object state, as in the rest of .NET").WithParameterName("configurator");
+    }
+
+    /// <summary>
+    ///     PLO-756: the executor is single-use. The host behind the type registrar is built on the first run and
+    ///     <see cref="IHostBuilder.Build" /> cannot be called twice, so a second run could only fail; it now fails
+    ///     before reaching Spectre, with a message naming the recovery path, which this test also exercises.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_return_an_executor_that_runs_once()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        ProbeCommand.Recorder = new ProbeRecorder();
+        var executor = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
+        executor.Run("probe").Should().Be(0);
+
+        var secondRun = () => executor.Run("probe");
+
+        secondRun.Should()
+                 .Throw<InvalidOperationException>("the host behind the executor has already been built")
+                 .WithMessage("*ConfigureCommandApp*", "the message has to tell the caller how to run again");
+
+        var rebuilt = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
+        rebuilt.Run("probe").Should().Be(0, "a fresh ConfigureCommandApp call on the same builder is the documented way to run again");
+    }
+
+    [Fact]
     public void ConfigureCommandApp_should_reject_a_disposed_builder()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -712,6 +780,20 @@ public sealed class AppBuilderTests : IDisposable
 
         act.Should()
            .Throw<ObjectDisposedException>("building after disposal would publish a released cancellation source to the application's services");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_reject_a_builder_whose_cancellation_source_is_already_cancelled()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        cancellationTokenSource.Cancel();
+
+        var act = () => builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
+
+        act.Should()
+           .Throw<InvalidOperationException>("cancellation is permanent, so an executor built now would hand every command an already-cancelled token")
+           .WithMessage("*already been cancelled*");
     }
 
     [Fact]

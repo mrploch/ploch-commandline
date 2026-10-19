@@ -40,9 +40,12 @@ public abstract class AppCommand<TSettings>(CommandArgumentsRootProcessor settin
     /// <remarks>
     ///     The settings are passed through the configured settings processor before <see cref="DoExecute" /> runs.
     ///     Exceptions raised while writing the banner, by the settings processor or by <see cref="DoExecute" /> do not propagate: they are passed to the configured
-    ///     <see cref="IExceptionHandler" />, whose result becomes the exit code. An <see cref="OperationCanceledException" /> is the
-    ///     exception to that rule: it is treated as a requested outcome and returns <see cref="ExitCode.Cancelled" /> without reaching
-    ///     the handler.
+    ///     <see cref="IExceptionHandler" />, whose result becomes the exit code. An <see cref="OperationCanceledException" /> thrown while
+    ///     <paramref name="cancellationToken" /> has cancellation requested is the exception to that rule: it is treated as the requested
+    ///     outcome and returns <see cref="ExitCode.Cancelled" /> without reaching the handler. An <see cref="OperationCanceledException" />
+    ///     raised while that token is still live - a <see cref="TaskCanceledException" /> from an <c>HttpClient</c> timeout, or an inner
+    ///     token the implementation created and cancelled itself - is a fault nobody asked for and goes to the handler like any other
+    ///     exception.
     /// </remarks>
     public override int Execute(CommandContext context, TSettings settings, CancellationToken cancellationToken)
     {
@@ -61,9 +64,12 @@ public abstract class AppCommand<TSettings>(CommandArgumentsRootProcessor settin
 
             return (int)DoExecute(context, settings, cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // Cancellation is a requested outcome, not a fault: it must not be routed to the exception handler.
+            // Cancellation is a requested outcome, not a fault, but only when it was requested through the token this
+            // command received. An OperationCanceledException raised while that token is live - an HttpClient timeout,
+            // an inner token the implementation cancelled itself - is a fault nobody asked for, so the filter lets it
+            // fall through to the exception handler rather than reporting it as "the user cancelled" (PLO-756).
             return (int)ExitCode.Cancelled;
         }
         catch (Exception ex)

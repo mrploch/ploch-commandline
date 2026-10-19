@@ -10,8 +10,9 @@ namespace Ploch.CommandLine.Spectre.Tests.Commands;
 
 /// <summary>
 ///     Cover for the asynchronous command base: the settings processor runs before the implementation, the
-///     cancellation token is forwarded, cancellation is distinguished from failure, and exceptions reach the
-///     configured handler.
+///     cancellation token is forwarded, cancellation requested through the supplied token is distinguished from
+///     failure while an <see cref="OperationCanceledException" /> nobody asked for is a fault like any other, and
+///     exceptions reach the configured handler.
 /// </summary>
 public class AsyncAppCommandTests
 {
@@ -76,6 +77,186 @@ public class AsyncAppCommandTests
 
         result.Should().Be((int)ExitCode.Cancelled);
         handler.Handled.Should().BeEmpty();
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_report_cancellation_from_the_settings_processor_without_involving_the_exception_handler(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = CreateCommand((_, _) => Task.FromResult(ExitCode.Success), handler, new([new CancellingProcessor()]));
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), cts.Token);
+
+        result.Should().Be((int)ExitCode.Cancelled);
+        handler.Handled.Should().BeEmpty("cancellation during argument processing is a requested outcome, not a fault");
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_route_cancellation_from_the_settings_processor_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = CreateCommand((_, _) => Task.FromResult(ExitCode.Success), handler, new([new CancellingProcessor()]));
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        handler.Handled.Should().ContainSingle().Which.Should().BeOfType<OperationCanceledException>();
+    }
+
+    // Pins the fix for PLO-756: an OperationCanceledException is only "the user cancelled" when the token the command
+    // received was cancelled. One raised for any other reason - here an unrelated token the command itself observed -
+    // is a fault and must reach the handler like every other exception. (A plain comment rather than XML docs: the
+    // documentation analysers would demand <param> and <returns> on a test method.)
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_route_an_OperationCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        using var foreign = new CancellationTokenSource();
+        await foreign.CancelAsync();
+        var exception = new OperationCanceledException(foreign.Token);
+        var command = CreateCommand((_, _) => throw exception, handler);
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error, "a cancellation nobody asked for is a fault, not a requested outcome");
+        handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception, "the handler must see the original exception");
+    }
+
+    // The shape an HttpClient timeout takes: a TaskCanceledException while the command's own token is live. Reporting
+    // it as exit code 130 would tell the user they cancelled something they did not.
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_route_a_TaskCanceledException_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var exception = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout elapsing.");
+        var command = CreateCommand((_, _) => throw exception, handler);
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error);
+        handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception);
+    }
+
+    // The token shape AppBuilder actually supplies: cancellable, but not cancelled. Pins that the filter reads
+    // IsCancellationRequested and not CanBeCanceled, which CancellationToken.None alone could not tell apart.
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_route_a_TaskCanceledException_to_the_exception_handler_when_a_cancellable_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var exception = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout elapsing.");
+        var command = CreateCommand((_, _) => throw exception, handler);
+        using var live = new CancellationTokenSource();
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), live.Token);
+
+        result.Should().Be((int)ExitCode.Error, "a token that merely can be cancelled has not been");
+        handler.Handled.Should().ContainSingle().Which.Should().BeSameAs(exception);
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_route_a_cancelled_task_to_the_exception_handler_when_the_token_was_not_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        using var foreign = new CancellationTokenSource();
+        await foreign.CancelAsync();
+
+        // The token is captured rather than the source, so the lambda never touches a disposed object.
+        var foreignToken = foreign.Token;
+        var command = CreateCommand((_, _) => Task.FromCanceled<ExitCode>(foreignToken), handler);
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Error, "cancellation observed through await is still a fault when nobody cancelled the command");
+        handler.Handled.Should().ContainSingle().Which.Should().BeAssignableTo<OperationCanceledException>();
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_report_cancellation_observed_through_a_cancelled_task(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = CreateCommand((_, token) => Task.FromCanceled<ExitCode>(token), handler);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), cts.Token);
+
+        result.Should().Be((int)ExitCode.Cancelled, "a task cancelled with the supplied token is the ordinary async shape of a requested cancellation");
+        handler.Handled.Should().BeEmpty();
+    }
+
+    // Cancellation requested while the command is suspended, not before: the filter reads the token's state at catch time.
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_report_cancellation_requested_while_the_command_is_running(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        using var cts = new CancellationTokenSource();
+        var started = new TaskCompletionSource();
+        var command = CreateCommand(async (_, token) =>
+                                    {
+                                        started.SetResult();
+                                        await Task.Delay(Timeout.InfiniteTimeSpan, token);
+
+                                        return ExitCode.Success;
+                                    },
+                                    handler);
+
+        // Both waits are bounded so a regression that stops cancellation reaching the command fails the test
+        // instead of hanging it.
+        var execution = command.ExecuteAsync(context, new StubSettings(), cts.Token);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await cts.CancelAsync();
+
+        (await execution.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)).Should()
+                                                             .Be((int)ExitCode.Cancelled,
+                                                                 "the token's state is read when the exception is caught, not when the command started");
+        handler.Handled.Should().BeEmpty();
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_report_cancellation_propagated_through_a_linked_token(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = CreateCommand((_, token) =>
+                                    {
+                                        using var linked = CancellationTokenSource.CreateLinkedTokenSource(token);
+                                        linked.Token.ThrowIfCancellationRequested();
+
+                                        return Task.FromResult(ExitCode.Success);
+                                    },
+                                    handler);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), cts.Token);
+
+        result.Should().Be((int)ExitCode.Cancelled, "a linked token carries a different token value, but the cancellation was still requested");
+        handler.Handled.Should().BeEmpty();
+    }
+
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_route_an_exception_other_than_cancellation_to_the_exception_handler_even_when_the_token_was_cancelled(CommandContext context)
+    {
+        var handler = new RecordingExceptionHandler();
+        var command = CreateCommand((_, _) => throw new InvalidOperationException("boom"), handler);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var result = await command.ExecuteAsync(context, new StubSettings(), cts.Token);
+
+        result.Should().Be((int)ExitCode.Error, "only an OperationCanceledException is a requested outcome; the filter must not widen");
+        handler.Handled.Should().ContainSingle().Which.Message.Should().Be("boom");
     }
 
     [Theory]
@@ -163,6 +344,11 @@ public class AsyncAppCommandTests
     private sealed class RecordingProcessor(List<string> order) : ICommandSettingsProcessor
     {
         public void ProcessArguments(CommandSettings arguments) => order.Add("process");
+    }
+
+    private sealed class CancellingProcessor : ICommandSettingsProcessor
+    {
+        public void ProcessArguments(CommandSettings arguments) => throw new OperationCanceledException();
     }
 
     private sealed class StubAsyncCommand(CommandArgumentsRootProcessor settingsProcessor,
