@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Ploch.CommandLine.Spectre.Commands;
@@ -102,12 +103,14 @@ public sealed class AppServicesBundleTests
         using var provider = services.BuildServiceProvider();
         var firstSettings = new OutputSettings { OutputPath = "out/{date}" };
         var secondSettings = new ReportSettings { ReportName = "report-{date}" };
+        var dateBefore = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         // Two commands in one host each resolve their own pipeline and process their own settings. The base
         // processor clears its collected properties on every call, so the guard here is instance isolation: a
         // shared processor would show up as one instance, and as the second invocation's state in both slots.
         provider.GetRequiredService<CommandArgumentsRootProcessor>().ProcessArguments(firstSettings);
         provider.GetRequiredService<CommandArgumentsRootProcessor>().ProcessArguments(secondSettings);
+        var dateAfter = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         processors.Should().HaveCount(2).And.OnlyHaveUniqueItems("every resolution of the pipeline gets its own token processor");
         processors[0]
@@ -116,8 +119,11 @@ public sealed class AppServicesBundleTests
             .Which.Should()
             .Be(nameof(OutputSettings.OutputPath));
         processors[1].CollectedProperties.Should().ContainSingle().Which.Should().Be(nameof(ReportSettings.ReportName));
-        firstSettings.OutputPath.Should().NotContain("{date}", "the observed processor is the only token processor in the pipeline");
-        secondSettings.ReportName.Should().NotContain("{date}");
+        // Either date is accepted so that a UTC midnight between the two reads does not fail correct code.
+        firstSettings.OutputPath.Should()
+                     .BeOneOf([ $"out/{dateBefore}", $"out/{dateAfter}" ],
+                              "the observed processor is the only token processor in the pipeline, and it expands {{date}} to the UTC date");
+        secondSettings.ReportName.Should().BeOneOf($"report-{dateBefore}", $"report-{dateAfter}");
     }
 
     /// <summary>
