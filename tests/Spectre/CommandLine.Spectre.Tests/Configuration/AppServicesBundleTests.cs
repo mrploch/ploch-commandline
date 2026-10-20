@@ -119,6 +119,7 @@ public sealed class AppServicesBundleTests
             .Which.Should()
             .Be(nameof(OutputSettings.OutputPath));
         processors[1].CollectedProperties.Should().ContainSingle().Which.Should().Be(nameof(ReportSettings.ReportName));
+
         // Either date is accepted so that a UTC midnight between the two reads does not fail correct code.
         firstSettings.OutputPath.Should()
                      .BeOneOf([ $"out/{dateBefore}", $"out/{dateAfter}" ],
