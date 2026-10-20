@@ -83,6 +83,22 @@ have been retired.
   `AppBuilder` uses `AppBuilder.ConfigureCommandApp`, which creates and
   configures its own command application. The command metadata types and
   `IsWriter` have no public replacement, as nothing in the library reads them.
+- **Breaking:** commands, settings and everything else Spectre registers through
+  `ITypeRegistrar.Register` are transient rather than singletons, and so is
+  `CommandArgumentsRootProcessor`, which now matches the transient
+  `TokensArgumentsProcessor` it aggregates; a processor you register keeps the
+  lifetime you give it. A
+  singleton command captured its transient dependencies for the life of the
+  host, and every command shared one `TokensArgumentsProcessor` with its mutable
+  state. `RegisterInstance` and
+  `RegisterLazy` registrations, the console, `IOutput`, the message formatter
+  processor and the `CancellationTokenSource` stay singletons. State that must
+  outlive one resolution belongs in a singleton service the command depends on;
+  re-registering the command type from `ConfigureServices` has no effect, because
+  Spectre's registration is queued later and wins. A command that
+  constructor-injects its own settings type now receives a fresh, unbound instance
+  rather than the bound one Spectre passes to `Execute`
+  ([PLO-781](https://linear.app/ploch/issue/PLO-781)).
 - **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
   `Run` or `RunAsync` on the same executor — whatever the first attempt's
   outcome — throws `InvalidOperationException`, synchronously and before any

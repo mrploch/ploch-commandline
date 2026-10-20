@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-05, against commit `6a2c931` |
+| Last verified | 2026-10-13, against commit `6fdfc2d` (service lifetimes, PLO-781) |
 | Verified by | Reading every project file and source file under `src/`; spot checks by `grep` |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
@@ -184,8 +184,22 @@ messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in
 `WriteBold` and `WriteError` escape content before wrapping it in a tag and rendering it as markup.
 Handler selection is "most derived type wins; first registration wins ties".
 
-**Service lifetimes.** The registrar registers everything Spectre asks for as a singleton, so
-commands and settings are singletons resolved from the root provider.
+**Service lifetimes.** `DependencyInjectionTypeRegistrar` registers everything Spectre asks for
+through `Register` — commands, settings, type converters, pair deconstructors — as transient, so a
+command holds its transient dependencies for its own lifetime rather than the host's; dependency
+lifetimes are unchanged, so singleton services stay shared. A command that constructor-injects its own
+settings type receives a fresh, unbound instance; the bound settings are the argument Spectre passes to
+`Execute`. `RegisterInstance` and `RegisterLazy` are
+singletons, which is what
+Spectre's contract requires. `CommandArgumentsRootProcessor` and the `ICommandSettingsProcessor` the
+library registers (`TokensArgumentsProcessor`) are transient too; a processor a caller registers
+keeps the lifetime the caller gives it. The console, `IOutput`, the message formatter processor, the
+`ICommandSettingsValidator<>` implementations, the exception handler and the `CancellationTokenSource`
+stay singletons; the FluentValidation `IValidator<T>` implementations found by assembly scanning keep
+FluentValidation's default scoped lifetime and are resolved in a scope per validation. Spectre's
+registrations are queued when the
+application runs, after every `ConfigureServices` delegate, and the last registration wins, so a
+caller cannot turn a command back into a singleton from `ConfigureServices`.
 
 **Hosting.** The host is built once a run reaches command resolution — a parse failure or
 `--version` returns before `DependencyInjectionTypeRegistrar.Build` is called — and the library
@@ -216,7 +230,6 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
-| Lifetimes | Singleton commands capture transient services, including `TokensArgumentsProcessor` |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
