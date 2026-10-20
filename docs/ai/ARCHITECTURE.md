@@ -187,7 +187,9 @@ Handler selection is "most derived type wins; first registration wins ties".
 **Service lifetimes.** `DependencyInjectionTypeRegistrar` registers everything Spectre asks for
 through `Register` — commands, settings, type converters, pair deconstructors — as transient, so a
 command holds its transient dependencies for its own lifetime rather than the host's; dependency
-lifetimes are unchanged, so singleton services stay shared. `RegisterInstance` and `RegisterLazy` are
+lifetimes are unchanged, so singleton services stay shared. A command that constructor-injects its own
+settings type receives a fresh, unbound instance; the bound settings are the argument Spectre passes to
+`Execute`. `RegisterInstance` and `RegisterLazy` are
 singletons, which is what
 Spectre's contract requires. `CommandArgumentsRootProcessor` and the `ICommandSettingsProcessor` the
 library registers (`TokensArgumentsProcessor`) are transient too; a processor a caller registers

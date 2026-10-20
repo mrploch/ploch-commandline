@@ -359,9 +359,11 @@ it (CS9107).
 `IUserService` is resolved from the container you configured in step 3; command constructors are
 plain constructor injection.
 
-Commands and their settings are transient: Spectre resolves a fresh instance for each run, and the
-settings processor the library registers is transient as well, so a command holds a transient service
-for its own lifetime rather than the host's. Services you register keep the lifetime you give them,
+Commands and their settings are transient: Spectre resolves a fresh instance for each run, so a
+command holds a transient service for its own lifetime rather than the host's. The settings processor
+the library registers is transient as well, so its state is not shared between runs. A command that
+constructor-injects its own settings type receives a fresh, unbound instance; the bound settings are
+the argument Spectre passes to `Execute`. Services you register keep the lifetime you give them,
 and singleton services stay shared between commands. Anything that must be shared between
 resolutions belongs in a singleton service the command depends on, not in the command itself — a
 command type cannot be re-registered as a singleton from `ConfigureServices`, because Spectre's own

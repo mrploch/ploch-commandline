@@ -76,7 +76,9 @@ More commands, with observed results, are in [`docs/ai/TECH-STACK.md`](docs/ai/T
   to the binaries by default.
 - The host is built but never started, so `IHostedService` implementations do not run.
 - Commands and settings are transient; `RegisterInstance` and `RegisterLazy` registrations, the
-  console, `IOutput` and the `CancellationTokenSource` are singletons.
+  console, `IOutput` and the `CancellationTokenSource` are singletons. A command that
+  constructor-injects its own settings type gets an unbound instance; the bound settings are the
+  `Execute` argument.
 - `IOutput.Write(string)` prints the text verbatim. Markup is parsed by `Markup`, `MarkupLine`, the `…Interpolated` overloads and a `FormattableString` passed to `Write`; caller data given to `Markup` / `MarkupLine` must be escaped.
 - A parse or validation failure exits with `-1`, not `ExitCode.InvalidInput` (2).
 - Configuration sources added through `ConfigureAppConfiguration` outrank the command line.

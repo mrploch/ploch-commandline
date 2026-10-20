@@ -17,8 +17,9 @@ namespace Ploch.CommandLine.Spectre.DependencyInjection;
 ///         lifetime rather than the host's. Dependency lifetimes are unchanged, so singleton services stay shared.
 ///         <see cref="RegisterInstance" /> and
 ///         <see cref="RegisterLazy" /> are <b>singletons</b>, because that is what Spectre's contract asks for: the
-///         first must hand back the very instance it was given, and the second describes a lazily created instance
-///         whose factory runs at most once per host.
+///         first must hand back the very instance it was given, and the second describes a lazily created instance:
+///         the first instance the factory creates successfully is shared by every later resolution, while a factory
+///         that throws is run again on the next resolution, because the container caches only a created instance.
 ///     </para>
 ///     <para>
 ///         The infrastructure the library registers itself — the console, the <c>IOutput</c>, the message formatter

@@ -72,9 +72,10 @@ have been retired.
   now registered after every caller service delegate, including those added
   through `ConfigureHost`.
 - **Breaking:** commands, settings and everything else Spectre registers through
-  `ITypeRegistrar.Register` are transient rather than singletons, and so are
-  `CommandArgumentsRootProcessor` and the `TokensArgumentsProcessor` the library
-  registers; a processor you register keeps the lifetime you give it. A
+  `ITypeRegistrar.Register` are transient rather than singletons, and so is
+  `CommandArgumentsRootProcessor`, which now matches the transient
+  `TokensArgumentsProcessor` it aggregates; a processor you register keeps the
+  lifetime you give it. A
   singleton command captured its transient dependencies for the life of the
   host, and every command shared one `TokensArgumentsProcessor` with its mutable
   state. `RegisterInstance` and
