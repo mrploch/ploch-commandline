@@ -71,6 +71,18 @@ have been retired.
   earlier `ConfigureHost` one. The application's `CancellationTokenSource` is
   now registered after every caller service delegate, including those added
   through `ConfigureHost`.
+- **Breaking:** `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`,
+  `CommandAppConfigurator`, `ICommandAppConfigurator` and
+  `TypeMessageFormatter<TMessage>.IsWriter` are `internal`. Nothing on the
+  library's runtime path uses them (`AppBuilder` never went through the
+  configurator), so they are withdrawn from the 1.0 surface: widening later is
+  non-breaking, narrowing after 1.0 is not. Code that configured a
+  command application it owns through `CommandAppConfigurator` does what the
+  configurator did: call `ICommandApp.Configure` on that application and
+  construct `CommandAppExecutor` over it directly. An application built through
+  `AppBuilder` uses `AppBuilder.ConfigureCommandApp`, which creates and
+  configures its own command application. The command metadata types and
+  `IsWriter` have no public replacement, as nothing in the library reads them.
 - **Breaking:** commands, settings and everything else Spectre registers through
   `ITypeRegistrar.Register` are transient rather than singletons, and so is
   `CommandArgumentsRootProcessor`, which now matches the transient
@@ -93,8 +105,7 @@ have been retired.
   task is returned from `RunAsync`. Running again takes a new executor over a
   freshly configured command application: `AppBuilder.ConfigureCommandApp`
   provides one when the application was built through `AppBuilder`, while an
-  executor constructed directly or through `CommandAppConfigurator` needs a
-  newly configured `ICommandApp`, because `Configure` wraps the same one. After
+  executor constructed directly needs a newly configured `ICommandApp`. After
   a cancelled attempt the same builder's cancellation source stays cancelled,
   so `ConfigureCommandApp` on that builder throws `InvalidOperationException`
   instead of building an executor over an already-cancelled token; a run after
@@ -119,6 +130,10 @@ have been retired.
 - **Breaking:** `AnsiConsoleMarkupOutput.WriteMarkupLineInterpolated`, which was
   absent from `IOutput` and silently discarded non-`FormattableString` messages.
   Use `MarkupLineInterpolated`.
+- **Breaking:** `Win32ExceptionMessageFormatter.GetFormattedExceptionText`, a
+  `protected static` helper that nothing called. A subclass that used it
+  builds the same text from `Win32Exception.NativeErrorCode` and `Message`;
+  `GetExceptionText` remains the override point.
 
 ### Fixed
 
@@ -134,7 +149,6 @@ have been retired.
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.
-- `CommandInfoFactory.CreateFromType` threw on its primary path.
 - Cancellation was accepted everywhere and honoured nowhere; Ctrl+C cancelled a
   token nothing observed.
 - `AnsiConsoleMarkupOutput.Write` printed every writer-handled message twice.

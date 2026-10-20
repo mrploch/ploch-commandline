@@ -27,9 +27,8 @@ namespace Ploch.CommandLine.Spectre;
 ///         outcome: a second <see cref="Run" /> or <see cref="RunAsync" /> is rejected up front with an
 ///         <see cref="InvalidOperationException" />. Running again takes a new executor over a freshly configured
 ///         command application; <see cref="AppBuilder.ConfigureCommandApp" /> does both when the application was built
-///         through <see cref="AppBuilder" />. An executor constructed directly, or through
-///         <see cref="CommandAppConfigurator" />, wraps an <see cref="ICommandApp" /> the caller owns, so the caller
-///         configures a new one.
+///         through <see cref="AppBuilder" />. An executor constructed directly wraps an <see cref="ICommandApp" /> the
+///         caller owns, so the caller configures a new one.
 ///     </para>
 ///     <para>
 ///         For an executor returned by <see cref="AppBuilder.ConfigureCommandApp" />, a run that reaches command

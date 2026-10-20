@@ -232,7 +232,6 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
-| Public API | `CommandAttribute`, `CommandInfo`, `CommandInfoFactory`, `CommandAppConfigurator` have no caller in `src/` |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
 
 Resolved since the review: the cancellation catch now checks the supplied token, the three

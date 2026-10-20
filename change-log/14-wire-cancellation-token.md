@@ -57,14 +57,20 @@
 
 ### Changed
 
-- **Breaking:** `CommandAppExecutor` and `CommandAppConfigurator` take a
-  `CancellationToken` as a second constructor argument. It is required rather
-  than optional so that an application built through either type cannot
-  silently end up without cancellation. Code constructing them directly must
-  supply one; `AppBuilder` passes the token of the source it owns already (#14).
+- **Breaking:** `CommandAppExecutor` takes a `CancellationToken` as a second
+  constructor argument. It is required rather than optional so that an
+  application built through it cannot silently end up without cancellation.
+  Code constructing it directly must supply one; `AppBuilder` passes the token
+  of the source it owns already (#14). `CommandAppConfigurator`, which took the
+  same token, is `internal` since PLO-779 and is no longer a public entry point.
+  Code that configured a command application it owns through it calls
+  `ICommandApp.Configure` on that application and constructs
+  `CommandAppExecutor` over it directly, passing the token; an application
+  built through `AppBuilder` uses `AppBuilder.ConfigureCommandApp`, which
+  creates and configures its own command application.
 
   A token is taken rather than the `CancellationTokenSource` behind it, for
-  three reasons. Neither type ever calls `Cancel`, so the source advertises a
+  three reasons. The executor never calls `Cancel`, so the source advertises a
   capability that is never used. The conversion only goes one way — `.Token` is
   free, whereas turning a token back into a source needs
   `CreateLinkedTokenSource` and another disposable to own — so accepting a token

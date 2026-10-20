@@ -5,7 +5,7 @@ namespace Ploch.CommandLine.Spectre.Commands;
 /// <summary>
 ///     Factory class for creating <see cref="CommandInfo" /> instances from command types.
 /// </summary>
-public static class CommandInfoFactory
+internal static class CommandInfoFactory
 {
     /// <summary>
     ///     Creates a <see cref="CommandInfo" /> instance from the specified command type.
