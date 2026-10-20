@@ -1,8 +1,9 @@
 ﻿namespace Ploch.CommandLine.Spectre.Commands;
 
 /// <summary>
-///     Attribute used to define a command in the command-line application.
-///     This attribute provides metadata for command registration and display.
+///     Attribute that describes a command in the command-line application.
+///     It carries the metadata that <see cref="CommandInfoFactory" /> reads into a <see cref="CommandInfo" />;
+///     nothing registers a command from it.
 /// </summary>
 /// <param name="name">The primary name of the command used to invoke it from the command line.</param>
 /// <param name="alias">An optional alternative name (alias) for the command.</param>
