@@ -21,8 +21,7 @@
   task is returned from `RunAsync`. Running again takes a new executor over a
   freshly configured command application: `AppBuilder.ConfigureCommandApp`
   provides one when the application was built through `AppBuilder`, while an
-  executor constructed directly or through `CommandAppConfigurator` needs a
-  newly configured `ICommandApp`, because `Configure` wraps the same one. After
+  executor constructed directly needs a newly configured `ICommandApp`. After
   a cancelled attempt the same builder's cancellation source stays cancelled,
   so `ConfigureCommandApp` on that builder throws `InvalidOperationException`
   instead of building an executor over an already-cancelled token; a run after
