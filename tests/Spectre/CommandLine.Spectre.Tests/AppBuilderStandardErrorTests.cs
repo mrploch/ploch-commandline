@@ -135,7 +135,7 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
 
         exitCode.Should().Be(0);
         StandardError().Should().Contain("Widget Tool 4.5").And.Contain("Executing command echo");
-        NonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
+        GetNonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
         _stdout.Output.Should().Be("echoed" + Environment.NewLine, "standard output carries the command's output and nothing else");
     }
 
@@ -156,7 +156,7 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
 
         exitCode.Should().Be(0);
         StandardError().Should().Contain("Widget Tool").And.Contain("Executing command echo");
-        NonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
+        GetNonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
         _stdout.Output.Should().Be("echoed" + Environment.NewLine);
     }
 
@@ -179,7 +179,7 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
         _stdout.Output.Should().Be("echoed" + Environment.NewLine);
     }
 
-    private static List<string> NonBlankLines(string text) => text.Split('\n').Select(line => line.TrimEnd()).Where(line => line.Length > 0).ToList();
+    private static List<string> GetNonBlankLines(string text) => text.Split('\n').Select(line => line.TrimEnd()).Where(line => line.Length > 0).ToList();
 
     /// <summary>The visible text written to standard error, with any ANSI escape sequences removed.</summary>
     private string StandardError() => RecordingConsole.StripEscapeSequences(_stderr.ToString());

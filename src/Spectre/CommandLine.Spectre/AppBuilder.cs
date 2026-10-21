@@ -357,12 +357,12 @@ public class AppBuilder : IDisposable
 
         // Read once: the banner and the announcement are one switch, so both decisions below use the same value even
         // if the property is changed while this call is in progress.
-        var showBanner = _appInfo.ShouldShowBanner;
+        var shouldShowBanner = _appInfo.ShouldShowBanner;
 
         // Standard error, not standard output: the banner is about the application, not the command's result, so a
         // consumer piping the command's output never sees it. Written here, when the application is built, so it also
         // precedes Spectre's own help and version output. ShowBanner drops it altogether.
-        if (showBanner)
+        if (shouldShowBanner)
         {
             _appInfo.PrintAppInfo(_errorConsole);
         }
@@ -382,7 +382,7 @@ public class AppBuilder : IDisposable
                                       // the announcement precedes any interceptor the caller registers, whether through a
                                       // services bundle, ConfigureServices or Spectre's SetInterceptor, and a caller can still
                                       // remove it from the collection. Off with the banner: ShowBanner(false) silences both.
-                                      if (showBanner)
+                                      if (shouldShowBanner)
                                       {
                                           services.AddSingleton<ICommandInterceptor>(new ExecutingCommandInterceptor(_errorConsole));
                                       }
