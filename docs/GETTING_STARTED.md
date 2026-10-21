@@ -111,7 +111,8 @@ Three things happen here that you do not have to write yourself:
 The banner and the `Executing command …` line that precedes each command no longer touch standard
 output: both go to standard error, so
 `mytool user list | cat` (or `> users.txt`) carries only what the command rendered through
-`IOutput`, while the terminal still shows the banner. Redirect `2>/dev/null` to hide them, or call
+`IOutput`, while the terminal still shows the banner. Redirect `2>/dev/null` (`2>nul` in `cmd`,
+`2>$null` in PowerShell) to hide them, or call
 `ShowBanner(false)` to drop both altogether. (The Ctrl+C notice and the `PauseBeforeExit` prompt still use standard output;
 [PLO-819](https://linear.app/ploch/issue/PLO-819) tracks them.) The listings in this guide show
 standard output only.
@@ -218,7 +219,8 @@ Note what the base class gives you and what you therefore never write in `DoExec
 - **`ExitCode`, not `int`.** The base class casts for you.
 
 Before `DoExecute` runs, the application announces the command on standard error with a short
-`Executing command info` line, named after the command as typed. The base class itself writes
+`Executing command info` line, named after the command's registered name (an alias is announced
+by the name it is an alias of). The base class itself writes
 nothing to the injected `IOutput`, so standard output is yours.
 
 Render through the inherited `Output` property rather than the constructor parameter — capturing a

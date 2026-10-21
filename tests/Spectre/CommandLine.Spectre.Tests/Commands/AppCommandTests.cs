@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Moq;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.TestingSupport.XUnit3.AutoMoq;
@@ -67,19 +68,15 @@ public class AppCommandTests
     [AutoMockData]
     public void Execute_should_write_nothing_to_the_output_itself(CommandContext context)
     {
-        var lines = new List<string>();
-        var command = new StubCommand(_ =>
-                                      {
-                                          lines.Add("execute");
+        // Strict: any call on the output throws, and the base would route that to the handler as a failure.
+        var output = new Mock<IOutput>(MockBehavior.Strict);
+        var handler = new RecordingExceptionHandler();
+        var command = new StubCommand(_ => ExitCode.Success, handler, output: output.Object);
 
-                                          return ExitCode.Success;
-                                      },
-                                      processor: new([new RecordingProcessor(lines)]),
-                                      output: new RecordingOutput(lines));
+        var result = command.Execute(context, new StubSettings(), CancellationToken.None);
 
-        command.Execute(context, new StubSettings(), CancellationToken.None);
-
-        lines.Should().Equal("process", "execute");
+        result.Should().Be((int)ExitCode.Success);
+        handler.Handled.Should().BeEmpty("no call reached the strict output, so nothing threw");
     }
 
     [Theory]
@@ -398,8 +395,8 @@ public class AppCommandTests
     }
 
     /// <summary>
-    ///     An <see cref="IOutput" /> that records the text of each line-level call, so tests can assert on the banner
-    ///     without writing to the console.
+    ///     An <see cref="IOutput" /> that records the text of each line-level call, so tests can assert on what was
+    ///     written without touching the console.
     /// </summary>
     private sealed class RecordingOutput(List<string> lines) : IOutput
     {

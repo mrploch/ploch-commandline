@@ -13,8 +13,9 @@ namespace Ploch.CommandLine.Spectre.Commands;
 ///     <para>
 ///         Spectre.Console.Cli resolves every registered <see cref="ICommandInterceptor" /> and calls
 ///         <see cref="Intercept" /> once the settings are bound, before the command's <c>Validate</c> and
-///         <c>Execute</c>. The line therefore names the command as the user invoked it (<see cref="CommandContext.Name" />,
-///         the leaf command name) rather than the settings type, and it appears for every command the application runs,
+///         <c>Execute</c>. The line therefore names the command by the name it is registered under
+///         (<see cref="CommandContext.Name" />, the leaf command name; an alias is announced by the registered name)
+///         rather than the settings type, and it appears for every command the application runs,
 ///         not only those deriving from <see cref="AppCommand{TSettings}" /> or <see cref="AsyncAppCommand{TSettings}" />.
 ///         A default command, which Spectre runs when no command name was typed, is announced as "the default command"
 ///         rather than by the placeholder name Spectre gives it.

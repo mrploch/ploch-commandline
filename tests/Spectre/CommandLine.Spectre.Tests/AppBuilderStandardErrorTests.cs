@@ -136,6 +136,7 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
         exitCode.Should().Be(0);
         StandardError().Should().Contain("Widget Tool 4.5").And.Contain("Executing command echo");
         GetNonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
+        AssertNoEscapeSequencesWhenRedirected();
         _stdout.Output.Should().Be("echoed" + Environment.NewLine, "standard output carries the command's output and nothing else");
     }
 
@@ -157,6 +158,7 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
         exitCode.Should().Be(0);
         StandardError().Should().Contain("Widget Tool").And.Contain("Executing command echo");
         GetNonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
+        AssertNoEscapeSequencesWhenRedirected();
         _stdout.Output.Should().Be("echoed" + Environment.NewLine);
     }
 
@@ -183,6 +185,19 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
 
     /// <summary>The visible text written to standard error, with any ANSI escape sequences removed.</summary>
     private string StandardError() => RecordingConsole.StripEscapeSequences(_stderr.ToString());
+
+    /// <summary>
+    ///     Asserts on the raw standard-error text, which the default factory makes plain only when the process's
+    ///     standard error is redirected: that is the case under the CI runner and most test hosts, while a developer
+    ///     running the tests from a terminal legitimately gets escape sequences, so the assertion is conditional.
+    /// </summary>
+    private void AssertNoEscapeSequencesWhenRedirected()
+    {
+        if (Console.IsErrorRedirected)
+        {
+            _stderr.ToString().Should().NotContain("\u001b", "a redirected standard error gets plain text, FIGlet art included");
+        }
+    }
 
     // ReSharper disable once ClassNeverInstantiated.Local - Spectre binds it.
     // ReSharper disable once RedundantTypeDeclarationBody - StyleCop rejects the bodiless form (SA1106).

@@ -283,6 +283,24 @@ public sealed class AppBuilderTests : IDisposable
         _console.Output.Should().Contain("USAGE", "Spectre renders help on its own console").And.NotContain("Probe App");
     }
 
+    [Fact]
+    public void ConfigureCommandApp_should_print_the_banner_but_not_announce_a_command_for_version()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<ProbeCommand>("probe");
+                              })
+                              .Run("--version");
+
+        exitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Probe App").And.NotContain("Executing command", "no command is resolved for the version switch");
+        _console.Output.Should().NotContain("Probe App").And.NotContain("Executing command");
+    }
+
     /// <summary>
     ///     The announcement is written before the command runs, so a failing standard error stream stops the run
     ///     before the command: Spectre handles the exception as it would any failure ahead of execution, and the

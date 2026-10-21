@@ -7,8 +7,9 @@
 
 - **Breaking:** the start-up banner and the `Executing command …` line are written
   to standard error rather than standard output, so `myapp list | cat` carries only
-  what the command rendered. The line names the command as invoked (`add`) rather
-  than its settings type (a default command as "the default command"), is
+  what the command rendered. The line names the command by its registered leaf
+  name (`add`; an alias by the name it aliases) rather than its settings type (a
+  default command as "the default command"), is
   written by the application once the settings are bound and before the
   command's `Validate` runs, and appears for every command, not only those
   deriving from the base classes. `AppCommand<TSettings>` and
