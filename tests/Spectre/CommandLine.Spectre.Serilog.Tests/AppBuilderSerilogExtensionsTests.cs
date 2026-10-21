@@ -158,6 +158,14 @@ public sealed class AppBuilderSerilogExtensionsTests : IDisposable
         using var cancellationTokenSource = new CancellationTokenSource();
         using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Serilog Probe" }, cancellationTokenSource);
         builder.ConfigureServices(services => services.AddSingleton(_recorder));
+
+        // Pins the Serilog minimum level to its predefined default so an ambient Serilog__MinimumLevel__Default in the
+        // test process cannot filter the events the probes assert; a test that supplies its own level afterwards still
+        // wins, because later application-configuration sources override earlier ones.
+        builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                                                                                               {
+                                                                                                   ["Serilog:MinimumLevel:Default"] = "Information"
+                                                                                               }));
         optIn(builder);
 
         // Queued after the opt-in, so by the time it runs the Serilog registrations are in the collection.
