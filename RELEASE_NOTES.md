@@ -134,6 +134,19 @@ have been retired.
   built the host, rendered the host builder's "Build can only be called once"
   error and returned -1; an attempt may build that host and it can only be
   built once, so the executor now says so up front.
+- **Breaking:** `FormattableStringMessageWriter` no longer pre-renders the
+  interpolation holes through the registered formatters, which it did only when
+  called directly with a processor, so a hole holding an exception or a
+  collection renders through `string.Format` instead. Code that relied on the
+  formatters calls `IMessageFormatterProcessor.GetMessageText(FormattableString, ...)`
+  itself, from its own writer.
+- **Breaking:** `MessageFormatterProcessor` selects the later of two writers or formatters
+  registered for the same message type, rather than the earlier one. The
+  built-in bundle registers before any `ConfigureServices` delegate, so a
+  consumer registration for a type the bundle covers now takes effect where it
+  was previously ignored. Unrelated types that both accept a message still keep
+  the first registration. A consumer that registered a second handler for a type
+  and relied on the first one winning removes the registration it does not want.
 - `IOutput.Write` and `WriteLine` hand a `string` and a `FormattableString` to the
   registered message writers instead of rendering them themselves, so the built-in
   `StringMessageWriter` and `FormattableStringMessageWriter` are now the code that
@@ -144,16 +157,6 @@ have been retired.
   still renders as markup with its holes escaped and formatted by
   `string.Format`, so a format specifier such as `{total:N2}` and an
   `ICustomFormatter` on the provider are honoured.
-  `FormattableStringMessageWriter` no longer pre-renders the interpolation holes
-  through the registered formatters, which it did only when called directly;
-  a writer that wants that behaviour calls
-  `IMessageFormatterProcessor.GetMessageText(FormattableString, ...)` itself.
-- `MessageFormatterProcessor` selects the later of two writers or formatters
-  registered for the same message type, rather than the earlier one. The
-  built-in bundle registers before any `ConfigureServices` delegate, so a
-  consumer registration for a type the bundle covers now takes effect where it
-  was previously ignored. Unrelated types that both accept a message still keep
-  the first registration.
 - `Ploch.CommandLine.Spectre` no longer declares the eight `Serilog.*` packages as
   direct dependencies. They were duplicates of what its `Ploch.CommandLine.Spectre.Serilog`
   dependency already declares, so the resolved package graph of a consumer is unchanged;
