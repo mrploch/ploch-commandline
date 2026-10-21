@@ -156,6 +156,8 @@ public sealed class AppServicesBundleTests
     ///     Factory- and instance-backed descriptors carry a Microsoft.Extensions.Logging service type, so the
     ///     implementation side is checked as well as the service type.
     /// </summary>
+    /// <param name="descriptor">The registration to inspect.</param>
+    /// <returns><see langword="true" /> when any type the descriptor names comes from a Serilog namespace.</returns>
     private static bool IsSerilogDescriptor(ServiceDescriptor descriptor) =>
         IsSerilogType(descriptor.ServiceType) ||
         IsSerilogType(descriptor.ImplementationType) ||

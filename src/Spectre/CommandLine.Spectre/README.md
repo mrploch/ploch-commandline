@@ -104,7 +104,7 @@ This project provides following services bundles:
 - `OutputServicesBundle` - registers services required for output formatting
 
 Neither bundle chooses a logging provider: an application built with `AppBuilder` resolves `ILogger<T>` from the
-host's default providers and writes no log file. Serilog is opt-in — add the `Ploch.CommandLine.Spectre.Serilog`
+host's default providers, and the core package creates no application log file. Serilog is opt-in — add the `Ploch.CommandLine.Spectre.Serilog`
 package and call `UseSerilog` on the builder to log through Serilog, with the log name, directory, output template
 and culture as optional arguments.
 

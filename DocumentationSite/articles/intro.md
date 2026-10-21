@@ -64,7 +64,8 @@ container, as are options types registered with `services.Configure<T>(...)`.
 ## Logging with Serilog
 
 Serilog is opt-in. The core package registers no logging provider, so `ILogger<T>` resolves from
-the host's defaults and nothing is written to disk. To log through Serilog — configured from the
+the host's defaults and the core package creates no application log file; the host's providers
+write only where they are configured to. To log through Serilog — configured from the
 application's `Serilog` section, with the Spectre.Console console sink and two rolling log
 files — add `Ploch.CommandLine.Spectre.Serilog` and call `UseSerilog` on the builder, once. The
 files are named after the process unless you choose the log name and directory; the output

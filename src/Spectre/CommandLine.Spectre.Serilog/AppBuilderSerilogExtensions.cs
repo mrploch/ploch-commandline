@@ -48,7 +48,8 @@ public static class AppBuilderSerilogExtensions
     ///         Call it once. Every call queues another Serilog registration, as does
     ///         <see cref="SerilogLoggingConfigurator.AddSerilog" /> on the service collection; an application that
     ///         already calls <c>services.AddSerilog(context.Configuration, ...)</c> from <c>ConfigureServices</c>
-    ///         keeps working and does not need this method as well.
+    ///         does not need this method as well; it only has to reference this package directly, which the core
+    ///         package no longer does on its behalf.
     ///     </para>
     ///     <para>
     ///         Serilog reads its minimum level and overrides from the <c>Serilog</c> section of the host configuration,

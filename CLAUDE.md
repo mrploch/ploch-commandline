@@ -72,7 +72,7 @@ More commands, with observed results, are in [`docs/ai/TECH-STACK.md`](docs/ai/T
 
 ## Behaviour that surprises people
 
-- Serilog is opt-in: the core package has no Serilog dependency and writes no log file. Add
+- Serilog is opt-in: the core package has no Serilog dependency and creates no application log file. Add
   `Ploch.CommandLine.Spectre.Serilog` and call `UseSerilog` on the builder, once, to turn it on.
 - The host is built but never started, so `IHostedService` implementations do not run.
 - Commands and settings are transient; `RegisterInstance` and `RegisterLazy` registrations, the

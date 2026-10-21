@@ -152,7 +152,7 @@ The synchronous and asynchronous bases behave identically apart from `await`.
 
 | Package | Mechanism |
 |---|---|
-| Serilog | Opt-in: `appBuilder.UseSerilog(logName:, logPath:)` queues `services.AddSerilog(context.Configuration, ...)` through `ConfigureServices`, which registers `SerilogConfigurationBundle`. Without it the host's default providers serve `ILogger<T>` and nothing is written to disk. `configuration` is optional for `AddSerilog`: without one the bundle skips the base class's null check and registers the predefined sinks (rolling file, warnings-and-above file, Spectre.Console) at the `Information` minimum level. Call either entry point once |
+| Serilog | Opt-in: `appBuilder.UseSerilog(logName:, logPath:)` queues `services.AddSerilog(context.Configuration, ...)` through `ConfigureServices`, which registers `SerilogConfigurationBundle`. Without it the host's default providers serve `ILogger<T>` and the core package creates no application log file (the host's providers write only where they are configured to, such as the Windows event log). `configuration` is optional for `AddSerilog`: without one the bundle skips the base class's null check and registers the predefined sinks (rolling file, warnings-and-above file, Spectre.Console) at the `Information` minimum level. Call either entry point once |
 | FluentValidation | `services.AddCommandLineSettingsFluentValidation(b => b.AddAssembly(...))` registers an open-generic `ICommandSettingsValidator<>` after the default one, so it wins |
 | UseCases | Derive from `UseCaseAsyncCommand<...>`, implement `CreateRequest`, register the use case in DI |
 

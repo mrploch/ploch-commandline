@@ -49,8 +49,9 @@ dotnet add package Spectre.Console.Cli
 
 `Ploch.CommandLine.Spectre` is the only Ploch package you need to start. It brings no logging
 provider of its own: `ILogger<T>` resolves from the host's defaults (console, debug and event
-source), and nothing is written to disk. Serilog is opt-in; [section 13](#13-logging-with-serilog)
-shows the one call that turns it on. Add the remaining packages as you reach the steps that need
+source, plus the Windows event log on Windows), and the core package creates no application log
+file; those providers write only where they are configured to. Serilog is opt-in;
+[section 13](#13-logging-with-serilog) shows the one call that turns it on. Add the remaining packages as you reach the steps that need
 them:
 
 | Package | Adds |
@@ -828,8 +829,8 @@ already-cancelled token; to run again after cancellation, start from a new build
 
 ## 13. Logging with Serilog
 
-Serilog is opt-in. Without it the host's default providers serve `ILogger<T>` and no log file is
-written. `Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with the
+Serilog is opt-in. Without it the host's default providers serve `ILogger<T>` and the core package
+creates no application log file. `Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with the
 Spectre.Console console sink and two rolling files — everything, and warnings and above. Add the
 package and call `UseSerilog` on the builder, once; the log files are named after the process
 unless you choose a name and directory:
@@ -847,8 +848,10 @@ using var appBuilder = AppBuilder.Create(args)
 ```
 
 `UseSerilog` queues `services.AddSerilog(context.Configuration, ...)` through `ConfigureServices`.
-An application that already makes that call itself keeps working and needs no `UseSerilog` as
-well; the two together would register Serilog twice.
+An application that already makes that call itself needs no `UseSerilog` as well — the two
+together would register Serilog twice — but it must now reference
+`Ploch.CommandLine.Spectre.Serilog` directly, because the package no longer arrives through the
+core package.
 
 Levels come from the `Serilog` section of `appsettings.json`:
 

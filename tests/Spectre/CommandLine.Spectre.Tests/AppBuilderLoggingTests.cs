@@ -24,6 +24,7 @@ public sealed class AppBuilderLoggingTests : IDisposable
     private readonly IAnsiConsole _originalConsole = AnsiConsole.Console;
     private readonly RecordingConsole _console = new();
     private readonly LoggingRecorder _recorder = new();
+    private readonly RecordingLoggerProvider _loggerProvider = new();
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AppBuilderLoggingTests" /> class with an isolated console.
@@ -59,8 +60,9 @@ public sealed class AppBuilderLoggingTests : IDisposable
         RunProbe();
 
         _recorder.ExitCode.Should().Be((int)ExitCode.Success);
-        _recorder.LoggerFactory.Should().NotBeNull("the host's default logging infrastructure is still registered");
-        _recorder.LogCallSucceeded.Should().BeTrue("logging through the default providers must not throw");
+        _recorder.LoggerFactory.Should().BeOfType<LoggerFactory>("the host's default logging infrastructure serves the command, not a null factory");
+        _loggerProvider.Messages.Should().ContainSingle("a provider added through the host's logging builder receives the command's event, so the pipeline is live")
+                       .Which.Should().Be("[LoggingProbeCommand] The probe ran without Serilog");
     }
 
     /// <summary>
@@ -89,7 +91,10 @@ public sealed class AppBuilderLoggingTests : IDisposable
     {
         using var cancellationTokenSource = new CancellationTokenSource();
         using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Logging Probe" }, cancellationTokenSource);
-        builder.ConfigureServices(services => services.AddSingleton(_recorder));
+
+        // The recording provider sits next to the host's default providers; the console provider would print to the
+        // test output, so what the pipeline delivered is asserted through the recorder instead.
+        builder.ConfigureServices(services => services.AddSingleton(_recorder).AddLogging(logging => logging.AddProvider(_loggerProvider)));
 
         var executor = builder.ConfigureCommandApp(configurator =>
                                                    {
@@ -107,13 +112,28 @@ public sealed class AppBuilderLoggingTests : IDisposable
         public int ExitCode { get; set; } = int.MinValue;
 
         public ILoggerFactory? LoggerFactory { get; set; }
-
-        public bool LogCallSucceeded { get; set; }
     }
 
-    // ReSharper disable once ClassNeverInstantiated.Local - Spectre binds it through the container.
-    private sealed class LoggingProbeSettings : CommandSettings
+    /// <summary>A logging provider that keeps every formatted message it is handed.</summary>
+    private sealed class RecordingLoggerProvider : ILoggerProvider
     {
+        public List<string> Messages { get; } = [];
+
+        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new RecordingLogger(Messages);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class RecordingLogger(List<string> messages) : Microsoft.Extensions.Logging.ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+                messages.Add(formatter(state, exception));
+        }
     }
 
     /// <summary>
@@ -121,13 +141,13 @@ public sealed class AppBuilderLoggingTests : IDisposable
     /// </summary>
     // ReSharper disable once ClassNeverInstantiated.Local - Spectre resolves it through the container.
     private sealed class LoggingProbeCommand(CommandArgumentsRootProcessor settingsProcessor,
-                                             ICommandSettingsValidator<LoggingProbeSettings> validator,
+                                             ICommandSettingsValidator<EmptyCommandSettings> validator,
                                              IExceptionHandler exceptionHandler,
                                              IOutput output,
                                              ILogger<LoggingProbeCommand> logger,
                                              ILoggerFactory loggerFactory,
                                              LoggingRecorder recorder)
-        : AppCommand<LoggingProbeSettings>(settingsProcessor, validator, exceptionHandler, output)
+        : AppCommand<EmptyCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
     {
         /// <summary>
         ///     Logs one message and records the factory that served the command.
@@ -136,11 +156,10 @@ public sealed class AppBuilderLoggingTests : IDisposable
         /// <param name="settings">The settings of the probe, which has none.</param>
         /// <param name="cancellationToken">The cancellation token supplied to command execution.</param>
         /// <returns>The success exit code.</returns>
-        protected override ExitCode DoExecute(CommandContext context, LoggingProbeSettings settings, CancellationToken cancellationToken)
+        protected override ExitCode DoExecute(CommandContext context, EmptyCommandSettings settings, CancellationToken cancellationToken)
         {
             recorder.LoggerFactory = loggerFactory;
             logger.LogInformation("[LoggingProbeCommand] The probe ran without Serilog");
-            recorder.LogCallSucceeded = true;
 
             return ExitCode.Success;
         }

@@ -193,23 +193,18 @@ public sealed class AppBuilderSerilogExtensionsTests : IDisposable
         public ILoggerFactory? LoggerFactory { get; set; }
     }
 
-    // ReSharper disable once ClassNeverInstantiated.Local - Spectre binds it through the container.
-    private sealed class SerilogProbeSettings : CommandSettings
-    {
-    }
-
     /// <summary>Takes <see cref="ILogger{TCategoryName}" /> exactly as a consumer's command would.</summary>
     // ReSharper disable once ClassNeverInstantiated.Local - Spectre resolves it through the container.
     private sealed class SerilogProbeCommand(CommandArgumentsRootProcessor settingsProcessor,
-                                             ICommandSettingsValidator<SerilogProbeSettings> validator,
+                                             ICommandSettingsValidator<EmptyCommandSettings> validator,
                                              IExceptionHandler exceptionHandler,
                                              IOutput output,
                                              ILogger<SerilogProbeCommand> logger,
                                              ILoggerFactory loggerFactory,
                                              ProbeRecorder recorder)
-        : AppCommand<SerilogProbeSettings>(settingsProcessor, validator, exceptionHandler, output)
+        : AppCommand<EmptyCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
     {
-        protected override ExitCode DoExecute(CommandContext context, SerilogProbeSettings settings, CancellationToken cancellationToken)
+        protected override ExitCode DoExecute(CommandContext context, EmptyCommandSettings settings, CancellationToken cancellationToken)
         {
             recorder.LoggerFactory = loggerFactory;
             logger.LogInformation("the probe ran");

@@ -49,13 +49,16 @@ have been retired.
   on `Ploch.CommandLine.Spectre.Serilog`, and `AppServicesBundle` no longer
   registers `SerilogConfigurationBundle`, so an application that references only
   the core package resolves `ILogger<T>` from the host's default providers and
-  writes no log file. To keep the Serilog logging of previous builds, add the
+  creates no application log file. To keep the Serilog logging of previous
+  builds, add the
   Serilog package and opt in on the builder, once:
   `dotnet add package Ploch.CommandLine.Spectre.Serilog`, then
   `AppBuilder.Create(args).UseSerilog()` (`using Ploch.CommandLine.Spectre.Serilog;`),
   with `logName:`, `logPath:`, `template:` and `culture:` as optional arguments.
   An application that already calls `services.AddSerilog(context.Configuration, ...)`
-  from `ConfigureServices` keeps working and needs no `UseSerilog`; that call is
+  from `ConfigureServices` needs no `UseSerilog`, but it must reference
+  `Ploch.CommandLine.Spectre.Serilog` directly, as the package no longer arrives
+  through the core package; with that reference the call compiles unchanged and is
   now the only Serilog registration rather than a second one on top of the core
   bundle's, so the container holds one `Serilog.ILogger` descriptor
   ([PLO-778](https://linear.app/ploch/issue/PLO-778),
