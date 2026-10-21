@@ -15,7 +15,7 @@ have been retired.
 | Package | Description |
 |---|---|
 | `Ploch.CommandLine.Spectre` | Core framework: `AppBuilder`, command base classes, settings pipeline, output pipeline. |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog integration for structured logging. |
+| `Ploch.CommandLine.Spectre.Serilog` | Opt-in Serilog integration for structured logging, switched on with `UseSerilog`. |
 | `Ploch.CommandLine.Spectre.FluentValidation` | Declarative validation of command settings. |
 | `Ploch.CommandLine.UseCases` | Clean Architecture use-case commands built on `Ardalis.Result`. |
 

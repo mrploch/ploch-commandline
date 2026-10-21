@@ -840,6 +840,7 @@ dotnet add package Ploch.CommandLine.Spectre.Serilog
 ```
 
 ```csharp
+using Ploch.CommandLine.Spectre;
 using Ploch.CommandLine.Spectre.Serilog;
 
 using var appBuilder = AppBuilder.Create(args)
