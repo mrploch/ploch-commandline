@@ -32,8 +32,12 @@ var appBuilder = AppBuilder.Create(args)
                            .ConfigureHost(host => host.UseSettingsFromDeploymentDirectory(AppContext.BaseDirectory))
                            .ConfigureServices((context, services) =>
                            {
-                               // Serilog reads its minimum level from the "Serilog" section of appsettings.json and
+                               // Serilog is opt-in: the core package registers no logging provider, so this call is what
+                               // turns it on. It reads its minimum level from the "Serilog" section of appsettings.json and
                                // writes to the console plus a rolling log file under the application's log directory.
+                               // appBuilder.UseSerilog(logName: ..., logPath: ...) is the same registration in one call on
+                               // the builder; this sample builds against the published package and adopts it once the
+                               // package that ships UseSerilog is pinned here.
                                services.AddSerilog(context.Configuration,
                                                    logName: "sample",
                                                    logPath: Path.Combine(AppContext.BaseDirectory, "logs"));

@@ -63,18 +63,21 @@ container, as are options types registered with `services.Configure<T>(...)`.
 
 ## Logging with Serilog
 
-`Ploch.CommandLine.Spectre.Serilog` ships with the core package: `Ploch.CommandLine.Spectre`
-depends on it, and `AppServicesBundle` registers its `SerilogConfigurationBundle`, so framework
-logging already goes through Serilog, configured from the application's `Serilog` section and
-writing log files named after the process. Call `AddSerilog` from `ConfigureServices` to choose
-the log name and directory, or to change the output template and the culture the files are
-written with:
+Serilog is opt-in. The core package registers no logging provider, so `ILogger<T>` resolves from
+the host's defaults and the core package creates no application log file; the host's providers
+write only where they are configured to. To log through Serilog — configured from the
+application's `Serilog` section, with the Spectre.Console console sink and two rolling log
+files — add `Ploch.CommandLine.Spectre.Serilog` and call `UseSerilog` on the builder, once. The
+files are named after the process unless you choose the log name and directory; the output
+template and the culture the files are written with are optional too:
 
 ```csharp
-.ConfigureServices((context, services) =>
-    services.AddSerilog(context.Configuration,
-                        logName: "sample",
-                        logPath: Path.Combine(AppContext.BaseDirectory, "logs")))
+using Ploch.CommandLine.Spectre;
+using Ploch.CommandLine.Spectre.Serilog;
+
+using var appBuilder = AppBuilder.Create(args)
+                                 .UseSerilog(logName: "sample",
+                                             logPath: Path.Combine(AppContext.BaseDirectory, "logs"));
 ```
 
 Anchor `logPath` to the application's directory, as above. A relative path such as `"logs"`

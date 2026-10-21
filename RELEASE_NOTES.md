@@ -15,7 +15,7 @@ have been retired.
 | Package | Description |
 |---|---|
 | `Ploch.CommandLine.Spectre` | Core framework: `AppBuilder`, command base classes, settings pipeline, output pipeline. |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog integration for structured logging. |
+| `Ploch.CommandLine.Spectre.Serilog` | Opt-in Serilog integration for structured logging, switched on with `UseSerilog`. |
 | `Ploch.CommandLine.Spectre.FluentValidation` | Declarative validation of command settings. |
 | `Ploch.CommandLine.UseCases` | Clean Architecture use-case commands built on `Ardalis.Result`. |
 
@@ -47,6 +47,25 @@ have been retired.
   markup with their holes escaped.
 - **Breaking:** `IOutput` gains the two `Markup` / `MarkupLine` members, so a
   custom implementation of the interface must add them.
+- **Breaking:** Serilog is opt-in. `Ploch.CommandLine.Spectre` no longer depends
+  on `Ploch.CommandLine.Spectre.Serilog`, and `AppServicesBundle` no longer
+  registers `SerilogConfigurationBundle`, so an application that references only
+  the core package resolves `ILogger<T>` from the host's default providers and
+  creates no application log file. To keep the Serilog logging of previous
+  builds, add the
+  Serilog package and opt in on the builder, once:
+  `dotnet add package Ploch.CommandLine.Spectre.Serilog`, then
+  `AppBuilder.Create(args).UseSerilog()` (`using Ploch.CommandLine.Spectre.Serilog;`),
+  with `logName:`, `logPath:`, `template:` and `culture:` as optional arguments.
+  An application that already calls `services.AddSerilog(context.Configuration, ...)`
+  from `ConfigureServices` needs no `UseSerilog`, but it must reference
+  `Ploch.CommandLine.Spectre.Serilog` directly, as the package no longer arrives
+  through the core package; with that reference the call compiles unchanged and is
+  now the only Serilog registration rather than a second one on top of the core
+  bundle's, so the container holds one `Serilog.ILogger` descriptor
+  ([PLO-778](https://linear.app/ploch/issue/PLO-778),
+  [PLO-765](https://linear.app/ploch/issue/PLO-765)). The Serilog package
+  depends on the core package rather than the other way round.
 
 - **Breaking:** `AppCommand<TSettings>.DoExecute` and
   `AsyncAppCommand<TSettings>.DoExecuteAsync` accept a `CancellationToken`.
@@ -157,10 +176,12 @@ have been retired.
   still renders as markup with its holes escaped and formatted by
   `string.Format`, so a format specifier such as `{total:N2}` and an
   `ICustomFormatter` on the provider are honoured.
-- `Ploch.CommandLine.Spectre` no longer declares the eight `Serilog.*` packages as
-  direct dependencies. They were duplicates of what its `Ploch.CommandLine.Spectre.Serilog`
-  dependency already declares, so the resolved package graph of a consumer is unchanged;
-  only the package's own dependency list is shorter.
+- `Ploch.CommandLine.Spectre` declares no `Serilog.*` package as a dependency.
+  It first dropped the eight direct `Serilog.*` references, which duplicated what
+  its `Ploch.CommandLine.Spectre.Serilog` dependency already declared, and then
+  that dependency itself when Serilog became opt-in (see the breaking entry
+  above); a consumer that wants Serilog restores the same graph by adding the
+  Serilog package.
 
 ### Removed
 

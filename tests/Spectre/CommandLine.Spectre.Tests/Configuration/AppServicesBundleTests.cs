@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.Tests.Testing;
@@ -126,6 +127,46 @@ public sealed class AppServicesBundleTests
                               "the observed processor is the only token processor in the pipeline, and it expands {{date}} to the UTC date");
         secondSettings.ReportName.Should().BeOneOf($"report-{dateBefore}", $"report-{dateAfter}");
     }
+
+    /// <summary>
+    ///     Verifies that the bundle registers no Serilog service: Serilog is opt-in through its own package (PLO-778).
+    /// </summary>
+    [Fact]
+    public void Bundle_should_not_register_any_serilog_service()
+    {
+        var services = BuildServices();
+
+        services.Should().NotContain(descriptor => IsSerilogDescriptor(descriptor), "the core bundle leaves the choice of logging provider to the application");
+    }
+
+    /// <summary>
+    ///     Verifies that the bundle keeps <see cref="ILogger{TCategoryName}" /> resolvable on its own, without a host.
+    /// </summary>
+    [Fact]
+    public void Bundle_should_resolve_a_logger_without_a_host_or_a_provider()
+    {
+        using var provider = BuildServices().BuildServiceProvider();
+
+        var logger = provider.GetRequiredService<ILogger<AppServicesBundleTests>>();
+
+        logger.Should().NotBeNull("AddLogging stays in the bundle so the logging infrastructure is present outside a host as well");
+    }
+
+    /// <summary>
+    ///     Factory- and instance-backed descriptors carry a Microsoft.Extensions.Logging service type, so the
+    ///     implementation side is checked as well as the service type.
+    /// </summary>
+    /// <param name="descriptor">The registration to inspect.</param>
+    /// <returns><see langword="true" /> when any type the descriptor names comes from a Serilog namespace.</returns>
+    private static bool IsSerilogDescriptor(ServiceDescriptor descriptor) =>
+        IsSerilogType(descriptor.ServiceType) ||
+        IsSerilogType(descriptor.ImplementationType) ||
+        IsSerilogType(descriptor.ImplementationInstance?.GetType()) ||
+        IsSerilogType(descriptor.ImplementationFactory?.Method.ReturnType);
+
+    private static bool IsSerilogType(Type? type) =>
+        type?.Namespace is { } typeNamespace &&
+        (typeNamespace.Equals("Serilog", StringComparison.Ordinal) || typeNamespace.StartsWith("Serilog.", StringComparison.Ordinal));
 
     /// <summary>
     ///     Creates a service collection configured with the application bundle and an empty configuration.
