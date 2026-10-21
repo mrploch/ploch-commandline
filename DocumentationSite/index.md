@@ -93,11 +93,12 @@ return executor.Run(args);
 
 ```console
 $ greeter greet Alice --loud
-Executing command GreetSettings
-
-Processing arguments...
 HELLO, ALICE!
 ```
+
+That is standard output. The start-up banner and an `Executing command greet` line go to standard
+error, so the terminal shows them above the greeting while `greeter greet Alice --loud | cat`
+prints just `HELLO, ALICE!`.
 
 ## Core concepts
 
@@ -108,6 +109,10 @@ usual host-builder configuration entry points are available (the library never
 starts the host; see below):
 
 - `WithName`, `WithVersion`, `WithDescription` — application metadata, also used to render the startup banner.
+- `ShowBanner(false)` — drop the startup banner and the `Executing command …` line written before
+  each command. Both go to standard error, so neither reaches a pipe even when they are on. (The
+  Ctrl+C notice and the `PauseBeforeExit` prompt still use standard output;
+  [PLO-819](https://linear.app/ploch/issue/PLO-819) tracks them.)
 - `ConfigureServices` — register services into the container that resolves your commands.
 - `ConfigureAppConfiguration` — add configuration sources on top of the host's own ones. Each source
   added here outranks `appsettings.json`, the environment variables and the command line, so do not
@@ -151,10 +156,11 @@ handler like any other exception.
 
 Every base class also runs the settings-processing pipeline: `AppCommand<TSettings>`,
 `AsyncAppCommand<TSettings>` and `UseCaseAsyncCommand<...>` all take a
-`CommandArgumentsRootProcessor` and call it before your implementation, after printing
-the `Executing command …` / `Processing arguments…` preamble. The synchronous and
-asynchronous bases do the same framework work; only the shape of your implementation
-differs.
+`CommandArgumentsRootProcessor` and call it before your implementation. The
+`Executing command …` line that announces the command is written to standard error by the
+application before the command runs, not by the base class, which writes nothing of its own
+to the output. The synchronous and asynchronous bases do the same framework work; only the
+shape of your implementation differs.
 
 ### Exit codes
 

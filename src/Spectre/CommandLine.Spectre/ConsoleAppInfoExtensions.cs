@@ -1,4 +1,5 @@
 ﻿using Ploch.Common;
+using Ploch.Common.ArgumentChecking;
 using Spectre.Console;
 
 namespace Ploch.CommandLine.Spectre;
@@ -9,16 +10,22 @@ namespace Ploch.CommandLine.Spectre;
 public static class ConsoleAppInfoExtensions
 {
     /// <summary>
-    ///     Prints the application information to the console, including the name as FigletText,
+    ///     Prints the application information to the given console, including the name as FigletText,
     ///     name with a version, and description.
     /// </summary>
     /// <param name="appInfo">The application information to print.</param>
+    /// <param name="console">
+    ///     The console to print to. <see cref="AppBuilder" /> passes its standard error console, so the banner stays out
+    ///     of the command's own output; the console remains the caller's.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="appInfo" /> or <paramref name="console" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the application name is null, empty, or whitespace.</exception>
-    public static void PrintAppInfo(this ConsoleAppInfo appInfo)
+    public static void PrintAppInfo(this ConsoleAppInfo appInfo, IAnsiConsole console)
     {
+        console.NotNull();
         appInfo.Validate();
 
-        AnsiConsole.Write(new FigletText(appInfo.Name!).Color(appInfo.AppNameColor));
+        console.Write(new FigletText(appInfo.Name!).Color(appInfo.AppNameColor));
 
         var nameInfoString = appInfo.Name;
         if (appInfo.Version != null)
@@ -29,14 +36,14 @@ public static class ConsoleAppInfoExtensions
         // Escaped, not interpolated as markup: the name and version are consumer-supplied, so an application
         // called "Tool [Dev]" would otherwise be parsed as a style tag and throw while rendering its own banner.
         // Markup is honoured where the caller wrote it; escaped where this library adds the tag.
-        AnsiConsole.MarkupLine($"[{appInfo.AppNameInfoColor}]{Markup.Escape(nameInfoString ?? string.Empty)}[/]");
+        console.MarkupLine($"[{appInfo.AppNameInfoColor}]{Markup.Escape(nameInfoString ?? string.Empty)}[/]");
 
         if (!appInfo.Description!.IsNullOrEmpty())
         {
-            AnsiConsole.MarkupLine($"[{appInfo.AppDescriptionColor} italic]{Markup.Escape(appInfo.Description!)}[/]");
+            console.MarkupLine($"[{appInfo.AppDescriptionColor} italic]{Markup.Escape(appInfo.Description!)}[/]");
         }
 
-        AnsiConsole.WriteLine();
+        console.WriteLine();
     }
 
     /// <summary>
@@ -44,9 +51,12 @@ public static class ConsoleAppInfoExtensions
     ///     consist solely of whitespace, since the banner renders it as FigletText.
     /// </summary>
     /// <param name="appInfo">The application information to validate.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="appInfo" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the application name is null, empty, or whitespace.</exception>
     public static void Validate(this ConsoleAppInfo appInfo)
     {
+        appInfo.NotNull();
+
         if (string.IsNullOrWhiteSpace(appInfo.Name))
         {
             throw new InvalidOperationException("Application Name cannot be null, empty, or whitespace.");

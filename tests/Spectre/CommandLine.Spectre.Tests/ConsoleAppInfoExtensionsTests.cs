@@ -28,6 +28,14 @@ public class ConsoleAppInfoExtensionsTests
     }
 
     [Fact]
+    public void Validate_should_throw_ArgumentNullException_when_the_app_info_is_null()
+    {
+        var act = () => ((ConsoleAppInfo)null!).Validate();
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("appInfo");
+    }
+
+    [Fact]
     public void Validate_message_should_describe_both_rejected_states()
     {
         var appInfo = new ConsoleAppInfo { Name = string.Empty };

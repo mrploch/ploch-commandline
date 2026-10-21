@@ -88,7 +88,9 @@ return executor.Run(args);
 Three things happen here that you do not have to write yourself:
 
 - **Application banner.** The name is rendered as FIGlet text, followed by the version and
-  description, before any command runs.
+  description, before any command runs — on standard error, so it never lands in a pipe.
+  `ShowBanner(false)` drops it, together with the `Executing command …` line, for a tool whose
+  standard error is captured too.
 - **Hosting.** `Host.CreateDefaultBuilder` supplies configuration, logging and the service
   provider. Anything you register with `ConfigureServices` is injectable into commands. The host
   is built once the run reaches command resolution (a parse failure or `--version` returns before
@@ -106,6 +108,15 @@ Three things happen here that you do not have to write yourself:
   disposing it unsubscribes the handler and releases the source, and the handler also detaches itself
   once an interrupt has been handled. `Console.CancelKeyPress` is process-wide, so a builder that is
   neither disposed nor interrupted keeps its handler installed for the life of the process.
+
+The banner and the `Executing command …` line that precedes each command no longer touch standard
+output: both go to standard error, so
+`mytool user list | cat` (or `> users.txt`) carries only what the command rendered through
+`IOutput`, while the terminal still shows the banner. Redirect `2>/dev/null` (`2>nul` in `cmd`,
+`2>$null` in PowerShell) to hide them, or call
+`ShowBanner(false)` to drop both altogether. (The Ctrl+C notice and the `PauseBeforeExit` prompt still use standard output;
+[PLO-819](https://linear.app/ploch/issue/PLO-819) tracks them.) The listings in this guide show
+standard output only.
 
 `ConfigureServices` has two overloads — one taking just `IServiceCollection`, one taking the
 `HostBuilderContext` as well, which is how you reach `IConfiguration` during registration:
@@ -208,8 +219,10 @@ Note what the base class gives you and what you therefore never write in `DoExec
   `ExitCode.Cancelled`. One raised while that token is still live is a fault like any other.
 - **`ExitCode`, not `int`.** The base class casts for you.
 
-Before `DoExecute` runs, the base class prints a short `Executing command …` /
-`Processing arguments…` preamble through the injected `IOutput`.
+Before `DoExecute` runs, the application announces the command on standard error with a short
+`Executing command info` line, named after the command's registered name (an alias is announced
+by the name it is an alias of). The base class itself writes
+nothing to the injected `IOutput`, so standard output is yours.
 
 Render through the inherited `Output` property rather than the constructor parameter — capturing a
 parameter that is also passed to the base constructor stores it twice and the compiler warns about
@@ -226,10 +239,6 @@ config.AddCommand<InfoCommand>("info")
 
 ```text
 $ mytool info
-
-Executing command InfoCommandSettings
-
-Processing arguments...
 === Application & System Information ===
 
 ╭──────────────────────┬────────────────────────────────────────────╮
@@ -372,10 +381,6 @@ registration is queued later and wins.
 
 ```text
 $ mytool user add "Alice Smith" -e alice@example.com -r Administrator
-
-Executing command UserAddCommandSettings
-
-Processing arguments...
 Creating new user account for Alice Smith...
 ╭─User Created Successfully────────╮
 │ User ID: 4                       │
@@ -387,8 +392,9 @@ Creating new user account for Alice Smith...
 ╰──────────────────────────────────╯
 ```
 
-The `Executing command …` / `Processing arguments…` preamble comes from the base class (both
-`AsyncAppCommand` and `AppCommand` print it), not from the command body.
+The `Executing command add` line that precedes this on the terminal comes from the application,
+on standard error, not from the command body; `AsyncAppCommand` and `AppCommand` write nothing of
+their own to the output.
 
 ### Render through IOutput, and escape what the user typed
 
@@ -624,10 +630,6 @@ The command body sees the expanded value, never the template:
 
 ```text
 $ sample file process dataset.csv -o "./out-{date}/result.dat"
-
-Executing command FileProcessCommandSettings
-
-Processing arguments...
 Processing File: dataset.csv
 Resolved Output Path (with tokens replaced): ./out-2026-08-22/result.dat
 Backup enabled: True

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-21, on the PLO-778 branch (Serilog opt-in; dependency arrows reversed in section 2) |
+| Last verified | 2026-10-21, on the PLO-778 branch after PLO-783 merged (Serilog opt-in with the dependency arrows reversed in section 2; banner and announcement to standard error) |
 | Verified by | Reading every project file and source file under `src/`; spot checks by `grep` |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
@@ -61,12 +61,12 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 |---|---|---|
 | `AppBuilder` | `core/AppBuilder.cs` | Fluent builder; owns the cancellation source and Ctrl+C handler |
 | `ICommandAppExecutor`, `CommandAppExecutor` | `core/CommandAppExecutor.cs` | `Run` / `RunAsync` over Spectre's `CommandApp` |
-| `ConsoleAppInfo` | `core/ConsoleAppInfo.cs` | Name, version, description, banner colours |
+| `ConsoleAppInfo` | `core/ConsoleAppInfo.cs` | Name, version, description, banner switch and colours |
 | `EnvironmentSettings` | `core/EnvironmentSettings.cs` | Static developer-runtime switches from environment variables |
 | `DependencyInjectionTypeRegistrar`, `...TypeResolver` | `core/DependencyInjection/` | Bridge from Spectre's registrar to the host's container |
 | `AppServicesBundle`, `OutputServicesBundle` | `core/Configuration/` | Default service registrations |
 
-`AppBuilder` members: `Create(args)`, `WithName`, `WithVersion`, `WithDescription`,
+`AppBuilder` members: `Create(args)`, `WithName`, `WithVersion`, `WithDescription`, `ShowBanner(bool)`,
 `ConfigureServices` (two overloads), `ConfigureAppConfiguration` (two overloads), `ConfigureHost`,
 `AddServicesBundle<T>()`, `ConfigureCommandApp(configurator)`, `Dispose()`.
 
@@ -80,6 +80,7 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 | `ICommandSettingsValidator<T>`, `CommandSettingsValidator<T>` | Validation hook; default delegates to `settings.Validate()` |
 | `ICommandSettingsProcessor`, `CommandArgumentsRootProcessor` | Settings post-processing pipeline |
 | `TokensArgumentsProcessor`, `[SupportsTokens]` | Replaces `{date}` and `{datetime}` in marked string properties |
+| `ExecutingCommandInterceptor` | Internal `ICommandInterceptor`; writes `Executing command <name>` (a default command: "the default command") to standard error before each command |
 
 ### 3.3 Core — `Ploch.CommandLine.Spectre.Output`
 
@@ -89,6 +90,7 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 | `IMessageFormatterProcessor`, `MessageFormatterProcessor` | Picks a writer or formatter by message type |
 | `IMessageWriter<T>`, `IMessageFormatter<T>` and the `TypeMessage*` bases | Extension points for custom types |
 | `ServiceCollectionOutputExtensions` | `AddMessageFormatter` / `AddMessageWriter` registration helpers |
+| `StandardErrorConsole` | Internal factory for the builder's standard error console; plain text when the stream is redirected |
 
 ### 3.4 Other packages
 
@@ -107,9 +109,12 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 2. Fluent calls are recorded, not applied. `ConfigureServices`, `ConfigureAppConfiguration` and
    `ConfigureHost` all append to one list, `_hostBuilderOperations`.
 3. `ConfigureCommandApp(configurator)`:
-   1. validates the application info (a missing name throws) and prints the banner;
+   1. validates the application info (a missing name throws) and, unless `ShowBanner` is off,
+      prints the banner to standard error;
    2. calls `Host.CreateDefaultBuilder(args)`;
-   3. adds the services bundles as the first services delegate;
+   3. adds the first services delegate: the `ExecutingCommandInterceptor` (unless the banner is
+      switched off) and then the services bundles — ahead of every bundle and caller registration,
+      so the announcement runs before any interceptor the caller registers;
    4. replays the recorded operations in call order;
    5. registers the builder's own `CancellationTokenSource` last;
    6. wraps the host builder in `DependencyInjectionTypeRegistrar` and creates `CommandApp`;
@@ -134,13 +139,16 @@ starts it; see **Hosting** in section 5.
 
 ### 4.2 Command execution
 
-1. Spectre binds the settings and calls the command's `Validate` override, which delegates to the
-   injected `ICommandSettingsValidator<TSettings>`.
+1. Spectre binds the settings, rejecting any whose own `Validate` fails, then runs the registered
+   interceptors — the library's `ExecutingCommandInterceptor` writes `Executing command <name>` to
+   standard error here — and calls the command's `Validate` override, which delegates to the
+   injected `ICommandSettingsValidator<TSettings>`. The announcement therefore precedes a validator
+   rejection but not a settings rejection.
 2. `Execute` / `ExecuteAsync` (`core/Commands/AppCommand.cs`, `AsyncAppCommand.cs`) then, inside
    one `try`:
-   1. writes an "Executing command" banner and "Processing arguments...";
-   2. runs `CommandArgumentsRootProcessor.ProcessArguments(settings)`;
-   3. calls `DoExecute` / `DoExecuteAsync` and casts the returned `ExitCode` to `int`.
+   1. runs `CommandArgumentsRootProcessor.ProcessArguments(settings)`;
+   2. calls `DoExecute` / `DoExecuteAsync` and casts the returned `ExitCode` to `int`.
+   The base classes write nothing to `IOutput` of their own.
 3. `OperationCanceledException` returns 130 only when the token the command received has
    cancellation requested. Any other exception, including an `OperationCanceledException` raised
    while that token is live (an `HttpClient` timeout, a cancelled inner token), goes to
@@ -184,6 +192,17 @@ messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in
 `WriteBold` and `WriteError` escape content before wrapping it in a tag and rendering it as markup.
 Handler selection is "most derived type wins; first registration wins ties".
 
+**Standard streams.** Standard output is the command's: what it renders through `IOutput`, plus
+Spectre's own help and error rendering. The banner and the `Executing command <name>` line go to
+standard error through the builder's own `IAnsiConsole` over `Console.Error`
+(`StandardErrorConsole`: Spectre's colour and ANSI detection on a terminal; plain text, with
+Spectre's CI profile enrichers left out, when the stream is redirected), so `app list | cat` carries the command's output alone. `ShowBanner(false)`
+drops both. A failure to write the announcement stops the
+run before the command, as any failure ahead of execution does; it does not reach the command's
+`IExceptionHandler` (PLO-783). Still on standard output through the global `AnsiConsole`: the
+Ctrl+C shutdown notice and the `PauseBeforeExit` prompt, and the `IOutput` console keeps Spectre's
+`TERM`-based detection even when standard output is redirected (PLO-819).
+
 **Service lifetimes.** `DependencyInjectionTypeRegistrar` registers everything Spectre asks for
 through `Register` — commands, settings, type converters, pair deconstructors — as transient, so a
 command holds its transient dependencies for its own lifetime rather than the host's; dependency
@@ -221,6 +240,8 @@ Starting the host around the command is a possible 1.x feature, tracked as PLO-7
 | Settings post-processing | Register another `ICommandSettingsProcessor` |
 | Exception handling | Register an `IExceptionHandler` |
 | Output for a type | `AddMessageWriter` / `AddMessageFormatter` |
+| The banner and the announcement | `ShowBanner(false)`, or `ConsoleAppInfo.ShouldShowBanner` |
+| Before and after each command | Register an `ICommandInterceptor` (`ConfigureServices` or Spectre's `SetInterceptor`); the library's announcement interceptor runs first |
 
 ## 7. Known gaps and sharp edges
 
@@ -230,13 +251,13 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
-| Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
 
 Resolved since the review: the cancellation catch now checks the supplied token, the three
 entry points null-check, and a second `Run` on one executor fails with a clear
-`InvalidOperationException` (PLO-756; see sections 4.1 and 4.2); Serilog is opt-in and the core
-package no longer depends on it (PLO-778; see sections 2 and 4.3).
+`InvalidOperationException` (PLO-756; see sections 4.1 and 4.2); the banner and the
+"Executing command" line go to standard error (PLO-783; see section 5); Serilog is opt-in and
+the core package no longer depends on it (PLO-778; see sections 2 and 4.3).
 
 ## 8. Where to look
 

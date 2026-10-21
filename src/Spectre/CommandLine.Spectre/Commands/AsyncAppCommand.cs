@@ -16,6 +16,12 @@ namespace Ploch.CommandLine.Spectre.Commands;
 /// <param name="validator">The validator used to validate command settings.</param>
 /// <param name="exceptionHandler">The handler used to process exceptions that occur during command execution.</param>
 /// <param name="output">The output writer used to render command output.</param>
+/// <remarks>
+///     This is the asynchronous counterpart of <see cref="AppCommand{TSettings}" /> and performs the same framework
+///     work around <see cref="DoExecuteAsync" />: it runs the settings processor and routes exceptions to the
+///     <see cref="IExceptionHandler" />. It writes nothing to <paramref name="output" /> itself; the "Executing command"
+///     line that announces the command is written to standard error by the application before the command runs.
+/// </remarks>
 public abstract class AsyncAppCommand<TSettings>(CommandArgumentsRootProcessor settingsProcessor,
                                                  ICommandSettingsValidator<TSettings> validator,
                                                  IExceptionHandler exceptionHandler,
@@ -36,7 +42,7 @@ public abstract class AsyncAppCommand<TSettings>(CommandArgumentsRootProcessor s
     /// <exception cref="ArgumentNullException">Thrown when context or settings is null.</exception>
     /// <remarks>
     ///     The settings are passed through the configured settings processor before <see cref="DoExecuteAsync" /> runs.
-    ///     Exceptions raised while writing the banner, by the settings processor or by <see cref="DoExecuteAsync" /> do not propagate: they are passed to the configured
+    ///     Exceptions raised by the settings processor or by <see cref="DoExecuteAsync" /> do not propagate: they are passed to the configured
     ///     <see cref="IExceptionHandler" />, whose result becomes the exit code. An <see cref="OperationCanceledException" /> thrown while
     ///     <paramref name="cancellationToken" /> has cancellation requested is the exception to that rule: it is treated as the requested
     ///     outcome and returns <see cref="ExitCode.Cancelled" /> without reaching the handler. An <see cref="OperationCanceledException" />
@@ -51,12 +57,6 @@ public abstract class AsyncAppCommand<TSettings>(CommandArgumentsRootProcessor s
 
         try
         {
-            // Inside the try: a failing output (for example a broken console stream) is a fault like any other and
-            // must reach the exception handler rather than escape the command.
-            output.MarkupLineInterpolated($"Executing command [bold underline]{settings.GetType().Name}[/]");
-            output.WriteLine();
-            output.WriteLine("Processing arguments...");
-
             settingsProcessor.ProcessArguments(settings);
 
             return (int)await DoExecuteAsync(context, settings, cancellationToken).ConfigureAwait(false);
