@@ -114,6 +114,24 @@ have been retired.
   built the host, rendered the host builder's "Build can only be called once"
   error and returned -1; an attempt may build that host and it can only be
   built once, so the executor now says so up front.
+- `IOutput.Write` and `WriteLine` hand a `string` and a `FormattableString` to the
+  registered message writers instead of rendering them themselves, so the built-in
+  `StringMessageWriter` and `FormattableStringMessageWriter` are now the code that
+  writes them and a consumer writer registered for either type replaces the
+  built-in one. The rendered output is unchanged: a string is still written
+  verbatim and an interpolated string still renders as markup with its holes
+  escaped and formatted by `string.Format`, so a format specifier such as
+  `{total:N2}` and an `ICustomFormatter` on the provider are honoured.
+  `FormattableStringMessageWriter` no longer pre-renders the interpolation holes
+  through the registered formatters, which it did only when called directly;
+  a writer that wants that behaviour calls
+  `IMessageFormatterProcessor.GetMessageText(FormattableString, ...)` itself.
+- `MessageFormatterProcessor` selects the later of two writers or formatters
+  registered for the same message type, rather than the earlier one. The
+  built-in bundle registers before any `ConfigureServices` delegate, so a
+  consumer registration for a type the bundle covers now takes effect where it
+  was previously ignored. Unrelated types that both accept a message still keep
+  the first registration.
 - `Ploch.CommandLine.Spectre` no longer declares the eight `Serilog.*` packages as
   direct dependencies. They were duplicates of what its `Ploch.CommandLine.Spectre.Serilog`
   dependency already declares, so the resolved package graph of a consumer is unchanged;

@@ -3,9 +3,16 @@
 namespace Ploch.CommandLine.Spectre.Output;
 
 /// <summary>
-///     Writes <see cref="string" /> messages directly to the console.
+///     Writes <see cref="string" /> messages to the console verbatim.
 /// </summary>
 /// <param name="console">The console the messages are written to.</param>
+/// <remarks>
+///     This is the writer <see cref="IOutput.Write{TMessage}" /> and <see cref="IOutput.WriteLine{TMessage}" />
+///     select for a <see cref="string" />. It writes the text as-is - a <c>[</c> is printed, not parsed as a markup
+///     tag - so a path or user input passes straight through; <see cref="IOutput.Markup" /> is the opt-in to parsing.
+///     A consumer that registers its own <see cref="IMessageWriter{TMessage}" /> for <see cref="string" /> through
+///     <see cref="ServiceCollectionOutputExtensions.AddMessageWriter{TMessageType,TWriter}" /> replaces it.
+/// </remarks>
 public class StringMessageWriter(IAnsiConsole console) : TypeMessageWriter<string>
 {
     /// <summary>

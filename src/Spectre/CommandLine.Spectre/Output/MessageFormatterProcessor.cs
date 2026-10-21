@@ -123,9 +123,19 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
     ///     Selection used to be first-registered-wins, which made registration order load-bearing and the pipeline
     ///     silently unextensible: the built-in bundle registers a handler for <see cref="Exception" />, and because
     ///     bundles register before consumer code, a consumer handler for their own exception type could never be
-    ///     reached. Choosing the most derived match makes the outcome independent of registration order. Handlers
-    ///     whose types are unrelated - IEnumerable and IConvertible, for a type implementing both - are not
-    ///     comparable, so registration order still breaks that tie, as it does for an exact duplicate.
+    ///     reached. Choosing the most derived match makes the outcome independent of registration order.
+    ///     <para>
+    ///         Two handlers for the same type are a tie the type cannot break, and the later registration wins it.
+    ///         The built-in bundle registers before any consumer <c>ConfigureServices</c> delegate, so this is what
+    ///         lets a consumer replace a built-in handler - the <see cref="string" /> writer, say - by registering
+    ///         their own for the same type; with first-wins the consumer's registration was silently ignored. The
+    ///         same rule applies to a consumer who registers two handlers for one type: the last one is used.
+    ///     </para>
+    ///     <para>
+    ///         Handlers whose types are unrelated - IEnumerable and IConvertible, for a type implementing both - are
+    ///         not comparable either, and there the first registration keeps precedence, because a later, unrelated
+    ///         handler is not a replacement for the incumbent.
+    ///     </para>
     /// </remarks>
     /// <typeparam name="THandler">The handler type being selected.</typeparam>
     /// <param name="handlers">The registered handlers, in registration order.</param>
@@ -143,9 +153,9 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
                 continue;
             }
 
-            // A candidate whose type the incumbent can be assigned from is at least as derived. Equal types are
-            // excluded so an exact duplicate registration keeps the first one rather than the last.
-            if (best is null || (best.MessageType != handler.MessageType && best.MessageType.IsAssignableFrom(handler.MessageType)))
+            // A candidate whose type the incumbent can be assigned from is at least as derived. An equal type passes
+            // the check too, so of two handlers for one type the later registration replaces the earlier one.
+            if (best is null || best.MessageType.IsAssignableFrom(handler.MessageType))
             {
                 best = handler;
             }

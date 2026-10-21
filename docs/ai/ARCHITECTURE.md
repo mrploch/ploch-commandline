@@ -179,10 +179,15 @@ them in `Dispose`. A builder made with the public constructor owns neither.
 **Exit codes.** `ExitCode` covers what a command returns. Spectre returns `-1` for parse and
 validation failures before a command runs.
 
-**Output and markup.** `FormattableString` messages have their holes escaped. Plain `string`
-messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in to parsing.
-`WriteBold` and `WriteError` escape content before wrapping it in a tag and rendering it as markup.
-Handler selection is "most derived type wins; first registration wins ties".
+**Output and markup.** `IOutput.Write` renders an `IRenderable` through the console and hands every
+other message to the registered writers; `StringMessageWriter` writes a `string` verbatim and
+`FormattableStringMessageWriter` renders a `FormattableString` as interpolated markup with its holes
+escaped and left to `string.Format` (not pre-rendered by the formatters). `Markup` and `MarkupLine`
+are the explicit opt-in to parsing. `WriteBold` and `WriteError` escape content before wrapping it in
+a tag and rendering it as markup, and do not use the writers. Handler selection is "most derived
+type wins; of two handlers for the same type the later registration wins; unrelated types keep the
+first registration". Because the bundle registers before caller `ConfigureServices` delegates, a
+consumer writer for `string` or `FormattableString` replaces the built-in one.
 
 **Service lifetimes.** `DependencyInjectionTypeRegistrar` registers everything Spectre asks for
 through `Register` — commands, settings, type converters, pair deconstructors — as transient, so a
@@ -230,7 +235,6 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
-| Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
 

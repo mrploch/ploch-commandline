@@ -83,11 +83,18 @@ public interface IOutput
     /// <param name="format">The format provider to use for formatting the message, or null to use the default format.</param>
     /// <returns>The current output instance for method chaining.</returns>
     /// <remarks>
-    ///     A <see cref="string" /> is written verbatim: a <c>[</c> in it is printed, not parsed as a markup tag, so a
-    ///     path or user input can be passed straight through. To render markup, call <see cref="Markup" /> or
-    ///     <see cref="MarkupInterpolated" />. A <see cref="FormattableString" /> message is rendered as interpolated
-    ///     markup with its holes escaped, but note that an interpolated string literal infers <see cref="string" />
-    ///     here, so it has to be passed as <c>Write&lt;FormattableString&gt;($"...")</c> to take that path.
+    ///     The message is rendered by the registered <see cref="IMessageWriter" /> whose message type is the most
+    ///     derived one it matches; an <see cref="IRenderable" /> is rendered by the console directly, and a message
+    ///     no writer accepts is written as text. A <see cref="string" /> is therefore written by the registered
+    ///     writer for strings, which by default writes it verbatim: a <c>[</c> in it is printed, not parsed as a
+    ///     markup tag, so a path or user input can be passed straight through. To render markup, call
+    ///     <see cref="Markup" /> or <see cref="MarkupInterpolated" />. A <see cref="FormattableString" /> message is
+    ///     handed to the writer for that type, which by default renders it as interpolated markup with its holes
+    ///     escaped, but note that an interpolated string literal infers <see cref="string" /> here, so it has to be
+    ///     passed as <c>Write&lt;FormattableString&gt;($"...")</c> to take that path. Registering a writer for either
+    ///     type with <c>AddMessageWriter</c> changes how it renders here and in <see cref="WriteLine{TMessage}" />;
+    ///     the decorating members (<see cref="WriteBold{TMessage}" />, <see cref="WriteError{TMessage}" /> and their
+    ///     line forms) go through the formatters and <see cref="Markup" /> instead, so a writer does not affect them.
     /// </remarks>
     IOutput Write<TMessage>(TMessage message, IFormatProvider? format = null);
 
@@ -144,9 +151,12 @@ public interface IOutput
     /// <param name="message">The message to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
     /// <remarks>
-    ///     A <see cref="string" /> is written verbatim, as it is by <see cref="Write{TMessage}" />. To render markup,
-    ///     call <see cref="MarkupLine" /> or <see cref="MarkupLineInterpolated" />. An interpolated string literal
-    ///     infers <see cref="string" /> here, so <c>WriteLine($"[green]ok[/]")</c> prints the tags; pass it as
+    ///     The message takes the same path as in <see cref="Write{TMessage}" />, through the registered
+    ///     <see cref="IMessageWriter" /> for its type, so a <see cref="string" /> is written verbatim by default and
+    ///     a custom writer for a type applies here too. The line break is added afterwards unless the writer
+    ///     reports <see cref="IMessageWriter.WritesLineTerminator" />. To render markup, call
+    ///     <see cref="MarkupLine" /> or <see cref="MarkupLineInterpolated" />. An interpolated string literal infers
+    ///     <see cref="string" /> here, so <c>WriteLine($"[green]ok[/]")</c> prints the tags; pass it as
     ///     <c>WriteLine&lt;FormattableString&gt;($"...")</c> to take the interpolated-markup path.
     /// </remarks>
     IOutput WriteLine<TMessage>(TMessage message);

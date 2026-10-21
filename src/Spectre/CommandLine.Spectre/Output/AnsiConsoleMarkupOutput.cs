@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using Ploch.Common.ArgumentChecking;
+﻿using Ploch.Common.ArgumentChecking;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -11,10 +10,19 @@ namespace Ploch.CommandLine.Spectre.Output;
 /// </summary>
 /// <remarks>
 ///     Markup is parsed only where the caller asks for it: <see cref="Markup" />, <see cref="MarkupLine" />,
-///     <see cref="MarkupInterpolated" />, <see cref="MarkupLineInterpolated" /> and a <see cref="FormattableString" />
-///     passed to <see cref="Write{TMessage}" /> or <see cref="WriteLine{TMessage}" />. A plain <see cref="string" />
-///     is written verbatim, which mirrors the split Spectre.Console itself makes between
-///     <c>IAnsiConsole.Write(string)</c> and <c>IAnsiConsole.Markup(string)</c>.
+///     <see cref="MarkupInterpolated" />, <see cref="MarkupLineInterpolated" /> and, by default through
+///     <see cref="FormattableStringMessageWriter" />, a <see cref="FormattableString" /> passed to
+///     <see cref="Write{TMessage}" /> or <see cref="WriteLine{TMessage}" />. A plain <see cref="string" /> is written
+///     verbatim, which mirrors the split Spectre.Console itself makes between <c>IAnsiConsole.Write(string)</c> and
+///     <c>IAnsiConsole.Markup(string)</c>.
+///     <para>
+///         <see cref="Write{TMessage}" /> and <see cref="WriteLine{TMessage}" /> render an <see cref="IRenderable" />
+///         through the console and hand every other message to the registered <see cref="IMessageWriter" />
+///         instances, including a <see cref="string" /> and a <see cref="FormattableString" />: the built-in
+///         <see cref="StringMessageWriter" /> and <see cref="FormattableStringMessageWriter" /> are what write them,
+///         so a consumer that registers a writer for either type changes how that type renders. Only a message no
+///         writer accepts falls back to this class's own text rendering.
+///     </para>
 /// </remarks>
 /// <param name="console">The ANSI console instance used for rendering output.</param>
 /// <param name="formatterProcessor">The processor used for formatting messages.</param>
@@ -91,6 +99,12 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <param name="message">The message to write.</param>
     /// <param name="format">The format provider to use for formatting, or null to use the current culture.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     An <see cref="IRenderable" /> is rendered by the console. Anything else, a <see cref="string" /> and a
+    ///     <see cref="FormattableString" /> included, is offered to the registered <see cref="IMessageWriter" />
+    ///     instances through <see cref="IMessageFormatterProcessor.WriteMessage{TMessage}" />, and only a message no
+    ///     writer accepts is rendered as text here.
+    /// </remarks>
     public IOutput Write<TMessage>(TMessage message, IFormatProvider? format = null)
     {
         WriteCore(message, format);
@@ -183,9 +197,9 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// <returns>The current output instance for method chaining.</returns>
     /// <remarks>
     ///     Dispatch is delegated to <see cref="Write{TMessage}" /> so that a message reaching this method sees the same
-    ///     renderable handling and the same registered <see cref="IMessageFormatter" /> and <see cref="IMessageWriter" />
-    ///     instances it would through <see cref="Write{TMessage}" />. Rendering the message here instead would make a
-    ///     custom registration take effect on one method and not the other.
+    ///     renderable handling and the same registered <see cref="IMessageWriter" /> instances it would through
+    ///     <see cref="Write{TMessage}" />. Rendering the message here instead would make a custom registration take
+    ///     effect on one method and not the other.
     ///     <para>
     ///         A terminator is still written unless the writer that rendered the message declares
     ///         <see cref="IMessageWriter.WritesLineTerminator" />, so a writer that renders inline keeps this method's
@@ -208,19 +222,19 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     }
 
     /// <summary>
-    ///     Renders a message that no writer, formatter or built-in branch claimed, honouring the caller's format
-    ///     provider.
+    ///     Renders a message that no registered writer accepted, honouring the caller's format provider.
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to render.</typeparam>
     /// <param name="message">The message to render.</param>
     /// <param name="format">The format provider to apply, or <see langword="null" /> for the current culture.</param>
     /// <returns>The text to write, never <see langword="null" />.</returns>
     /// <remarks>
-    ///     Split out of <see cref="WriteCore{TMessage}" /> so that method's branching stays within the complexity
-    ///     budget. A parameterless <c>ToString()</c> would ignore the provider and format with the current culture,
-    ///     and the result is coalesced because a custom <see cref="IFormattable" /> may return
-    ///     <see langword="null" /> - which previously rendered as empty output rather than failing inside
-    ///     <c>console.Write</c>.
+    ///     A parameterless <c>ToString()</c> would ignore the provider and format with the current culture, and the
+    ///     result is coalesced because a custom <see cref="IFormattable" /> may return <see langword="null" /> -
+    ///     which previously rendered as empty output rather than failing inside <c>console.Write</c>. A
+    ///     <see cref="string" /> reaching this path - only possible when no writer accepts strings - is still written
+    ///     verbatim; a <see cref="FormattableString" /> is formatted as plain text, without markup parsing, because
+    ///     that parsing is <see cref="FormattableStringMessageWriter" />'s job.
     /// </remarks>
     private static string RenderFallbackText<TMessage>(TMessage message, IFormatProvider? format) => FormattedText.Render(message, format);
 
@@ -249,24 +263,15 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     ///     The registered <see cref="IMessageWriter" /> that rendered the message, or <see langword="null" /> when the
     ///     message was rendered directly by this class.
     /// </returns>
+    /// <remarks>
+    ///     A <see cref="string" /> and a <see cref="FormattableString" /> are not special-cased here. They used to be
+    ///     written directly before the processor was consulted, which left the registered
+    ///     <see cref="StringMessageWriter" /> and <see cref="FormattableStringMessageWriter" /> unreachable through
+    ///     <see cref="IOutput" /> and made a consumer's own writer for either type a no-op. The only message type
+    ///     rendered here is <see cref="IRenderable" />, which has no writer because the console renders it itself.
+    /// </remarks>
     private IMessageWriter? WriteCore<TMessage>(TMessage message, IFormatProvider? format = null)
     {
-        if (message is FormattableString formattableString)
-        {
-            console.MarkupInterpolated(format ?? CultureInfo.CurrentCulture, formattableString);
-
-            return null;
-        }
-
-        if (message is string str)
-        {
-            // Verbatim, not console.Markup: a path such as C:\logs[1].txt or user input echoed back is not
-            // well-formed markup and used to throw from the parser. Markup is an explicit opt-in via Markup/MarkupLine.
-            console.Write(str);
-
-            return null;
-        }
-
         if (message is IRenderable renderable)
         {
             console.Write(renderable);
