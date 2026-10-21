@@ -73,6 +73,11 @@ public sealed class AppBuilderTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>Counts how many times <paramref name="text" /> appears in the recorded standard output.</summary>
+    /// <param name="text">The text to count.</param>
+    /// <returns>The number of non-overlapping occurrences.</returns>
+    private int OccurrencesOf(string text) => _console.Output.Split(text).Length - 1;
+
     [Fact]
     public void WithName_should_set_the_name_used_by_the_start_up_banner()
     {
@@ -1082,8 +1087,8 @@ public sealed class AppBuilderTests : IDisposable
 
         exitCode.Should().Be((int)ExitCode.Error);
         RecordingExceptionHandler.Exceptions.Should().ContainSingle("the handler is not asked to handle the exception it threw itself");
-        _console.Output.Should().Contain("Error: plain command failed", "the failure the handler was asked to report is not lost");
-        _console.Output.Should().Contain("Error: the handler failed");
+        OccurrencesOf("Error: plain command failed").Should().Be(1, "the failure the handler was asked to report is not lost, and rendered once");
+        OccurrencesOf("Error: the handler failed").Should().Be(1, "the handler's failure is rendered once");
     }
 
     /// <summary>
@@ -1113,8 +1118,8 @@ public sealed class AppBuilderTests : IDisposable
 
         exitCode.Should().Be((int)ExitCode.Error);
         RecordingExceptionHandler.Exceptions.Should().ContainSingle().Which.Message.Should().Be("base class command failed");
-        _console.Output.Should().Contain("Error: base class command failed", "the failure the handler was asked to report is not lost");
-        _console.Output.Should().Contain("Error: the handler failed");
+        OccurrencesOf("Error: base class command failed").Should().Be(1, "the failure the handler was asked to report is not lost, and rendered once");
+        OccurrencesOf("Error: the handler failed").Should().Be(1, "the handler's failure is rendered once");
     }
 
     /// <summary>
@@ -1138,8 +1143,8 @@ public sealed class AppBuilderTests : IDisposable
                               .Run("throw");
 
         exitCode.Should().Be((int)ExitCode.Error);
-        _console.Output.Should().Contain("Error: plain command failed");
-        _console.Output.Should().Contain("Error: the handler factory failed");
+        OccurrencesOf("Error: plain command failed").Should().Be(1);
+        OccurrencesOf("Error: the handler factory failed").Should().Be(1);
     }
 
     /// <summary>
@@ -1402,6 +1407,60 @@ public sealed class AppBuilderTests : IDisposable
                               .Run("cancel");
 
         exitCode.Should().Be((int)ExitCode.Cancelled, "the OperationCanceledException sits inside Spectre's CommandRuntimeException wrapper");
+    }
+
+    /// <summary>
+    ///     An <see cref="OperationCanceledException" /> that carries a token still live is not the application's
+    ///     cancellation even when the application's token happens to be cancelled by then: it is a fault for the handler.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_route_a_cancellation_for_a_live_token_to_the_exception_handler_even_after_the_application_was_cancelled()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        using var unrelatedTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
+            .ConfigureServices(services => services.AddSingleton<IExceptionHandler, RecordingExceptionHandler>());
+        RecordingExceptionHandler.Reset();
+        var unrelatedToken = unrelatedTokenSource.Token;
+        ThrowingPlainCommand.ExceptionFactory = source =>
+        {
+            source.Cancel();
+
+            return new OperationCanceledException("a live token elsewhere", unrelatedToken);
+        };
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<ThrowingPlainCommand>("throw");
+                              })
+                              .Run("throw");
+
+        exitCode.Should().Be(RecordingExceptionHandler.ReturnedExitCode);
+        RecordingExceptionHandler.Exceptions.Should().ContainSingle().Which.Should().BeOfType<OperationCanceledException>();
+    }
+
+    /// <summary>A command that waited on tasks may surface the cancellation inside an <see cref="AggregateException" />.</summary>
+    [Fact]
+    public void ConfigureCommandApp_should_exit_with_the_cancellation_exit_code_when_the_cancellation_is_inside_an_aggregate_exception()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        ThrowingPlainCommand.ExceptionFactory = source =>
+        {
+            source.Cancel();
+
+            return new AggregateException(new InvalidOperationException("a sibling task failed"), new OperationCanceledException(source.Token));
+        };
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<ThrowingPlainCommand>("throw");
+                              })
+                              .Run("throw");
+
+        exitCode.Should().Be((int)ExitCode.Cancelled, "the cancellation is the second inner exception, which a walk down InnerException alone would miss");
     }
 
     [Fact]
