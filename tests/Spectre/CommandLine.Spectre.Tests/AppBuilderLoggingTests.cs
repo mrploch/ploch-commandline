@@ -93,8 +93,12 @@ public sealed class AppBuilderLoggingTests : IDisposable
         using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Logging Probe" }, cancellationTokenSource);
 
         // The recording provider sits next to the host's default providers; the console provider would print to the
-        // test output, so what the pipeline delivered is asserted through the recorder instead.
-        builder.ConfigureServices(services => services.AddSingleton(_recorder).AddLogging(logging => logging.AddProvider(_loggerProvider)));
+        // test output, so what the pipeline delivered is asserted through the recorder instead. The provider-specific
+        // filter rule outranks any category-wide level the host reads from its configuration (for example a
+        // Logging__LogLevel__Default environment variable), so the probe's Information event always reaches the recorder.
+        builder.ConfigureServices(services => services.AddSingleton(_recorder)
+                                                      .AddLogging(logging => logging.AddProvider(_loggerProvider)
+                                                                                    .AddFilter<RecordingLoggerProvider>(category: null, LogLevel.Trace)));
 
         var executor = builder.ConfigureCommandApp(configurator =>
                                                    {
