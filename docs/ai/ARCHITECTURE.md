@@ -184,8 +184,15 @@ resolved from the container, and no `ConfigureServices` call can replace the reg
 **Ownership.** A builder made with `Create` owns its cancellation source and handler and releases
 them in `Dispose`. A builder made with the public constructor owns neither.
 
-**Exit codes.** `ExitCode` covers what a command returns. Spectre returns `-1` for parse and
-validation failures before a command runs.
+**Exit codes.** `ExitCode` covers what a command returns and what the application exits with.
+`ConfigureCommandApp` installs a Spectre exception handler (`CommandAppExceptionHandler`) that maps
+parse, binding and validation failures to `InvalidInput` (2), keeps Spectre's rendering, routes any
+other exception to the registered `IExceptionHandler`, and reports a failure before the host exists
+as `Error` (1). The base classes call the handler through `ExceptionHandlerInvoker`, which wraps a
+throwing handler in the public `ExceptionHandlerFailedException` so the Spectre handler reports it
+once instead of calling the handler again. A `SetExceptionHandler` or `PropagateExceptions` call in the caller's delegate
+replaces it. Spectre's early returns — help, and `1` for a branch or default command invoked without
+what it needs — are untouched.
 
 **Output and markup.** `IOutput.Write` renders an `IRenderable` through the console and hands every
 other message to the registered writers; `StringMessageWriter` writes a `string` verbatim and
@@ -203,8 +210,8 @@ standard error through the builder's own `IAnsiConsole` over `Console.Error`
 (`StandardErrorConsole`: Spectre's colour and ANSI detection on a terminal; plain text, with
 Spectre's CI profile enrichers left out, when the stream is redirected), so `app list | cat` carries the command's output alone. `ShowBanner(false)`
 drops both. A failure to write the announcement stops the
-run before the command, as any failure ahead of execution does; it does not reach the command's
-`IExceptionHandler` (PLO-783). Still on standard output through the global `AnsiConsole`: the
+run before the command, as any failure ahead of execution does; the Spectre handler passes it to
+the registered `IExceptionHandler`, so the exit code is the handler's (PLO-783, PLO-782). Still on standard output through the global `AnsiConsole`: the
 Ctrl+C shutdown notice and the `PauseBeforeExit` prompt, and the `IOutput` console keeps Spectre's
 `TERM`-based detection even when standard output is redirected (PLO-819).
 

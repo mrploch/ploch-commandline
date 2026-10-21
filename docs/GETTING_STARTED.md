@@ -628,10 +628,11 @@ Error: User name must be at least 2 characters long.
 A valid email address must be provided.
 ```
 
-**Mind the exit code.** A failed `Validate` is reported by `Spectre.Console.Cli` itself, which
-short-circuits with its own exit code of `-1` (`255` as the shell sees it) — *not* with
-`ExitCode.InvalidInput`. `ExitCode.InvalidInput` is what your command returns when it rejects input
-itself; see [Exit codes](#11-exit-codes).
+**Mind the exit code.** A failed `Validate` is reported by `Spectre.Console.Cli` itself, before
+`DoExecute` runs, and the application exits with `ExitCode.InvalidInput` (2): the handler
+`AppBuilder.ConfigureCommandApp` installs maps Spectre's parse, binding and validation failures to
+that code in place of Spectre's own `-1`. `ExitCode.InvalidInput` is also what your command returns
+when it rejects input itself; see [Exit codes](#11-exit-codes).
 
 ## 9. Token expansion in settings
 
@@ -740,16 +741,39 @@ Use case failed: A project with name 'SpectreDemo' already exists.
 | Member | Value | Meaning |
 |---|---|---|
 | `Success` | 0 | The command completed. |
-| `Error` | 1 | The command ran and failed. |
-| `InvalidInput` | 2 | The command rejected the input it was given. |
+| `Error` | 1 | The command ran and failed, or the application failed before it could run. |
+| `InvalidInput` | 2 | The input was rejected — by the command, or by `Spectre.Console.Cli` while parsing, binding or validating it. |
 | `Cancelled` | 130 | The command stopped because cancellation was requested (128 + SIGINT). |
+
+`InvalidInput` is also the exit code when `Spectre.Console.Cli` could not parse or bind the command
+line, or the settings failed `Validate` — an unknown command, an unknown option under strict
+parsing, a missing required argument, a value that does not convert. Spectre reports the error and
+the application exits with 2 before your command runs; Spectre's own code for these is `-1` (`255`
+in a POSIX shell), which `AppBuilder.ConfigureCommandApp` replaces by installing an exception
+handler. A `SetExceptionHandler` or `PropagateExceptions()` call in your `ConfigureCommandApp`
+delegate replaces that handler. Spectre raises the same exception type for a few failures that are
+not input errors — a settings property with no type converter, a command dependency it could not
+resolve — so those exit 2 as well; an application that needs to tell them apart installs its own
+handler.
 
 Two exit codes do **not** come from this enumeration:
 
-- **`-1`** — `Spectre.Console.Cli` could not bind or validate the command line (unknown command,
-  missing required argument, failed `Validate`). It is produced before your command runs.
 - **Whatever `IExceptionHandler` returns** — an unhandled exception inside a command is routed to
-  the handler, and the handler's return value is the exit code.
+  the handler, and the handler's return value is the exit code. That includes an exception escaping
+  a plain `Spectre.Console.Cli` command that does not derive from `AppCommand<TSettings>`.
+- **`1`, with help shown** — `Spectre.Console.Cli`'s own early return for a branch invoked without a
+  sub-command, or a default command invoked without its required arguments. Numerically the same
+  as `ExitCode.Error`, but produced by Spectre, not by this library.
+
+A failure before the host exists — an exception thrown by a `ConfigureServices` delegate while
+the host is being built, or a configuration defect Spectre finds while building its command
+model — is reported and exits with `ExitCode.Error` (1), as is an
+`IExceptionHandler` that throws, or that cannot be constructed when the application resolves it
+to handle an exception. A command derived from the base classes constructor-injects the handler,
+so a handler that cannot be constructed, or is not registered at all, stops that command being
+constructed, which Spectre reports as a `CommandRuntimeException` and the application exits 2. Requested cancellation is
+`ExitCode.Cancelled` (130); only a plain `Spectre.Console.Cli` command can change that, see
+[Cancellation](#12-cancellation).
 
 The [exit codes summary](https://commandline.github.ploch.dev/#exit-codes) on the documentation site
 lists the same codes.
@@ -815,6 +839,12 @@ that token has cancellation requested is not passed to `IExceptionHandler`, it b
 — a `TaskCanceledException` from an `HttpClient` timeout, or an inner token the command created
 and cancelled itself — is a fault nobody asked for, so it goes to the exception handler like any
 other exception.
+
+The base classes always return `ExitCode.Cancelled` for requested cancellation. A requested
+cancellation that reaches `Spectre.Console.Cli` instead — thrown by a command that does not derive
+from the base classes, or while the settings were being bound — exits with Spectre's configured
+cancellation exit code, which is also 130 unless the `ConfigureCommandApp` delegate calls
+`CancellationExitCode(...)`.
 
 ### Where the token comes from
 

@@ -11,12 +11,15 @@ public enum ExitCode
     Success = 0,
 
     /// <summary>
-    ///     Represents an error during the execution of a command.
+    ///     Represents an error during the execution of a command. Also the exit code of a failure that happened
+    ///     before the application's host existed, such as an exception thrown while building it.
     /// </summary>
     Error = 1,
 
     /// <summary>
-    ///     Represents an invalid input provided to a command.
+    ///     Represents an invalid input provided to a command. Returned by a command that rejects the input it was given,
+    ///     and by the application when Spectre.Console.Cli could not parse the command line, could not bind the settings,
+    ///     or the settings failed validation; see <see cref="AppBuilder.ConfigureCommandApp" />.
     /// </summary>
     InvalidInput = 2,
 

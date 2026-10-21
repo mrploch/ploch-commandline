@@ -84,7 +84,8 @@ More commands, with observed results, are in [`docs/ai/TECH-STACK.md`](docs/ai/T
   once the settings are bound, before the command's `Validate`, so a validator rejection is still
   announced; `IOutput` stays on standard output.
 - `IOutput.Write(string)` prints the text verbatim, through the registered `StringMessageWriter`; a `FormattableString` goes through `FormattableStringMessageWriter`, and a consumer writer registered for either type replaces the built-in one. Markup is parsed by `Markup`, `MarkupLine`, the `…Interpolated` overloads and a `FormattableString` passed to `Write`; caller data given to `Markup` / `MarkupLine` must be escaped.
-- A parse or validation failure exits with `-1`, not `ExitCode.InvalidInput` (2).
+- A parse, binding or validation failure exits with `ExitCode.InvalidInput` (2):
+  `ConfigureCommandApp` installs a Spectre exception handler that replaces Spectre's `-1`.
 - Configuration sources added through `ConfigureAppConfiguration` outrank the command line.
 
 Each of these is explained, with file references, in
