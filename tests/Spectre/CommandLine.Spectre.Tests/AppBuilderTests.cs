@@ -292,13 +292,17 @@ public sealed class AppBuilderTests : IDisposable
         var exitCode = builder.ConfigureCommandApp(configurator =>
                               {
                                   configurator.ConfigureConsole(_console.Console);
+
+                                  // Spectre answers --version only when an application version is configured; without
+                                  // one the switch is an unknown option and the run fails with -1.
+                                  configurator.SetApplicationVersion("1.2.3");
                                   configurator.AddCommand<ProbeCommand>("probe");
                               })
                               .Run("--version");
 
         exitCode.Should().Be(0);
         _errorConsole.Output.Should().Contain("Probe App").And.NotContain("Executing command", "no command is resolved for the version switch");
-        _console.Output.Should().NotContain("Probe App").And.NotContain("Executing command");
+        _console.Output.Should().Contain("1.2.3", "Spectre renders the version on its own console").And.NotContain("Probe App").And.NotContain("Executing command");
     }
 
     /// <summary>
