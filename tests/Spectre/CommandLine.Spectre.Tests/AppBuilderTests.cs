@@ -113,6 +113,7 @@ public sealed class AppBuilderTests : IDisposable
 
         recorder.ExitCode.Should().Be(0);
         _errorConsole.Output.Should().Contain("Widget Tool 4.5").And.Contain("Widget things");
+        _errorConsole.Output.Split(Environment.NewLine).Count(line => line.Trim().Length > 0).Should().BeGreaterThan(4, "the FIGlet art spans several lines above the name and description lines");
         _console.Output.Should().NotContain("Widget Tool").And.NotContain("Widget things", "the banner must stay out of the output a consumer pipes (PLO-783)");
     }
 
@@ -135,9 +136,9 @@ public sealed class AppBuilderTests : IDisposable
 
         builder.ShowBanner(false).Should().BeSameAs(builder, "the fluent methods chain");
 
-        appInfo.ShowBanner.Should().BeFalse();
-        builder.ShowBanner(true);
-        appInfo.ShowBanner.Should().BeTrue();
+        appInfo.ShouldShowBanner.Should().BeFalse();
+        builder.ShowBanner(true).Should().BeSameAs(builder);
+        appInfo.ShouldShowBanner.Should().BeTrue();
     }
 
     /// <summary>
@@ -201,6 +202,40 @@ public sealed class AppBuilderTests : IDisposable
         RecordingInterceptor.InterceptCalls.Should().Be(1, "the consumer's interceptor runs once alongside the library's");
         RecordingInterceptor.ResultCalls.Should().Be(1);
         RecordingInterceptor.AnnouncementSeenFirst.Should().BeTrue("the library registers its interceptor with the defaults, ahead of the caller's delegates, and Spectre runs them in registration order");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_run_the_announcement_before_an_interceptor_registered_by_a_services_bundle()
+    {
+        RecordingInterceptor.Reset();
+        RecordingInterceptor.ErrorOutputProbe = () => _errorConsole.Output;
+
+        var recorder = RunProbeCommand(builder => builder.AddServicesBundle<InterceptorServicesBundle>());
+
+        recorder.ExitCode.Should().Be(0);
+        RecordingInterceptor.InterceptCalls.Should().Be(1);
+        RecordingInterceptor.AnnouncementSeenFirst.Should().BeTrue("the library's interceptor is registered before the bundles are initialised");
+    }
+
+    /// <summary>
+    ///     A branch's default command runs when the branch was named without a command; Spectre names it with an
+    ///     internal placeholder, which the announcement must not expose. Running a real default command pins the
+    ///     placeholder Spectre actually uses. (A root default command needs <c>CommandApp.SetDefaultCommand</c>, which
+    ///     the builder does not expose, so the branch form is the one a consumer can reach.)
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_announce_a_default_command_as_the_default_command()
+    {
+        var recorder = new ProbeRecorder();
+        ProbeCommand.Recorder = recorder;
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
+
+        recorder.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddBranch("user", user => user.SetDefaultCommand<ProbeCommand>()))
+                                   .Run("user");
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Executing the default command").And.NotContain("__default_command");
     }
 
     [Fact]
@@ -274,7 +309,7 @@ public sealed class AppBuilderTests : IDisposable
         recorder.ExitCode = executor.Run("probe");
 
         recorder.ExitCode.Should().NotBe(0, "a run that could not announce its command did not complete");
-        recorder.ExecutionToken.Should().Be(default(CancellationToken), "the command never ran, so it recorded nothing");
+        recorder.ExecutionToken.Should().Be(CancellationToken.None, "the command never ran, so it recorded nothing");
     }
 
     [Fact]
@@ -1138,6 +1173,12 @@ public sealed class AppBuilderTests : IDisposable
     private sealed class Marker
     {
         public string Name { get; init; } = "marker";
+    }
+
+    /// <summary>A consumer bundle that registers an interceptor, the way a library of commands would.</summary>
+    private sealed class InterceptorServicesBundle : ServicesBundle
+    {
+        public override void DoConfigure() => Services.AddSingleton<ICommandInterceptor, RecordingInterceptor>();
     }
 
     /// <summary>A consumer interceptor; counts its calls in static slots, which is safe in this non-parallel collection.</summary>

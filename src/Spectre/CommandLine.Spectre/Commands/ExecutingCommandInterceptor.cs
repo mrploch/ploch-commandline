@@ -16,6 +16,8 @@ namespace Ploch.CommandLine.Spectre.Commands;
 ///         <c>Execute</c>. The line therefore names the command as the user invoked it (<see cref="CommandContext.Name" />,
 ///         the leaf command name) rather than the settings type, and it appears for every command the application runs,
 ///         not only those deriving from <see cref="AppCommand{TSettings}" /> or <see cref="AsyncAppCommand{TSettings}" />.
+///         A default command, which Spectre runs when no command name was typed, is announced as "the default command"
+///         rather than by the placeholder name Spectre gives it.
 ///     </para>
 ///     <para>
 ///         An exception thrown while writing — a closed standard error stream, say — propagates to Spectre, which
@@ -25,12 +27,26 @@ namespace Ploch.CommandLine.Spectre.Commands;
 /// </remarks>
 internal sealed class ExecutingCommandInterceptor(IAnsiConsole errorConsole) : ICommandInterceptor
 {
+    /// <summary>
+    ///     The name Spectre.Console.Cli 0.53 gives the default command in the parsed tree, and so in
+    ///     <see cref="CommandContext.Name" />, when the arguments named no command. An internal constant of Spectre's
+    ///     (<c>CliConstants.DefaultCommandName</c>), pinned here by a test that runs a real default command.
+    /// </summary>
+    internal const string SpectreDefaultCommandName = "__default_command";
+
     private readonly IAnsiConsole _errorConsole = errorConsole.NotNull();
 
     /// <inheritdoc />
     public void Intercept(CommandContext context, CommandSettings settings)
     {
         context.NotNull();
+
+        if (context.Name == SpectreDefaultCommandName)
+        {
+            _errorConsole.MarkupLine("Executing [bold underline]the default command[/]");
+
+            return;
+        }
 
         // Interpolated, not concatenated: the hole is escaped, so a command name containing brackets is rendered as
         // text rather than parsed as a style tag.

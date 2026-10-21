@@ -273,10 +273,9 @@ public class AsyncAppCommandTests
         result.Should().Be((int)ExitCode.Error);
     }
 
-    /// <summary>
-    ///     Pins PLO-783: the base writes no preamble of its own. The "Executing command" line is written to standard
-    ///     error by the application before the command runs, so standard output carries only what the command renders.
-    /// </summary>
+    // Pins PLO-783: the base writes no preamble of its own. The "Executing command" line is written to standard error
+    // by the application before the command runs, so standard output carries only what the command renders. (A plain
+    // comment rather than XML docs: the documentation analysers would demand <param> and <returns> on a test method.)
     [Theory]
     [AutoMockData]
     public async Task ExecuteAsync_should_write_nothing_to_the_output_itself(CommandContext context)

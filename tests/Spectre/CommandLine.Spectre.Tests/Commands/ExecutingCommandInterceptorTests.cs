@@ -14,11 +14,7 @@ public sealed class ExecutingCommandInterceptorTests : IDisposable
 {
     private readonly RecordingConsole _console = new();
 
-    public void Dispose()
-    {
-        _console.Dispose();
-        GC.SuppressFinalize(this);
-    }
+    public void Dispose() => _console.Dispose();
 
     [Fact]
     public void Intercept_should_announce_the_command_by_its_name()
@@ -55,6 +51,19 @@ public sealed class ExecutingCommandInterceptorTests : IDisposable
         _console.Output.Should().Contain("Executing command add[all]");
     }
 
+    /// <summary>
+    ///     Spectre names a default command with an internal placeholder; the user typed no name, so none is shown.
+    /// </summary>
+    [Fact]
+    public void Intercept_should_announce_a_default_command_without_exposing_spectres_placeholder_name()
+    {
+        var interceptor = new ExecutingCommandInterceptor(_console.Console);
+
+        interceptor.Intercept(Context(ExecutingCommandInterceptor.SpectreDefaultCommandName), new StubSettings());
+
+        _console.Output.Should().Be("Executing the default command" + Environment.NewLine);
+    }
+
     [Fact]
     public void Intercept_should_throw_when_the_context_is_null()
     {
@@ -87,6 +96,7 @@ public sealed class ExecutingCommandInterceptorTests : IDisposable
 
     private static CommandContext Context(string name) => new([], Mock.Of<IRemainingArguments>(), name, null);
 
+    // ReSharper disable once RedundantTypeDeclarationBody - StyleCop rejects the bodiless form (SA1106).
     private sealed class StubSettings : CommandSettings
     {
     }

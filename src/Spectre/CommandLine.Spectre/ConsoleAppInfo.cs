@@ -17,7 +17,7 @@ public class ConsoleAppInfo(params IEnumerable<string>? args) : AppInfo(args)
     ///     <see langword="false" /> to drop both, for a tool whose standard error is captured too. Read when
     ///     <see cref="AppBuilder.ConfigureCommandApp" /> builds the application.
     /// </remarks>
-    public bool ShowBanner { get; set; } = true;
+    public bool ShouldShowBanner { get; set; } = true;
 
     /// <summary>
     ///     Gets or sets the color used for displaying the application name in FigletText.

@@ -27,14 +27,17 @@ internal static class StandardErrorConsole
     /// <returns>A console writing to the process's standard error stream.</returns>
     /// <remarks>
     ///     Spectre's detection answers "does this environment understand ANSI?" from <c>TERM</c> on Unix, whatever the
-    ///     stream points at, so a captured standard error would still receive escape sequences. Redirection is checked
-    ///     here instead: a terminal keeps colour and markup, a capture gets the plain text a reader expects.
+    ///     stream points at, and its profile enrichers switch ANSI back on under a CI service such as GitHub Actions
+    ///     after the settings have been applied, so a captured standard error would still receive escape sequences.
+    ///     Redirection is checked here instead, and the enrichers are left out on that path: a terminal keeps colour
+    ///     and markup, a capture gets the plain text a reader expects.
     /// </remarks>
     public static IAnsiConsole Create(bool errorRedirected) =>
         AnsiConsole.Create(new AnsiConsoleSettings
                            {
                                Ansi = errorRedirected ? AnsiSupport.No : AnsiSupport.Detect,
                                ColorSystem = errorRedirected ? ColorSystemSupport.NoColors : ColorSystemSupport.Detect,
+                               Enrichment = new ProfileEnrichment { UseDefaultEnrichers = !errorRedirected },
                                Out = new AnsiConsoleOutput(Console.Error)
                            });
 }

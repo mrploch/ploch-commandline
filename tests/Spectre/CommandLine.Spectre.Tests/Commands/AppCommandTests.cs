@@ -1,5 +1,4 @@
 ﻿using System.Globalization;
-using Moq;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.TestingSupport.XUnit3.AutoMoq;
@@ -61,10 +60,9 @@ public class AppCommandTests
         processor.Received.Should().ContainSingle().Which.Should().BeSameAs(settings);
     }
 
-    /// <summary>
-    ///     Pins PLO-783: the base writes no preamble of its own. The "Executing command" line is written to standard
-    ///     error by the application before the command runs, so standard output carries only what the command renders.
-    /// </summary>
+    // Pins PLO-783: the base writes no preamble of its own. The "Executing command" line is written to standard error
+    // by the application before the command runs, so standard output carries only what the command renders. (A plain
+    // comment rather than XML docs: the documentation analysers would demand <param> on a test method.)
     [Theory]
     [AutoMockData]
     public void Execute_should_write_nothing_to_the_output_itself(CommandContext context)

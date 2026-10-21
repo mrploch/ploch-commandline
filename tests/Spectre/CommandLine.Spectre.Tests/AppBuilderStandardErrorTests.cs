@@ -34,7 +34,6 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
         EnvironmentSettings.Reset();
         _stdout.Dispose();
         _stderr.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -60,6 +59,49 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
         console.MarkupLine("[bold red]plain[/]");
 
         _stderr.ToString().Should().Be("plain" + Environment.NewLine, "a capture expects the text a reader sees, with no escape sequences");
+    }
+
+    /// <summary>
+    ///     Spectre's profile enrichers run after the settings and switch ANSI back on under a CI service, which is how
+    ///     the first build of this branch emitted a bold escape on the GitHub Actions runner while passing locally. The
+    ///     redirected path leaves the enrichers out; this test sets the GitHub marker to prove it.
+    /// </summary>
+    [Fact]
+    public void StandardErrorConsole_Create_should_write_plain_text_when_standard_error_is_redirected_under_a_ci_service()
+    {
+        var original = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
+        Environment.SetEnvironmentVariable("GITHUB_ACTIONS", "true");
+        try
+        {
+            var console = StandardErrorConsole.Create(errorRedirected: true);
+
+            console.MarkupLine("[bold red]plain[/]");
+
+            _stderr.ToString().Should().Be("plain" + Environment.NewLine, "a CI capture is still a capture");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS", original);
+        }
+    }
+
+    /// <summary>
+    ///     The no-argument factory decides from <see cref="Console.IsErrorRedirected" />, whose value depends on how
+    ///     the tests were launched, so the wiring is pinned by comparing it with the explicit overload for that value
+    ///     rather than by asserting a particular outcome.
+    /// </summary>
+    [Fact]
+    public void StandardErrorConsole_Create_should_follow_whether_standard_error_is_redirected()
+    {
+        var byDefault = StandardErrorConsole.Create();
+        var explicitly = StandardErrorConsole.Create(Console.IsErrorRedirected);
+
+        byDefault.Profile.Capabilities.Ansi.Should().Be(explicitly.Profile.Capabilities.Ansi);
+        byDefault.Profile.Capabilities.ColorSystem.Should().Be(explicitly.Profile.Capabilities.ColorSystem);
+        if (Console.IsErrorRedirected)
+        {
+            byDefault.Profile.Capabilities.Ansi.Should().BeFalse("a redirected standard error gets plain text");
+        }
     }
 
     /// <summary>
@@ -93,6 +135,7 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
 
         exitCode.Should().Be(0);
         StandardError().Should().Contain("Widget Tool 4.5").And.Contain("Executing command echo");
+        NonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
         _stdout.Output.Should().Be("echoed" + Environment.NewLine, "standard output carries the command's output and nothing else");
     }
 
@@ -113,6 +156,7 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
 
         exitCode.Should().Be(0);
         StandardError().Should().Contain("Widget Tool").And.Contain("Executing command echo");
+        NonBlankLines(StandardError()).Should().HaveCountGreaterThan(3, "the FIGlet banner spans several lines above the name line");
         _stdout.Output.Should().Be("echoed" + Environment.NewLine);
     }
 
@@ -135,13 +179,18 @@ public sealed class AppBuilderStandardErrorTests : IDisposable
         _stdout.Output.Should().Be("echoed" + Environment.NewLine);
     }
 
+    private static List<string> NonBlankLines(string text) => text.Split('\n').Select(line => line.TrimEnd()).Where(line => line.Length > 0).ToList();
+
     /// <summary>The visible text written to standard error, with any ANSI escape sequences removed.</summary>
     private string StandardError() => RecordingConsole.StripEscapeSequences(_stderr.ToString());
 
+    // ReSharper disable once ClassNeverInstantiated.Local - Spectre binds it.
+    // ReSharper disable once RedundantTypeDeclarationBody - StyleCop rejects the bodiless form (SA1106).
     private sealed class EchoSettings : CommandSettings
     {
     }
 
+    // ReSharper disable once ClassNeverInstantiated.Local - Spectre resolves it from the container.
     private sealed class EchoCommand(IAnsiConsole console) : Command<EchoSettings>
     {
         public override int Execute(CommandContext context, EchoSettings settings, CancellationToken cancellationToken)

@@ -80,7 +80,7 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 | `ICommandSettingsValidator<T>`, `CommandSettingsValidator<T>` | Validation hook; default delegates to `settings.Validate()` |
 | `ICommandSettingsProcessor`, `CommandArgumentsRootProcessor` | Settings post-processing pipeline |
 | `TokensArgumentsProcessor`, `[SupportsTokens]` | Replaces `{date}` and `{datetime}` in marked string properties |
-| `ExecutingCommandInterceptor` | Internal `ICommandInterceptor`; writes `Executing command <name>` to standard error before each command |
+| `ExecutingCommandInterceptor` | Internal `ICommandInterceptor`; writes `Executing command <name>` (a default command: "the default command") to standard error before each command |
 
 ### 3.3 Core — `Ploch.CommandLine.Spectre.Output`
 
@@ -112,9 +112,9 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
    1. validates the application info (a missing name throws) and, unless `ShowBanner` is off,
       prints the banner to standard error;
    2. calls `Host.CreateDefaultBuilder(args)`;
-   3. adds the services bundles as the first services delegate, then, unless `ShowBanner` is off,
-      the `ExecutingCommandInterceptor` — ahead of the caller's delegates, so the announcement runs
-      before any interceptor the caller registers;
+   3. adds the first services delegate: the `ExecutingCommandInterceptor` (unless the banner is
+      switched off) and then the services bundles — ahead of every bundle and caller registration,
+      so the announcement runs before any interceptor the caller registers;
    4. replays the recorded operations in call order;
    5. registers the builder's own `CancellationTokenSource` last;
    6. wraps the host builder in `DependencyInjectionTypeRegistrar` and creates `CommandApp`;
@@ -195,8 +195,8 @@ Handler selection is "most derived type wins; first registration wins ties".
 **Standard streams.** Standard output is the command's: what it renders through `IOutput`, plus
 Spectre's own help and error rendering. The banner and the `Executing command <name>` line go to
 standard error through the builder's own `IAnsiConsole` over `Console.Error`
-(`StandardErrorConsole`: Spectre's colour and ANSI detection on a terminal, plain text when the
-stream is redirected), so `app list | cat` carries the command's output alone. `ShowBanner(false)`
+(`StandardErrorConsole`: Spectre's colour and ANSI detection on a terminal; plain text, with
+Spectre's CI profile enrichers left out, when the stream is redirected), so `app list | cat` carries the command's output alone. `ShowBanner(false)`
 drops both. A failure to write the announcement stops the
 run before the command, as any failure ahead of execution does; it does not reach the command's
 `IExceptionHandler` (PLO-783). Still on standard output through the global `AnsiConsole`: the
@@ -240,7 +240,7 @@ Starting the host around the command is a possible 1.x feature, tracked as PLO-7
 | Settings post-processing | Register another `ICommandSettingsProcessor` |
 | Exception handling | Register an `IExceptionHandler` |
 | Output for a type | `AddMessageWriter` / `AddMessageFormatter` |
-| The banner and the announcement | `ShowBanner(false)`, or `ConsoleAppInfo.ShowBanner` |
+| The banner and the announcement | `ShowBanner(false)`, or `ConsoleAppInfo.ShouldShowBanner` |
 | Before and after each command | Register an `ICommandInterceptor` (`ConfigureServices` or Spectre's `SetInterceptor`); the library's announcement interceptor runs first |
 
 ## 7. Known gaps and sharp edges
