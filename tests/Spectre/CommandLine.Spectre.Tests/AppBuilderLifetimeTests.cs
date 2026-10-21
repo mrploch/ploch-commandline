@@ -21,6 +21,9 @@ public sealed class AppBuilderLifetimeTests : IDisposable
 {
     private readonly IAnsiConsole _originalConsole = AnsiConsole.Console;
     private readonly RecordingConsole _console = new();
+
+    /// <summary>Receives the banner and the "Executing command" line, so neither reaches the test host's standard error.</summary>
+    private readonly RecordingConsole _errorConsole = new();
     private readonly LifetimeRecorder _recorder = new();
 
     /// <summary>
@@ -40,6 +43,7 @@ public sealed class AppBuilderLifetimeTests : IDisposable
         AnsiConsole.Console = _originalConsole;
         EnvironmentSettings.Reset();
         _console.Dispose();
+        _errorConsole.Dispose();
     }
 
     /// <summary>
@@ -132,7 +136,7 @@ public sealed class AppBuilderLifetimeTests : IDisposable
     private void RunProbe()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Lifetime Probe" }, cancellationTokenSource);
+        using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Lifetime Probe" }, cancellationTokenSource, _errorConsole.Console);
         builder.ConfigureServices(services => services.AddSingleton(_recorder));
 
         var executor = builder.ConfigureCommandApp(configurator =>
