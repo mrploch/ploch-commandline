@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.Output;
@@ -108,6 +109,103 @@ public sealed class OutputServicesBundleTests : IDisposable
                     "the writer registered for IEnumerable receives the collection, so it enumerates the items rather than the characters of a formatted string");
     }
 
+    /// <summary>
+    ///     The string writer was registered but never selected: the output wrote strings itself before consulting the
+    ///     processor. These tests pin the writer path as wired in DI, where the enumerable writer also accepts a string.
+    /// </summary>
+    [Fact]
+    public void Write_should_render_a_string_verbatim_through_the_registered_string_writer()
+    {
+        using var provider = BuildProvider();
+        var output = provider.GetRequiredService<IOutput>();
+
+        output.Write("[not markup] abc");
+
+        _console.Output.Should().Be("[not markup] abc", "the string writer wins over the enumerable writer and writes the text as-is");
+    }
+
+    [Fact]
+    public void WriteLine_should_add_exactly_one_terminator_after_a_string()
+    {
+        using var provider = BuildProvider();
+        var output = provider.GetRequiredService<IOutput>();
+
+        output.WriteLine("abc");
+
+        _console.Output.Should().Be("abc" + Environment.NewLine, "one character per line would mean the enumerable writer took the string");
+    }
+
+    [Fact]
+    public void Write_should_use_a_string_writer_registered_after_the_bundle()
+    {
+        using var provider = BuildProvider(services => services.AddMessageWriter<string, UpperCasingStringWriter>());
+        var output = provider.GetRequiredService<IOutput>();
+
+        output.Write("abc");
+
+        _console.Output.Should().Be("ABC", "a consumer's writer for a type the bundle covers replaces the built-in one");
+    }
+
+    [Fact]
+    public void WriteLine_should_use_a_string_writer_registered_after_the_bundle_and_terminate_the_line()
+    {
+        using var provider = BuildProvider(services => services.AddMessageWriter<string, UpperCasingStringWriter>());
+        var output = provider.GetRequiredService<IOutput>();
+
+        output.WriteLine("abc");
+
+        _console.Output.Should().Be("ABC" + Environment.NewLine);
+    }
+
+    [Fact]
+    public void Write_should_use_an_interpolated_string_writer_registered_after_the_bundle()
+    {
+        using var provider = BuildProvider(services => services.AddMessageWriter<FormattableString, FormatOnlyWriter>());
+        var output = provider.GetRequiredService<IOutput>();
+
+        var value = "x";
+
+        output.Write<FormattableString>($"[bold]{value}[/]");
+
+        _console.Output.Should().Be("[bold]{0}[/]", "the consumer's writer replaced the built-in markup rendering");
+    }
+
+    [Fact]
+    public void Write_should_render_an_interpolated_string_as_markup_with_its_holes_escaped()
+    {
+        using var provider = BuildProvider();
+        var output = provider.GetRequiredService<IOutput>();
+
+        var literal = "[literal]";
+
+        output.Write<FormattableString>($"[bold]{literal}[/]");
+
+        _console.Output.Should().Be("[literal]", "the template's tag is parsed and the hole is escaped");
+    }
+
+    [Fact]
+    public void Write_should_keep_the_format_specifier_of_an_interpolated_hole()
+    {
+        using var provider = BuildProvider();
+        var output = provider.GetRequiredService<IOutput>();
+
+        output.Write<FormattableString>($"total: {1234.5:N2}", CultureInfo.InvariantCulture);
+
+        _console.Output.Should().Be("total: 1,234.50", "the registered convertible formatter must not pre-render the hole and lose N2");
+    }
+
+    [Fact]
+    public void Write_should_render_an_exception_in_an_interpolated_hole_with_its_own_ToString()
+    {
+        using var provider = BuildProvider();
+        var output = provider.GetRequiredService<IOutput>();
+        var exception = new InvalidOperationException("probe failure");
+
+        output.Write<FormattableString>($"failed: {exception}");
+
+        _console.Output.Should().Be($"failed: {exception}", "an interpolation hole renders as string.Format would, not through the exception formatter");
+    }
+
     [Fact]
     public void Bundle_should_register_every_message_formatter_exactly_once()
     {
@@ -150,11 +248,30 @@ public sealed class OutputServicesBundleTests : IDisposable
         text.Should().NotContain("Error Code", "a plain exception has no native error code to report");
     }
 
-    private static ServiceProvider BuildProvider()
+    private static ServiceProvider BuildProvider(Action<IServiceCollection>? configureAfterBundle = null)
     {
         var services = new ServiceCollection();
         services.AddServicesBundle(new OutputServicesBundle());
 
+        // Mirrors AppBuilder, where the bundles register before any caller ConfigureServices delegate.
+        configureAfterBundle?.Invoke(services);
+
         return services.BuildServiceProvider();
+    }
+
+    /// <summary>A consumer's replacement for the built-in interpolated-string writer that prints only the template.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local - the container instantiates it through AddMessageWriter.
+    private sealed class FormatOnlyWriter(IAnsiConsole console) : TypeMessageWriter<FormattableString>
+    {
+        public override void Write(FormattableString? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+            console.Write(message?.Format ?? string.Empty);
+    }
+
+    /// <summary>A consumer's replacement for the built-in string writer, visibly different from a verbatim write.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local - the container instantiates it through AddMessageWriter.
+    private sealed class UpperCasingStringWriter(IAnsiConsole console) : TypeMessageWriter<string>
+    {
+        public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+            console.Write(message?.ToUpperInvariant() ?? string.Empty);
     }
 }

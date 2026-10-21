@@ -187,10 +187,15 @@ them in `Dispose`. A builder made with the public constructor owns neither.
 **Exit codes.** `ExitCode` covers what a command returns. Spectre returns `-1` for parse and
 validation failures before a command runs.
 
-**Output and markup.** `FormattableString` messages have their holes escaped. Plain `string`
-messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in to parsing.
-`WriteBold` and `WriteError` escape content before wrapping it in a tag and rendering it as markup.
-Handler selection is "most derived type wins; first registration wins ties".
+**Output and markup.** `IOutput.Write` renders an `IRenderable` through the console and hands every
+other message to the registered writers; `StringMessageWriter` writes a `string` verbatim and
+`FormattableStringMessageWriter` renders a `FormattableString` as interpolated markup with its holes
+escaped and left to `string.Format` (not pre-rendered by the formatters). `Markup` and `MarkupLine`
+are the explicit opt-in to parsing. `WriteBold` and `WriteError` escape content before wrapping it in
+a tag and rendering it as markup, and do not use the writers. Handler selection is "most derived
+type wins; of two handlers for the same type the later registration wins; unrelated types keep the
+first registration". Because the bundle registers before caller `ConfigureServices` delegates, a
+consumer writer for `string` or `FormattableString` replaces the built-in one.
 
 **Standard streams.** Standard output is the command's: what it renders through `IOutput`, plus
 Spectre's own help and error rendering. The banner and the `Executing command <name>` line go to
@@ -251,13 +256,13 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 | Area | Finding |
 |---|---|
 | Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
-| Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
 
 Resolved since the review: the cancellation catch now checks the supplied token, the three
 entry points null-check, and a second `Run` on one executor fails with a clear
 `InvalidOperationException` (PLO-756; see sections 4.1 and 4.2); the banner and the
-"Executing command" line go to standard error (PLO-783; see section 5).
+"Executing command" line go to standard error (PLO-783; see section 5), and `IOutput` sends
+every `string` and `FormattableString` through the registered writers (PLO-784; see section 5).
 
 ## 8. Where to look
 
