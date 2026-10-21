@@ -9,9 +9,13 @@
 public interface IExceptionHandler
 {
     /// <summary>
-    ///     Handles an exception that occurred during command execution.
+    ///     Handles an exception that occurred during command execution, or before it when the handler
+    ///     <see cref="AppBuilder.ConfigureCommandApp" /> installs routes a pre-command failure here.
     /// </summary>
-    /// <param name="ex">The exception that was thrown during command execution.</param>
+    /// <param name="ex">
+    ///     The exception that was thrown: by the command, or before it ran - by a command interceptor, or by a command
+    ///     that does not derive from the base classes.
+    /// </param>
     /// <returns>
     ///     An integer representing the exit code to return to the operating system.
     ///     Typically, a non-zero value indicates an error condition.
