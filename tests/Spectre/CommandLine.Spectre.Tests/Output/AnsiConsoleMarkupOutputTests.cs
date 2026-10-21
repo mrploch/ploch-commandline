@@ -11,6 +11,8 @@ namespace Ploch.CommandLine.Spectre.Tests.Output;
 ///     is the path that previously wrote writer-handled messages twice, and the bold/error helpers are the only
 ///     place the markup tags reach the formatter processor. The <c>Markup</c> / <c>MarkupLine</c> pair is the sole
 ///     entry point that parses a plain string as markup; <c>Write</c> and <c>WriteLine</c> print it verbatim.
+///     A <c>string</c> and a <c>FormattableString</c> are rendered by the registered writers for those types, so the
+///     default output under test carries the two built-in writers, as the output services bundle does.
 /// </summary>
 public class AnsiConsoleMarkupOutputTests
 {
@@ -306,6 +308,133 @@ public class AnsiConsoleMarkupOutputTests
 
         console.Output.Should().Contain("dedicated overload");
         chained.Should().BeSameAs(output);
+    }
+
+    /// <summary>
+    ///     A string used to be written by the output itself before the processor was consulted, so the registered
+    ///     string writer was never selected and a consumer's own writer for strings was a no-op.
+    /// </summary>
+    [Fact]
+    public void Write_should_hand_a_string_to_the_registered_string_writer()
+    {
+        using var console = new RecordingConsole();
+        var writer = new RecordingStringWriter();
+        var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], [writer]));
+
+        output.Write("abc");
+
+        writer.Written.Should().ContainSingle().Which.Should().Be("abc");
+        console.Output.Should().BeEmpty("the writer rendered the string, so the output must not render it again");
+    }
+
+    [Fact]
+    public void Write_should_hand_an_interpolated_string_to_the_registered_writer()
+    {
+        using var console = new RecordingConsole();
+        var writer = new RecordingFormattableStringWriter();
+        var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], [writer]));
+
+        output.Write<FormattableString>($"count: {7}");
+
+        writer.Written.Should().ContainSingle().Which.Format.Should().Be("count: {0}");
+        console.Output.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WriteLine_should_hand_a_string_to_the_registered_string_writer_and_terminate_the_line()
+    {
+        using var console = new RecordingConsole();
+        var writer = new RecordingStringWriter();
+        var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], [writer]));
+
+        output.WriteLine("abc");
+
+        writer.Written.Should().ContainSingle().Which.Should().Be("abc");
+        console.Output.Should().Be(Environment.NewLine, "the writer does not terminate its output, so WriteLine adds the one terminator");
+    }
+
+    [Fact]
+    public void WriteLine_should_hand_an_interpolated_string_to_the_registered_writer_and_terminate_the_line()
+    {
+        using var console = new RecordingConsole();
+        var writer = new RecordingFormattableStringWriter();
+        var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], [writer]));
+
+        output.WriteLine<FormattableString>($"count: {7}");
+
+        writer.Written.Should().ContainSingle();
+        console.Output.Should().Be(Environment.NewLine);
+    }
+
+    /// <summary>
+    ///     The built-in interpolated-string writer leaves the holes to <c>string.Format</c>. A consumer writer that
+    ///     wants them formatted asks the processor it is handed, which is the path the writer's docs point to, so
+    ///     that path has to keep working through <see cref="IOutput" />.
+    /// </summary>
+    [Fact]
+    public void Write_should_let_a_custom_writer_format_the_holes_of_an_interpolated_string_through_the_processor()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console,
+                                                 new MessageFormatterProcessor([new UpperCasingFormatter()], [new HoleFormattingWriter(console.Console)]));
+
+        var greeting = "hello";
+
+        output.Write<FormattableString>($"greeting: {greeting}", CultureInfo.InvariantCulture);
+
+        console.Output.Should().Be("greeting: HELLO", "the writer handed the holes to the formatters before rendering");
+    }
+
+    /// <summary>
+    ///     A string is also an <c>IEnumerable</c>, so an enumerable writer accepts it. The string writer's type is
+    ///     the more derived of the two, so it must win whichever was registered first; otherwise a string would be
+    ///     written one character per line.
+    /// </summary>
+    /// <param name="enumerableFirst">Whether the enumerable writer is registered ahead of the string writer.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Write_should_prefer_the_string_writer_over_an_enumerable_writer_for_a_string(bool enumerableFirst)
+    {
+        using var console = new RecordingConsole();
+        IMessageWriter stringWriter = new StringMessageWriter(console.Console);
+        IMessageWriter enumerableWriter = new EnumerableMessageWriter(console.Console);
+        IMessageWriter[] writers = enumerableFirst ? [enumerableWriter, stringWriter] : [stringWriter, enumerableWriter];
+        var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], writers));
+
+        output.Write("abc");
+
+        console.Output.Should().Be("abc");
+    }
+
+    /// <summary>
+    ///     The fallback only applies when no writer accepts the message. Without any writer a string is still text
+    ///     and still verbatim; an interpolated string is formatted as plain text, because parsing its template as
+    ///     markup is the writer's job.
+    /// </summary>
+    [Fact]
+    public void Write_should_print_a_string_verbatim_when_no_writer_accepts_it()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], []));
+
+        output.Write("path[1]");
+
+        console.Output.Should().Be("path[1]");
+    }
+
+    [Fact]
+    public void Write_should_format_an_interpolated_string_as_plain_text_when_no_writer_accepts_it()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], []));
+
+        var value = "x";
+
+        output.Write<FormattableString>($"[bold]{value}[/]", CultureInfo.InvariantCulture);
+
+        console.Output.Should().Be("[bold]x[/]", "with no writer there is nothing to parse the template as markup");
+        console.RawOutput.Should().NotContain(BoldOn);
     }
 
     [Fact]
@@ -704,8 +833,16 @@ public class AnsiConsoleMarkupOutputTests
     private static AnsiConsoleMarkupOutput CreateOutputWithEnumerableWriter(RecordingConsole console) =>
         new(console.Console, new MessageFormatterProcessor([], [new EnumerableMessageWriter(console.Console)]));
 
+    /// <summary>
+    ///     Wired like <c>OutputServicesBundle</c> for the two string types: the built-in writers render them, and the
+    ///     convertible formatter is present so a number in an interpolation hole takes the production path.
+    /// </summary>
+    /// <param name="console">The recording console the output and its writers render to.</param>
+    /// <returns>An output whose string and interpolated-string messages go through the built-in writers.</returns>
     private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>
-        new(console.Console, new MessageFormatterProcessor([new StringMessageFormatter()], []));
+        new(console.Console,
+            new MessageFormatterProcessor([new StringMessageFormatter(), new ConvertibleMessageFormatter()],
+                                          [new StringMessageWriter(console.Console), new FormattableStringMessageWriter(console.Console)]));
 
     /// <summary>An IFormattable whose ToString deliberately returns null, which the framework permits.</summary>
     private sealed class NullReturningFormattable : IFormattable
@@ -724,6 +861,51 @@ public class AnsiConsoleMarkupOutputTests
     {
         public override void Write(ProbeMessage? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
             console.Write(formatterProcessor?.GetMessageText(message?.Text) ?? message?.Text ?? string.Empty);
+    }
+
+    /// <summary>Records the strings it is handed and renders nothing, so a test can prove the string took the writer path.</summary>
+    private sealed class RecordingStringWriter : TypeMessageWriter<string>
+    {
+        public List<string?> Written { get; } = [];
+
+        public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => Written.Add(message);
+    }
+
+    /// <summary>A writer that opts into formatted holes by asking the processor it is handed, as the built-in writer's docs describe.</summary>
+    private sealed class HoleFormattingWriter(IAnsiConsole console) : TypeMessageWriter<FormattableString>
+    {
+        public override void Write(FormattableString? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
+        {
+            if (message is null)
+            {
+                return;
+            }
+
+            var formatted = formatterProcessor?.GetMessageText(message, formatProvider: formatProvider) ?? message;
+
+            console.MarkupInterpolated(formatProvider ?? CultureInfo.CurrentCulture, formatted);
+        }
+    }
+
+    /// <summary>A formatter that visibly transforms its input, so a test can prove it was applied to a hole.</summary>
+    private sealed class UpperCasingFormatter : TypeMessageFormatter<string>
+    {
+        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+            message?.ToUpperInvariant() ?? string.Empty;
+    }
+
+    /// <summary>Records the interpolated strings it is handed and renders nothing.</summary>
+    private sealed class RecordingFormattableStringWriter : TypeMessageWriter<FormattableString>
+    {
+        public List<FormattableString> Written { get; } = [];
+
+        public override void Write(FormattableString? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
+        {
+            if (message is not null)
+            {
+                Written.Add(message);
+            }
+        }
     }
 
     private sealed class UnhandledMessage

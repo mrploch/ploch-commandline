@@ -54,8 +54,9 @@ dotnet test  samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.slnx -p:UsePl
 dotnet run --project samples/SampleApp/src/SampleApp -p:UsePlochProjectReferences=true -- --help
 ```
 
-`dotnet run` passes everything after `--` to the application. The listings below drop the FIGlet
-banner the application prints before each command, and were captured with `NO_COLOR=1`.
+`dotnet run` passes everything after `--` to the application. The listings below show standard
+output only: the FIGlet banner and the `Executing command …` line the application writes to
+standard error before each command are left out. They were captured with `NO_COLOR=1`.
 
 ### The command tree
 
@@ -91,9 +92,6 @@ Each branch has its own help — `sample user --help`, `sample config --help`, a
 ```text
 $ sample info
 
-Executing command InfoCommandSettings
-
-Processing arguments...
 === Application & System Information ===
 
 ╭──────────────────────┬────────────────────────────────────────────╮
@@ -119,9 +117,6 @@ Command completed successfully.
 ```text
 $ sample user list
 
-Executing command UserListCommandSettings
-
-Processing arguments...
 Retrieving users (active only: False)...
                                 Registered Users
 ╭────┬───────────────┬─────────────────┬───────────────┬──────────┬────────────╮
@@ -229,9 +224,6 @@ $ cat logs/sample.log
 ```text
 $ sample config show
 
-Executing command ConfigShowCommandSettings
-
-Processing arguments...
 Application Configuration Settings
 
 Configuration
@@ -258,9 +250,6 @@ Configuration
 ```text
 $ sample config get SampleAppSettings:Environment
 
-Executing command ConfigGetCommandSettings
-
-Processing arguments...
 SampleAppSettings:Environment: Development
 ```
 
@@ -271,9 +260,6 @@ and saying otherwise would be a lie the next `config get` would expose:
 ```text
 $ sample config set SampleAppSettings:MaxBatchSize 250
 
-Executing command ConfigSetCommandSettings
-
-Processing arguments...
 Would set 'SampleAppSettings:MaxBatchSize' = '250' in the 'user' scope.
 Preview only - this sample has no writable configuration store, so nothing is persisted.
 
@@ -283,9 +269,6 @@ Preview only - this sample has no writable configuration store, so nothing is pe
 ```text
 $ sample config set SampleAppSettings:MaxBatchSize 250 -s machine
 
-Executing command ConfigSetCommandSettings
-
-Processing arguments...
 Unsupported scope 'machine'. Supported scopes: user, system.
 
 [exit code 2]

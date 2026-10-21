@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Configuration;
 using Ploch.CommandLine.Spectre.DependencyInjection;
+using Ploch.CommandLine.Spectre.Output;
 using Ploch.Common.ArgumentChecking;
 using Ploch.Common.DependencyInjection;
 using Spectre.Console;
@@ -29,6 +30,13 @@ public class AppBuilder : IDisposable
     private readonly ConsoleCancelEventHandler? _cancelKeyPressHandler;
 
     private readonly CancellationTokenSource _cancellationTokenSource;
+
+    /// <summary>
+    ///     The console the library's own diagnostics go to — the start-up banner and the "Executing command" line —
+    ///     so that a command's output through <see cref="IOutput" /> is all that reaches standard output. Standard
+    ///     error unless a test supplied one.
+    /// </summary>
+    private readonly IAnsiConsole _errorConsole;
 
     /// <summary>
     ///     Every <see cref="ConfigureServices(Action{HostBuilderContext, IServiceCollection})" />,
@@ -61,11 +69,25 @@ public class AppBuilder : IDisposable
     ///     Thrown when <paramref name="appInfo" /> or <paramref name="cancellationTokenSource" /> is <see langword="null" />.
     /// </exception>
     public AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancellationTokenSource)
-        : this(appInfo, cancellationTokenSource, cancelKeyPressHandler: null, interruptGate: null)
+        : this(appInfo, cancellationTokenSource, StandardErrorConsole.Create())
+    { }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="AppBuilder" /> class that writes its diagnostics — the start-up
+    ///     banner and the "Executing command" line — to the given console instead of standard error. A seam for tests;
+    ///     an application uses <see cref="Create" /> or the public constructor.
+    /// </summary>
+    /// <param name="appInfo">Metadata describing the application being built.</param>
+    /// <param name="cancellationTokenSource">The cancellation source to publish to the application's services; the caller's to dispose.</param>
+    /// <param name="errorConsole">The console the banner and the "Executing command" line are written to; the caller keeps ownership of it.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any argument is <see langword="null" />.</exception>
+    internal AppBuilder(ConsoleAppInfo appInfo, CancellationTokenSource cancellationTokenSource, IAnsiConsole errorConsole)
+        : this(appInfo, cancellationTokenSource, errorConsole, cancelKeyPressHandler: null, interruptGate: null)
     { }
 
     private AppBuilder(ConsoleAppInfo appInfo,
                        CancellationTokenSource cancellationTokenSource,
+                       IAnsiConsole errorConsole,
                        ConsoleCancelEventHandler? cancelKeyPressHandler,
                        InterruptGate? interruptGate)
     {
@@ -73,6 +95,7 @@ public class AppBuilder : IDisposable
         // covered. A null stored now would only surface as a NullReferenceException inside ConfigureCommandApp.
         _appInfo = appInfo.NotNull();
         _cancellationTokenSource = cancellationTokenSource.NotNull();
+        _errorConsole = errorConsole.NotNull();
         _cancelKeyPressHandler = cancelKeyPressHandler;
         _interruptGate = interruptGate;
     }
@@ -122,7 +145,7 @@ public class AppBuilder : IDisposable
 
             Console.CancelKeyPress += cancelKeyPressHandler;
 
-            return new(new(args), cancellationTokenSource, cancelKeyPressHandler, interruptGate);
+            return new(new(args), cancellationTokenSource, StandardErrorConsole.Create(), cancelKeyPressHandler, interruptGate);
 
             // The handler also detaches itself, so the first interrupt is handled cooperatively and a second one
             // takes the default path and terminates the process. Suppressing every interrupt would leave the
@@ -269,6 +292,14 @@ public class AppBuilder : IDisposable
     ///         constructor.
     ///     </para>
     ///     <para>
+    ///         Unless <see cref="ShowBanner" /> was switched off, this call writes the start-up banner to standard error
+    ///         — so it precedes Spectre's own help and version output too — and registers the
+    ///         <see cref="ICommandInterceptor" /> that writes the "Executing command" line to standard error before each
+    ///         command. That interceptor is registered first, before the services bundles and the caller's delegates,
+    ///         so it runs before any interceptor the caller registers, through a bundle, <see cref="ConfigureServices(Action{IServiceCollection})" />
+    ///         or Spectre's <c>SetInterceptor</c>. A default command is announced as "the default command".
+    ///     </para>
+    ///     <para>
     ///         Every <see cref="ConfigureServices(Action{HostBuilderContext, IServiceCollection})" />,
     ///         <see cref="ConfigureAppConfiguration(Action{HostBuilderContext, IConfigurationBuilder})" /> and
     ///         <see cref="ConfigureHost" /> call is applied to the host builder in the order the calls were made, so the
@@ -335,7 +366,19 @@ public class AppBuilder : IDisposable
         }
 
         _appInfo.Validate();
-        _appInfo.PrintAppInfo();
+
+        // Read once: the banner and the announcement are one switch, so both decisions below use the same value even
+        // if the property is changed while this call is in progress.
+        var shouldShowBanner = _appInfo.ShouldShowBanner;
+
+        // Standard error, not standard output: the banner is about the application, not the command's result, so a
+        // consumer piping the command's output never sees it. Written here, when the application is built, so it also
+        // precedes Spectre's own help and version output. ShowBanner drops it altogether.
+        if (shouldShowBanner)
+        {
+            _appInfo.PrintAppInfo(_errorConsole);
+        }
+
         var builder = Host.CreateDefaultBuilder(_appInfo.Args?.ToArray());
 
         // Defaults a caller may override go first: IHostBuilder runs delegates of the same kind in the order they were
@@ -343,7 +386,21 @@ public class AppBuilder : IDisposable
         // CreateDefaultBuilder has already added appsettings.json, appsettings.{Environment}.json, user secrets,
         // environment variables and the command line, in that precedence order. Adding appsettings.json again would
         // put it above environment variables and command-line arguments (issue #82).
-        builder.ConfigureServices((context, services) => InitializeBundles(services, context));
+        builder.ConfigureServices((context, services) =>
+                                  {
+                                      // The "Executing command" line, written to standard error before each command runs.
+                                      // Spectre resolves every ICommandInterceptor registration and runs them in registration
+                                      // order, so this goes in first - before the bundles and before the caller's delegates:
+                                      // the announcement precedes any interceptor the caller registers, whether through a
+                                      // services bundle, ConfigureServices or Spectre's SetInterceptor, and a caller can still
+                                      // remove it from the collection. Off with the banner: ShowBanner(false) silences both.
+                                      if (shouldShowBanner)
+                                      {
+                                          services.AddSingleton<ICommandInterceptor>(new ExecutingCommandInterceptor(_errorConsole));
+                                      }
+
+                                      InitializeBundles(services, context);
+                                  });
 
         // The caller's calls, replayed in the order they were made, whichever fluent method made them. The replay runs
         // over a snapshot, so a host delegate that calls back into this builder cannot modify the list mid-iteration.
@@ -591,6 +648,34 @@ public class AppBuilder : IDisposable
     public AppBuilder WithVersion(Version version)
     {
         _appInfo.Version = version;
+
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets whether the library writes its own lines to standard error: the start-up banner — the name as
+    ///     FigletText, the name and version line and the description — when <see cref="ConfigureCommandApp" /> builds
+    ///     the application, and the "Executing command" line before each command. Both are written unless this is
+    ///     called with <see langword="false" />.
+    /// </summary>
+    /// <param name="show"><see langword="true" /> to write them; <see langword="false" /> to drop both.</param>
+    /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
+    /// <remarks>
+    ///     Both lines already stay out of standard output, so piping a command's output does not need this. Turn them
+    ///     off for a tool whose standard error is captured as well, or that is invoked by another program. Call it
+    ///     before <see cref="ConfigureCommandApp" />, which is where the banner is written. Sets
+    ///     <see cref="ConsoleAppInfo.ShouldShowBanner" />.
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// using var appBuilder = AppBuilder.Create(args)
+    ///                                  .WithName("My Tool")
+    ///                                  .ShowBanner(false);
+    ///     </code>
+    /// </example>
+    public AppBuilder ShowBanner(bool show)
+    {
+        _appInfo.ShouldShowBanner = show;
 
         return this;
     }

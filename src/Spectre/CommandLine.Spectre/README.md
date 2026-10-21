@@ -81,6 +81,11 @@ Its `Validate` override hands the settings to the `ICommandSettingsValidator<TSe
 as does a command line Spectre could not parse or bind: `ConfigureCommandApp` installs a Spectre
 exception handler that keeps Spectre's error rendering and replaces its `-1` exit code.
 
+Standard output belongs to the command: the start-up banner and the `Executing command <name>`
+line the application writes before each command go to standard error, so `myapp list | cat` carries
+only what the command rendered, and `AppBuilder.ShowBanner(false)` drops both for a tool whose
+standard error is captured too.
+
 `IOutput.Write` and `WriteLine` print a string as-is, so a path or user input containing `[` is safe
 to pass straight through. Markup is an explicit opt-in: `Markup` / `MarkupLine` parse their argument
 as Spectre markup, and `MarkupInterpolated` / `MarkupLineInterpolated` escape the interpolated values.

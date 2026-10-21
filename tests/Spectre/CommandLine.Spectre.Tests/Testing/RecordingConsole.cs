@@ -20,8 +20,11 @@ internal sealed class RecordingConsole : IDisposable
 {
     private const char Escape = (char)27;
 
-    /// <summary>Matches a CSI escape sequence. The escape character comes from its code point, so none appears in this file.</summary>
-    private static readonly Regex EscapeSequence = new(Escape + @"\[[0-9;?]*[ -/]*[@-~]", RegexOptions.Compiled);
+    /// <summary>
+    ///     Matches a CSI escape sequence (styles, cursor movement) or an OSC one (hyperlinks, terminated by BEL or
+    ///     ST). The escape character comes from its code point, so none appears in this file.
+    /// </summary>
+    private static readonly Regex EscapeSequence = new(Escape + @"(?:\[[0-9;?]*[ -/]*[@-~]|\][^\u0007\u001b]*(?:\u0007|\u001b\\))", RegexOptions.Compiled);
 
     private readonly StringWriter _writer = new(CultureInfo.InvariantCulture);
 
@@ -43,10 +46,15 @@ internal sealed class RecordingConsole : IDisposable
     public IAnsiConsole Console { get; }
 
     /// <summary>Gets the visible text written so far, with any ANSI escape sequences removed.</summary>
-    public string Output => EscapeSequence.Replace(RawOutput, string.Empty);
+    public string Output => StripEscapeSequences(RawOutput);
 
     /// <summary>Gets everything written so far, escape sequences included.</summary>
     public string RawOutput => _writer.ToString();
+
+    /// <summary>Removes any ANSI escape sequences from <paramref name="text" />, leaving the visible text.</summary>
+    /// <param name="text">Console output, possibly carrying escape sequences.</param>
+    /// <returns>The text a reader would see.</returns>
+    public static string StripEscapeSequences(string text) => EscapeSequence.Replace(text, string.Empty);
 
     public void Dispose() => _writer.Dispose();
 }

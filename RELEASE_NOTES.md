@@ -33,6 +33,8 @@ have been retired.
 - `IOutput.Markup(string)` and `IOutput.MarkupLine(string)`, the explicit entry
   points for rendering a string as Spectre markup, next to the existing
   `MarkupInterpolated` / `MarkupLineInterpolated`.
+- `AppBuilder.ShowBanner(bool)` and `ConsoleAppInfo.ShouldShowBanner`, to drop the
+  start-up banner and the `Executing command …` line together ([PLO-783](https://linear.app/ploch/issue/PLO-783)).
 
 - `ExceptionHandlerFailedException`, thrown by `AppCommand<TSettings>` and
   `AsyncAppCommand<TSettings>` when the registered `IExceptionHandler` throws while
@@ -106,6 +108,26 @@ have been retired.
   constructor-injects its own settings type now receives a fresh, unbound instance
   rather than the bound one Spectre passes to `Execute`
   ([PLO-781](https://linear.app/ploch/issue/PLO-781)).
+- **Breaking:** the start-up banner and the `Executing command …` line are written
+  to standard error rather than standard output, so `myapp list | cat` carries only
+  what the command rendered. The line names the command by its registered leaf
+  name (`add`; an alias by the name it aliases) rather than its settings type (a
+  default command as "the default command"), is
+  written by the application once the settings are bound and before the
+  command's `Validate` runs, and appears for every command, not only those
+  deriving from the base classes. `AppCommand<TSettings>` and
+  `AsyncAppCommand<TSettings>` write nothing to `IOutput` of their own (the
+  `Processing arguments…` line is gone), and a failure to write the announcement
+  stops the run before the command, as any failure ahead of execution does; the
+  application's Spectre handler passes it to the registered `IExceptionHandler`,
+  whose return value is the exit code (`ExitCode.Error` by default, see PLO-782),
+  rather than the command's own catch. The library registers the
+  announcement as an `ICommandInterceptor` ahead of every other registration, so
+  one you register through a services bundle, `ConfigureServices` or Spectre's
+  `SetInterceptor` runs after it.
+  `ConsoleAppInfoExtensions.PrintAppInfo` takes the `IAnsiConsole` to print to;
+  the parameterless overload, which wrote to standard output, is gone
+  ([PLO-783](https://linear.app/ploch/issue/PLO-783)).
 - **Breaking:** a command line `Spectre.Console.Cli` cannot parse or bind, and settings
   that fail `Validate`, exit with `ExitCode.InvalidInput` (2) instead of Spectre's own
   `-1` (`255` in a POSIX shell). `AppBuilder.ConfigureCommandApp` installs a Spectre
@@ -143,6 +165,29 @@ have been retired.
   built the host, rendered the host builder's "Build can only be called once"
   error and returned -1; an attempt may build that host and it can only be
   built once, so the executor now says so up front.
+- **Breaking:** `FormattableStringMessageWriter` no longer pre-renders the
+  interpolation holes through the registered formatters, which it did only when
+  called directly with a processor, so a hole holding an exception or a
+  collection renders through `string.Format` instead. Code that relied on the
+  formatters calls `IMessageFormatterProcessor.GetMessageText(FormattableString, ...)`
+  itself, from its own writer.
+- **Breaking:** `MessageFormatterProcessor` selects the later of two writers or formatters
+  registered for the same message type, rather than the earlier one. The
+  built-in bundle registers before any `ConfigureServices` delegate, so a
+  consumer registration for a type the bundle covers now takes effect where it
+  was previously ignored. Unrelated types that both accept a message still keep
+  the first registration. A consumer that registered a second handler for a type
+  and relied on the first one winning removes the registration it does not want.
+- `IOutput.Write` and `WriteLine` hand a `string` and a `FormattableString` to the
+  registered message writers instead of rendering them themselves, so the built-in
+  `StringMessageWriter` and `FormattableStringMessageWriter` are now the code that
+  writes them and a consumer writer registered for either type replaces the
+  built-in one. The rendered output is unchanged: a string is still written
+  verbatim and a `FormattableString` (an interpolated string passed as
+  `Write<FormattableString>($"...")`; a bare `$"..."` argument infers `string`)
+  still renders as markup with its holes escaped and formatted by
+  `string.Format`, so a format specifier such as `{total:N2}` and an
+  `ICustomFormatter` on the provider are honoured.
 - `Ploch.CommandLine.Spectre` no longer declares the eight `Serilog.*` packages as
   direct dependencies. They were duplicates of what its `Ploch.CommandLine.Spectre.Serilog`
   dependency already declares, so the resolved package graph of a consumer is unchanged;

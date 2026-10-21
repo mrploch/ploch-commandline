@@ -9,6 +9,7 @@ using Ploch.CommandLine.Spectre.Tests.Testing;
 using Ploch.Common.DependencyInjection;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using Spectre.Console.Rendering;
 
 namespace Ploch.CommandLine.Spectre.Tests;
 
@@ -46,7 +47,12 @@ public sealed class AppBuilderTests : IDisposable
     private static readonly string[] LateOnly = ["late"];
 
     private readonly IAnsiConsole _originalConsole = AnsiConsole.Console;
+
+    /// <summary>Stands in for standard output: the console Spectre and <c>IOutput</c> render to.</summary>
     private readonly RecordingConsole _console = new();
+
+    /// <summary>Stands in for standard error: the console the builder writes the banner and the "Executing command" line to.</summary>
+    private readonly RecordingConsole _errorConsole = new();
 
     public AppBuilderTests()
     {
@@ -63,6 +69,7 @@ public sealed class AppBuilderTests : IDisposable
         AnsiConsole.Console = _originalConsole;
         EnvironmentSettings.Reset();
         _console.Dispose();
+        _errorConsole.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -103,12 +110,231 @@ public sealed class AppBuilderTests : IDisposable
     }
 
     [Fact]
-    public void ConfigureCommandApp_should_print_the_start_up_banner()
+    public void ConfigureCommandApp_should_print_the_start_up_banner_to_standard_error()
     {
         var recorder = RunProbeCommand(builder => builder.WithName("Widget Tool").WithVersion(new Version(4, 5)).WithDescription("Widget things"));
 
         recorder.ExitCode.Should().Be(0);
-        _console.Output.Should().Contain("Widget Tool 4.5").And.Contain("Widget things");
+        _errorConsole.Output.Should().Contain("Widget Tool 4.5").And.Contain("Widget things");
+        _errorConsole.Output.Split(Environment.NewLine).Count(line => line.Trim().Length > 0).Should().BeGreaterThan(4, "the FIGlet art spans several lines above the name and description lines");
+        _console.Output.Should().NotContain("Widget Tool").And.NotContain("Widget things", "the banner must stay out of the output a consumer pipes (PLO-783)");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_not_print_the_banner_when_it_is_switched_off()
+    {
+        var recorder = RunProbeCommand(builder => builder.WithName("Widget Tool").WithDescription("Widget things").ShowBanner(false));
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().BeEmpty("the switch silences the banner and the announcement alike");
+        _console.Output.Should().NotContain("Widget Tool");
+    }
+
+    [Fact]
+    public void ShowBanner_should_set_the_switch_on_the_app_info()
+    {
+        var appInfo = new ConsoleAppInfo();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(appInfo, cancellationTokenSource, _errorConsole.Console);
+
+        builder.ShowBanner(false).Should().BeSameAs(builder, "the fluent methods chain");
+
+        appInfo.ShouldShowBanner.Should().BeFalse();
+        builder.ShowBanner(true).Should().BeSameAs(builder);
+        appInfo.ShouldShowBanner.Should().BeTrue();
+    }
+
+    /// <summary>
+    ///     The announcement names the command the user typed and goes to standard error, so standard output carries
+    ///     only what the command itself renders — here nothing, since the probe writes nothing (PLO-783).
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_announce_the_command_by_name_on_standard_error_and_leave_standard_output_to_the_command()
+    {
+        var recorder = RunProbeCommand(_ => { });
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Executing command probe", "the line names the command as invoked");
+        _errorConsole.Output.Should().NotContain(nameof(ProbeSettings), "the settings type is an implementation detail");
+        _console.Output.Should().BeEmpty("the probe writes nothing, and neither may the framework");
+    }
+
+    /// <summary>Spectre's <c>CommandContext.Name</c> is the leaf name, so a branched command is announced as its leaf.</summary>
+    [Fact]
+    public void ConfigureCommandApp_should_announce_a_branched_command_by_its_leaf_name()
+    {
+        var recorder = new ProbeRecorder();
+        ProbeCommand.Recorder = recorder;
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
+
+        recorder.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddBranch("user", user => user.AddCommand<ProbeCommand>("add")))
+                                   .Run("user", "add");
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Executing command add").And.NotContain("Executing command user");
+    }
+
+    /// <summary>
+    ///     One switch for everything the library says on standard error: a tool whose standard error is captured as
+    ///     well wants the announcement gone with the banner.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_not_announce_the_command_when_the_banner_is_switched_off()
+    {
+        var recorder = RunProbeCommand(builder => builder.ShowBanner(false));
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().BeEmpty("the switch silences the announcement as well as the banner");
+    }
+
+    /// <summary>
+    ///     Spectre resolves every registered <c>ICommandInterceptor</c>, so the library's announcement adds to an
+    ///     interceptor the consumer registers rather than replacing it, whichever way the consumer registered it.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_run_the_announcement_before_an_interceptor_registered_through_ConfigureServices()
+    {
+        RecordingInterceptor.Reset();
+        RecordingInterceptor.ErrorOutputProbe = () => _errorConsole.Output;
+
+        var recorder = RunProbeCommand(builder => builder.ConfigureServices(services => services.AddSingleton<ICommandInterceptor, RecordingInterceptor>()));
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Executing command probe");
+        RecordingInterceptor.InterceptCalls.Should().Be(1, "the consumer's interceptor runs once alongside the library's");
+        RecordingInterceptor.ResultCalls.Should().Be(1);
+        RecordingInterceptor.AnnouncementSeenFirst.Should().BeTrue("the library registers its interceptor with the defaults, ahead of the caller's delegates, and Spectre runs them in registration order");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_run_the_announcement_before_an_interceptor_registered_by_a_services_bundle()
+    {
+        RecordingInterceptor.Reset();
+        RecordingInterceptor.ErrorOutputProbe = () => _errorConsole.Output;
+
+        var recorder = RunProbeCommand(builder => builder.AddServicesBundle<InterceptorServicesBundle>());
+
+        recorder.ExitCode.Should().Be(0);
+        RecordingInterceptor.InterceptCalls.Should().Be(1);
+        RecordingInterceptor.AnnouncementSeenFirst.Should().BeTrue("the library's interceptor is registered before the bundles are initialised");
+    }
+
+    /// <summary>
+    ///     A branch's default command runs when the branch was named without a command; Spectre names it with an
+    ///     internal placeholder, which the announcement must not expose. Running a real default command pins the
+    ///     placeholder Spectre actually uses. (A root default command needs <c>CommandApp.SetDefaultCommand</c>, which
+    ///     the builder does not expose, so the branch form is the one a consumer can reach.)
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_announce_a_default_command_as_the_default_command()
+    {
+        var recorder = new ProbeRecorder();
+        ProbeCommand.Recorder = recorder;
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
+
+        recorder.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddBranch("user", user => user.SetDefaultCommand<ProbeCommand>()))
+                                   .Run("user");
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Executing the default command").And.NotContain("__default_command");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_run_the_announcement_before_an_interceptor_set_through_the_configurator()
+    {
+        RecordingInterceptor.Reset();
+        RecordingInterceptor.ErrorOutputProbe = () => _errorConsole.Output;
+        var recorder = new ProbeRecorder();
+        ProbeCommand.Recorder = recorder;
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
+
+        recorder.ExitCode = builder.ConfigureCommandApp(configurator =>
+                                   {
+                                       configurator.SetInterceptor(new RecordingInterceptor());
+                                       configurator.AddCommand<ProbeCommand>("probe");
+                                   })
+                                   .Run("probe");
+
+        recorder.ExitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Executing command probe");
+        RecordingInterceptor.InterceptCalls.Should().Be(1, "SetInterceptor registers through the same registrar, so both interceptors run");
+        RecordingInterceptor.AnnouncementSeenFirst.Should().BeTrue("Spectre's registrar registers the consumer's interceptor after the library's");
+    }
+
+    /// <summary>
+    ///     Help is handled by Spectre before any command is resolved, so the banner is the only thing the application
+    ///     adds — on standard error — and there is no command to announce.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_print_the_banner_but_not_announce_a_command_for_help()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<ProbeCommand>("probe");
+                              })
+                              .Run("--help");
+
+        exitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Probe App").And.NotContain("Executing command");
+        _console.Output.Should().Contain("USAGE", "Spectre renders help on its own console").And.NotContain("Probe App");
+    }
+
+    [Fact]
+    public void ConfigureCommandApp_should_print_the_banner_but_not_announce_a_command_for_version()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+
+                                  // Spectre answers --version only when an application version is configured; without
+                                  // one the switch is an unknown option and the run fails with -1.
+                                  configurator.SetApplicationVersion("1.2.3");
+                                  configurator.AddCommand<ProbeCommand>("probe");
+                              })
+                              .Run("--version");
+
+        exitCode.Should().Be(0);
+        _errorConsole.Output.Should().Contain("Probe App").And.NotContain("Executing command", "no command is resolved for the version switch");
+        _console.Output.Should().Contain("1.2.3", "Spectre renders the version on its own console").And.NotContain("Probe App").And.NotContain("Executing command");
+    }
+
+    /// <summary>
+    ///     The announcement is written before the command runs, so a failing standard error stream stops the run
+    ///     before the command: Spectre hands the exception to the application's handler as it would any failure
+    ///     ahead of execution, which passes it to the registered <c>IExceptionHandler</c> - the default one returns
+    ///     <see cref="ExitCode.Error" /> - rather than through the command's own catch (PLO-783, PLO-782).
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_fail_the_run_before_the_command_when_the_announcement_cannot_be_written()
+    {
+        var recorder = new ProbeRecorder();
+        ProbeCommand.Recorder = recorder;
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var errorConsole = new ThrowingConsole(_errorConsole.Console);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, errorConsole);
+
+        var executor = builder.ConfigureCommandApp(configurator =>
+                                                   {
+                                                       configurator.ConfigureConsole(_console.Console);
+                                                       configurator.AddCommand<ProbeCommand>("probe");
+                                                   });
+
+        // The banner has been written by now; from here on standard error is "closed", so the announcement fails.
+        errorConsole.FailWrites = true;
+        recorder.ExitCode = executor.Run("probe");
+
+        recorder.ExitCode.Should().Be((int)ExitCode.Error, "a run that could not announce its command did not complete, and the default handler reports Error");
+        recorder.ExecutionToken.Should().Be(CancellationToken.None, "the command never ran, so it recorded nothing");
     }
 
     [Fact]
@@ -462,7 +688,7 @@ public sealed class AppBuilderTests : IDisposable
             var recorder = new ProbeRecorder();
             ProbeCommand.Recorder = recorder;
             using var cancellationTokenSource = new CancellationTokenSource();
-            var builder = new AppBuilder(new ConsoleAppInfo("--probe:key=from-command-line") { Name = "Probe App" }, cancellationTokenSource)
+            var builder = new AppBuilder(new ConsoleAppInfo("--probe:key=from-command-line") { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console)
                 .ConfigureHost(host => host.UseContentRoot(contentRoot));
 
             recorder.ExitCode = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe")).Run("probe");
@@ -481,7 +707,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_defer_a_call_made_from_inside_a_host_delegate_to_the_next_build()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
         var calledBack = false;
         builder.ConfigureHost(_ =>
                               {
@@ -567,7 +793,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureServices_should_reject_a_null_delegate()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
 
         var withoutContext = () => builder.ConfigureServices((Action<IServiceCollection>)null!);
         var withContext = () => builder.ConfigureServices((Action<HostBuilderContext, IServiceCollection>)null!);
@@ -582,7 +808,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureAppConfiguration_should_reject_a_null_delegate()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
 
         var withoutContext = () => builder.ConfigureAppConfiguration((Action<IConfigurationBuilder>)null!);
         var withContext = () => builder.ConfigureAppConfiguration((Action<HostBuilderContext, IConfigurationBuilder>)null!);
@@ -595,7 +821,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureHost_should_reject_a_null_delegate()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
 
         var act = () => builder.ConfigureHost(null!);
 
@@ -629,7 +855,7 @@ public sealed class AppBuilderTests : IDisposable
     public void Dispose_should_leave_a_caller_supplied_cancellation_token_source_alone()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
 
         builder.Dispose();
 
@@ -660,7 +886,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_exit_with_InvalidInput_when_the_settings_reject_themselves()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console)
             .ConfigureServices(services => services.AddSingleton<IExceptionHandler, RecordingExceptionHandler>());
         RejectingCommand.Executed = false;
         RecordingExceptionHandler.Reset();
@@ -680,6 +906,7 @@ public sealed class AppBuilderTests : IDisposable
         _console.Output.Should().NotContain("Error: rejected by Validate [brackets kept]" + Environment.NewLine + "Error:", "the message is rendered once");
         RejectingCommand.Executed.Should().BeFalse("a command whose settings fail validation never runs");
         RecordingExceptionHandler.Exceptions.Should().BeEmpty("a validation failure is not routed through the exception handler");
+        _errorConsole.Output.Should().NotContain("Executing command", "the settings are rejected while binding, before any interceptor runs (PLO-783)");
     }
 
     /// <summary>
@@ -692,7 +919,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_exit_with_InvalidInput_when_the_registered_validator_rejects_the_settings()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console)
             .ConfigureServices(services => services.AddSingleton<ICommandSettingsValidator<AcceptingSettings>, RejectingValidator>());
         AcceptingCommand.Executed = false;
         RejectingValidator.Calls = 0;
@@ -708,6 +935,7 @@ public sealed class AppBuilderTests : IDisposable
         RejectingValidator.Calls.Should().Be(1, "Spectre calls the command's Validate override exactly once, and it delegates to the registered validator");
         _console.Output.Should().Contain("rejected by the validator");
         AcceptingCommand.Executed.Should().BeFalse("a command whose validator rejects the settings never runs");
+        _errorConsole.Output.Should().Contain("Executing command accept", "Spectre runs the interceptors after binding and before the command's Validate, so the announcement precedes a validator rejection (PLO-783)");
     }
 
     /// <summary>
@@ -1212,7 +1440,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_reject_a_null_configurator()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
 
         var act = () => builder.ConfigureCommandApp(null!);
 
@@ -1225,7 +1453,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_reject_a_null_configurator_before_checking_for_disposal()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
         builder.Dispose();
 
         var act = () => builder.ConfigureCommandApp(null!);
@@ -1242,7 +1470,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_return_an_executor_that_runs_once()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
         ProbeCommand.Recorder = new ProbeRecorder();
         var executor = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
         executor.Run("probe").Should().Be(0);
@@ -1261,7 +1489,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_reject_a_disposed_builder()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
         builder.Dispose();
 
         var act = () => builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
@@ -1274,7 +1502,7 @@ public sealed class AppBuilderTests : IDisposable
     public void ConfigureCommandApp_should_reject_a_builder_whose_cancellation_source_is_already_cancelled()
     {
         using var cancellationTokenSource = new CancellationTokenSource();
-        using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+        using var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, _errorConsole.Console);
         cancellationTokenSource.Cancel();
 
         var act = () => builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
@@ -1390,31 +1618,6 @@ public sealed class AppBuilderTests : IDisposable
         configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["probe:key"] = value });
 
     /// <summary>
-    ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
-    ///     The probe reports back through a static slot rather than a registered service, so that the helper's own
-    ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly
-    ///     the registrations the test made.
-    /// </summary>
-    private static ProbeRecorder RunProbeCommand(Action<AppBuilder> configure, CancellationTokenSource? cancellationTokenSource = null)
-    {
-        // Only the source this helper creates is disposed here. A caller-supplied one belongs to the test that
-        // made it and may still be needed after this call returns, so disposing it would be a use-after-dispose
-        // waiting to happen.
-        using var ownedCancellationTokenSource = cancellationTokenSource is null ? new CancellationTokenSource() : null;
-
-        var recorder = new ProbeRecorder();
-        ProbeCommand.Recorder = recorder;
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource ?? ownedCancellationTokenSource!);
-        configure(builder);
-
-        var executor = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
-
-        recorder.ExitCode = executor.Run("probe");
-
-        return recorder;
-    }
-
-    /// <summary>
     ///     Returns the <c>Console.CancelKeyPress</c> handler <see cref="AppBuilder.Create" /> installed.
     /// </summary>
     /// <remarks>
@@ -1452,9 +1655,101 @@ public sealed class AppBuilderTests : IDisposable
                                                          [ConsoleSpecialKey.ControlC],
                                                          culture: null)!;
 
+    /// <summary>
+    ///     Builds an application configured by <paramref name="configure" /> and runs a probe command through it.
+    ///     The probe reports back through a static slot rather than a registered service, so that the helper's own
+    ///     registrations stay out of the way of whatever the test configured — the marker assertions count exactly
+    ///     the registrations the test made.
+    /// </summary>
+    private ProbeRecorder RunProbeCommand(Action<AppBuilder> configure, CancellationTokenSource? cancellationTokenSource = null)
+    {
+        // Only the source this helper creates is disposed here. A caller-supplied one belongs to the test that
+        // made it and may still be needed after this call returns, so disposing it would be a use-after-dispose
+        // waiting to happen.
+        using var ownedCancellationTokenSource = cancellationTokenSource is null ? new CancellationTokenSource() : null;
+
+        var recorder = new ProbeRecorder();
+        ProbeCommand.Recorder = recorder;
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource ?? ownedCancellationTokenSource!, _errorConsole.Console);
+        configure(builder);
+
+        var executor = builder.ConfigureCommandApp(configurator => configurator.AddCommand<ProbeCommand>("probe"));
+
+        recorder.ExitCode = executor.Run("probe");
+
+        return recorder;
+    }
+
     private sealed class Marker
     {
         public string Name { get; init; } = "marker";
+    }
+
+    /// <summary>A consumer bundle that registers an interceptor, the way a library of commands would.</summary>
+    private sealed class InterceptorServicesBundle : ServicesBundle
+    {
+        public override void DoConfigure() => Services.AddSingleton<ICommandInterceptor, RecordingInterceptor>();
+    }
+
+    /// <summary>A consumer interceptor; counts its calls in static slots, which is safe in this non-parallel collection.</summary>
+    private sealed class RecordingInterceptor : ICommandInterceptor
+    {
+        public static int InterceptCalls { get; private set; }
+
+        public static int ResultCalls { get; private set; }
+
+        /// <summary>Reads the standard error console when <see cref="Intercept" /> runs, so a test can tell which interceptor went first.</summary>
+        public static Func<string>? ErrorOutputProbe { get; set; }
+
+        /// <summary>Whether the library's announcement was already on standard error when this interceptor ran.</summary>
+        public static bool AnnouncementSeenFirst { get; private set; }
+
+        public static void Reset()
+        {
+            InterceptCalls = 0;
+            ResultCalls = 0;
+            ErrorOutputProbe = null;
+            AnnouncementSeenFirst = false;
+        }
+
+        public void Intercept(CommandContext context, CommandSettings settings)
+        {
+            InterceptCalls++;
+            AnnouncementSeenFirst = ErrorOutputProbe?.Invoke().Contains("Executing command", StringComparison.Ordinal) == true;
+        }
+
+        public void InterceptResult(CommandContext context, CommandSettings settings, ref int result) => ResultCalls++;
+    }
+
+    /// <summary>
+    ///     An <see cref="IAnsiConsole" /> that passes writes through until <see cref="FailWrites" /> is set, after which
+    ///     every write fails, standing in for a standard error stream that closed mid-run.
+    /// </summary>
+    private sealed class ThrowingConsole(IAnsiConsole inner) : IAnsiConsole
+    {
+        public bool FailWrites { get; set; }
+
+        public Profile Profile => inner.Profile;
+
+        public IAnsiConsoleCursor Cursor => inner.Cursor;
+
+        public IAnsiConsoleInput Input => inner.Input;
+
+        public IExclusivityMode ExclusivityMode => inner.ExclusivityMode;
+
+        public RenderPipeline Pipeline => inner.Pipeline;
+
+        public void Clear(bool home) => inner.Clear(home);
+
+        public void Write(IRenderable renderable)
+        {
+            if (FailWrites)
+            {
+                throw new IOException("standard error is closed");
+            }
+
+            inner.Write(renderable);
+        }
     }
 
     /// <summary>Captures what the running command could see, so the builder's configuration can be asserted end to end.</summary>

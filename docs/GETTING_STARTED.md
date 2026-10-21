@@ -87,7 +87,9 @@ return executor.Run(args);
 Three things happen here that you do not have to write yourself:
 
 - **Application banner.** The name is rendered as FIGlet text, followed by the version and
-  description, before any command runs.
+  description, before any command runs — on standard error, so it never lands in a pipe.
+  `ShowBanner(false)` drops it, together with the `Executing command …` line, for a tool whose
+  standard error is captured too.
 - **Hosting.** `Host.CreateDefaultBuilder` supplies configuration, logging and the service
   provider. Anything you register with `ConfigureServices` is injectable into commands. The host
   is built once the run reaches command resolution (a parse failure or `--version` returns before
@@ -105,6 +107,15 @@ Three things happen here that you do not have to write yourself:
   disposing it unsubscribes the handler and releases the source, and the handler also detaches itself
   once an interrupt has been handled. `Console.CancelKeyPress` is process-wide, so a builder that is
   neither disposed nor interrupted keeps its handler installed for the life of the process.
+
+The banner and the `Executing command …` line that precedes each command no longer touch standard
+output: both go to standard error, so
+`mytool user list | cat` (or `> users.txt`) carries only what the command rendered through
+`IOutput`, while the terminal still shows the banner. Redirect `2>/dev/null` (`2>nul` in `cmd`,
+`2>$null` in PowerShell) to hide them, or call
+`ShowBanner(false)` to drop both altogether. (The Ctrl+C notice and the `PauseBeforeExit` prompt still use standard output;
+[PLO-819](https://linear.app/ploch/issue/PLO-819) tracks them.) The listings in this guide show
+standard output only.
 
 `ConfigureServices` has two overloads — one taking just `IServiceCollection`, one taking the
 `HostBuilderContext` as well, which is how you reach `IConfiguration` during registration:
@@ -207,8 +218,10 @@ Note what the base class gives you and what you therefore never write in `DoExec
   `ExitCode.Cancelled`. One raised while that token is still live is a fault like any other.
 - **`ExitCode`, not `int`.** The base class casts for you.
 
-Before `DoExecute` runs, the base class prints a short `Executing command …` /
-`Processing arguments…` preamble through the injected `IOutput`.
+Before `DoExecute` runs, the application announces the command on standard error with a short
+`Executing command info` line, named after the command's registered name (an alias is announced
+by the name it is an alias of). The base class itself writes
+nothing to the injected `IOutput`, so standard output is yours.
 
 Render through the inherited `Output` property rather than the constructor parameter — capturing a
 parameter that is also passed to the base constructor stores it twice and the compiler warns about
@@ -225,10 +238,6 @@ config.AddCommand<InfoCommand>("info")
 
 ```text
 $ mytool info
-
-Executing command InfoCommandSettings
-
-Processing arguments...
 === Application & System Information ===
 
 ╭──────────────────────┬────────────────────────────────────────────╮
@@ -371,10 +380,6 @@ registration is queued later and wins.
 
 ```text
 $ mytool user add "Alice Smith" -e alice@example.com -r Administrator
-
-Executing command UserAddCommandSettings
-
-Processing arguments...
 Creating new user account for Alice Smith...
 ╭─User Created Successfully────────╮
 │ User ID: 4                       │
@@ -386,8 +391,9 @@ Creating new user account for Alice Smith...
 ╰──────────────────────────────────╯
 ```
 
-The `Executing command …` / `Processing arguments…` preamble comes from the base class (both
-`AsyncAppCommand` and `AppCommand` print it), not from the command body.
+The `Executing command add` line that precedes this on the terminal comes from the application,
+on standard error, not from the command body; `AsyncAppCommand` and `AppCommand` write nothing of
+their own to the output.
 
 ### Render through IOutput, and escape what the user typed
 
@@ -425,15 +431,36 @@ Because `Markup` and `MarkupLine` parse everything they are given, a value that 
 in your source file goes through `Markup.Escape(...)` first, or through the `…Interpolated` overloads,
 which escape it for you.
 
-**`IOutput.Write` dispatches on the type of the message.** A `FormattableString` is rendered as
-interpolated markup, a `string` is written verbatim and an `IRenderable` is rendered by the
-console; anything else is offered to the registered `IMessageWriter`s,
-and the writer whose message type matches receives the message itself along with the
-`IMessageFormatterProcessor`, so the writer decides how the value is formatted. Writing an
-`Exception` therefore renders the full exception through `ExceptionMessageWriter`, and writing a
-collection produces one line per item. Register your own with
-`services.AddMessageWriter<TMessage, TWriter>()` — and format the message inside `Write` rather than
-expecting to be handed formatted text.
+**`IOutput.Write` dispatches on the type of the message.** An `IRenderable` is rendered by the
+console; everything else is offered to the registered `IMessageWriter`s, and the writer whose message
+type is the most derived match receives the message itself along with the
+`IMessageFormatterProcessor`, so the writer decides how the value is formatted. A `string` is written
+verbatim by `StringMessageWriter`, a `FormattableString` is rendered as interpolated markup by
+`FormattableStringMessageWriter`, writing an `Exception` renders the full exception through
+`ExceptionMessageWriter`, and writing a collection produces one line per item. Only a message no
+writer accepts falls back to being written as text, through `IFormattable.ToString` with the
+caller's provider where the type supports it.
+
+Register your own with `services.AddMessageWriter<TMessage, TWriter>()` — and format the message
+inside `Write` rather than expecting to be handed formatted text. Of two writers for the same type
+the later registration wins, and the built-in bundle registers before your `ConfigureServices`
+delegates, so registering a writer for `string` or `FormattableString` replaces the built-in one and
+changes how `Write` and `WriteLine` render that type. A writer takes the `IAnsiConsole` it renders
+to, not `IOutput`, which depends on the writers:
+
+```csharp
+public sealed class QuotingStringWriter(IAnsiConsole console) : TypeMessageWriter<string>
+{
+    public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+        console.Write($"\"{message}\"");
+}
+
+AppBuilder.Create(args)
+          .ConfigureServices(services => services.AddMessageWriter<string, QuotingStringWriter>());
+```
+
+`WriteBold`, `WriteError` and their line forms do not go through the writers: they ask the
+formatters for the text, escape it and render it with `Markup`.
 
 ## 7. Composing a multi-level CLI
 
@@ -624,10 +651,6 @@ The command body sees the expanded value, never the template:
 
 ```text
 $ sample file process dataset.csv -o "./out-{date}/result.dat"
-
-Executing command FileProcessCommandSettings
-
-Processing arguments...
 Processing File: dataset.csv
 Resolved Output Path (with tokens replaced): ./out-2026-08-22/result.dat
 Backup enabled: True
