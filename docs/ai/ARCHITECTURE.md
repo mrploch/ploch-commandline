@@ -176,8 +176,15 @@ resolved from the container, and no `ConfigureServices` call can replace the reg
 **Ownership.** A builder made with `Create` owns its cancellation source and handler and releases
 them in `Dispose`. A builder made with the public constructor owns neither.
 
-**Exit codes.** `ExitCode` covers what a command returns. Spectre returns `-1` for parse and
-validation failures before a command runs.
+**Exit codes.** `ExitCode` covers what a command returns and what the application exits with.
+`ConfigureCommandApp` installs a Spectre exception handler (`CommandAppExceptionHandler`) that maps
+parse, binding and validation failures to `InvalidInput` (2), keeps Spectre's rendering, routes any
+other exception to the registered `IExceptionHandler`, and reports a failure before the host exists
+as `Error` (1). The base classes call the handler through `ExceptionHandlerInvoker`, which wraps a
+throwing handler in the public `ExceptionHandlerFailedException` so the Spectre handler reports it
+once instead of calling the handler again. A `SetExceptionHandler` or `PropagateExceptions` call in the caller's delegate
+replaces it. Spectre's early returns — help, and `1` for a branch or default command invoked without
+what it needs — are untouched.
 
 **Output and markup.** `FormattableString` messages have their holes escaped. Plain `string`
 messages are written verbatim; `Markup` and `MarkupLine` are the explicit opt-in to parsing.

@@ -80,7 +80,8 @@ More commands, with observed results, are in [`docs/ai/TECH-STACK.md`](docs/ai/T
   constructor-injects its own settings type gets an unbound instance; the bound settings are the
   `Execute` argument.
 - `IOutput.Write(string)` prints the text verbatim. Markup is parsed by `Markup`, `MarkupLine`, the `…Interpolated` overloads and a `FormattableString` passed to `Write`; caller data given to `Markup` / `MarkupLine` must be escaped.
-- A parse or validation failure exits with `-1`, not `ExitCode.InvalidInput` (2).
+- A parse, binding or validation failure exits with `ExitCode.InvalidInput` (2); the handler
+  `ConfigureCommandApp` installs replaces Spectre's `-1`.
 - Configuration sources added through `ConfigureAppConfiguration` outrank the command line.
 
 Each of these is explained, with file references, in

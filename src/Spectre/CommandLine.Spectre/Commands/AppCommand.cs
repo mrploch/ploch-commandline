@@ -37,10 +37,17 @@ public abstract class AppCommand<TSettings>(CommandArgumentsRootProcessor settin
     /// <param name="cancellationToken">A token that is forwarded to <see cref="DoExecute" /> so implementations can honour cancellation.</param>
     /// <returns>An integer representing the exit code of the command execution.</returns>
     /// <exception cref="ArgumentNullException">Thrown when context or settings is null.</exception>
+    /// <exception cref="ExceptionHandlerFailedException">
+    ///     Thrown when the configured <see cref="IExceptionHandler" /> itself throws while handling an exception; the
+    ///     handler's exception is its <see cref="Exception.InnerException" /> and the exception being handled is
+    ///     <see cref="ExceptionHandlerFailedException.Original" />.
+    /// </exception>
     /// <remarks>
     ///     The settings are passed through the configured settings processor before <see cref="DoExecute" /> runs.
     ///     Exceptions raised while writing the banner, by the settings processor or by <see cref="DoExecute" /> do not propagate: they are passed to the configured
-    ///     <see cref="IExceptionHandler" />, whose result becomes the exit code. An <see cref="OperationCanceledException" /> thrown while
+    ///     <see cref="IExceptionHandler" />, whose result becomes the exit code; a handler that throws surfaces as
+    ///     <see cref="ExceptionHandlerFailedException" />, which the application's Spectre handler reports once and turns into
+    ///     <see cref="ExitCode.Error" />. An <see cref="OperationCanceledException" /> thrown while
     ///     <paramref name="cancellationToken" /> has cancellation requested is the exception to that rule: it is treated as the requested
     ///     outcome and returns <see cref="ExitCode.Cancelled" /> without reaching the handler. An <see cref="OperationCanceledException" />
     ///     raised while that token is still live - a <see cref="TaskCanceledException" /> from an <c>HttpClient</c> timeout, or an inner
@@ -74,7 +81,9 @@ public abstract class AppCommand<TSettings>(CommandArgumentsRootProcessor settin
         }
         catch (Exception ex)
         {
-            return exceptionHandler.HandleException(ex);
+            // Through the wrapper so a handler that throws is reported once by the application's Spectre handler
+            // rather than asked to handle its own exception (PLO-782).
+            return ExceptionHandlerInvoker.Invoke(exceptionHandler, ex);
         }
     }
 

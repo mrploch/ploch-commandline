@@ -162,16 +162,19 @@ differs.
 |---|---|---|
 | `ExitCode.Success` | 0 | Completed normally. |
 | `ExitCode.Error` | 1 | Unhandled failure. |
-| `ExitCode.InvalidInput` | 2 | Returned by a command that rejects the input it was given — a value outside a supported set, a missing file, mutually exclusive flags. |
+| `ExitCode.InvalidInput` | 2 | The input was rejected — by the command (a value outside a supported set, a missing file, mutually exclusive flags) or by `Spectre.Console.Cli` while parsing, binding or validating it. |
 | `ExitCode.Cancelled` | 130 | Cancelled before completing — the conventional shell code for termination by SIGINT (128 + 2). |
 
-A failed `Validate` never reaches this table. `Spectre.Console.Cli` runs validation before the
-command, reports the errors itself and, under its default error handling, exits with its own `-1`
-(`255` in a POSIX shell), so `InvalidInput` only comes from your own code: `DoExecute` /
-`DoExecuteAsync`, a `UseCaseAsyncCommand.ProcessFailureResponse` override that returns it, or an
-`IExceptionHandler` that chooses it for an exception. The same applies to a command line Spectre
-cannot bind, such as an unknown command or a missing required argument. The
-[Getting Started guide](../docs/GETTING_STARTED.md#11-exit-codes) walks through both kinds of exit code.
+A failed `Validate` exits with `InvalidInput` too. `Spectre.Console.Cli` runs validation before the
+command and reports the errors itself; the handler `AppBuilder.ConfigureCommandApp` installs maps
+that failure, and every command line Spectre cannot parse or bind — an unknown command, a missing
+required argument, a value that does not convert — to `InvalidInput` in place of Spectre's own `-1`
+(`255` in a POSIX shell). `InvalidInput` therefore means "the input was rejected" whether your code
+or Spectre decided so — with one caveat: Spectre raises the same exception type for a few failures
+that are not input errors, such as a settings property with no type converter, and those exit 2
+too. The [Getting Started guide](../docs/GETTING_STARTED.md#11-exit-codes) walks through the exit
+codes that come from elsewhere: the `IExceptionHandler` return value and Spectre's own `1` for a
+branch or default command invoked without what it needs.
 
 ### Token substitution
 

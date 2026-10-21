@@ -174,7 +174,7 @@ $ sample user add "A" -e "invalid-email"
 Error: User name must be at least 2 characters long.
 A valid email address must be provided.
 
-[exit code -1]
+[exit code 2]
 ```
 
 A value the command itself rejects returns `ExitCode.InvalidInput` instead:
@@ -434,7 +434,7 @@ is itself a symbolic link is refused. Re-exporting still overwrites the previous
 | 1 | `ExitCode.Error` | The command ran and failed |
 | 2 | `ExitCode.InvalidInput` | The command rejected its input |
 | 130 | `ExitCode.Cancelled` | Cancellation was requested (128 + SIGINT) |
-| -1 | `Spectre.Console.Cli` | The command line could not be bound or validated |
+| 2 | `ExitCode.InvalidInput` | The command line could not be parsed, bound or validated (reported by `Spectre.Console.Cli`, exit code set by the library) |
 
 ## Development conveniences
 
