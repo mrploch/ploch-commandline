@@ -9,7 +9,8 @@ using Spectre.Console.Rendering;
 namespace Ploch.CommandLine.Spectre.Tests.Commands;
 
 /// <summary>
-///     Cover for the asynchronous command base: the settings processor runs before the implementation, the
+///     Cover for the asynchronous command base: nothing is written to the output by the base itself (PLO-783 moved the
+///     "Executing command" announcement to standard error), the settings processor runs before the implementation, the
 ///     cancellation token is forwarded, cancellation requested through the supplied token is distinguished from
 ///     failure while an <see cref="OperationCanceledException" /> nobody asked for is a fault like any other, and
 ///     exceptions reach the configured handler.
@@ -272,28 +273,23 @@ public class AsyncAppCommandTests
         result.Should().Be((int)ExitCode.Error);
     }
 
+    /// <summary>
+    ///     Pins PLO-783: the base writes no preamble of its own. The "Executing command" line is written to standard
+    ///     error by the application before the command runs, so standard output carries only what the command renders.
+    /// </summary>
     [Theory]
     [AutoMockData]
-    public async Task ExecuteAsync_should_route_a_banner_output_failure_to_the_exception_handler(CommandContext context)
+    public async Task ExecuteAsync_should_write_nothing_to_the_output_itself(CommandContext context)
     {
+        // Strict: any call on the output throws, and the base would route that to the handler as a failure.
+        var output = new Mock<IOutput>(MockBehavior.Strict);
         var handler = new RecordingExceptionHandler();
-        var output = new Mock<IOutput>();
-        output.Setup(o => o.MarkupLineInterpolated(It.IsAny<FormattableString>())).Throws(new IOException("console gone"));
-        var executed = false;
-        var command = CreateCommand((_, _) =>
-                                    {
-                                        executed = true;
-
-                                        return Task.FromResult(ExitCode.Success);
-                                    },
-                                    handler,
-                                    output: output.Object);
+        var command = CreateCommand((_, _) => Task.FromResult(ExitCode.Success), handler, output: output.Object);
 
         var result = await command.ExecuteAsync(context, new StubSettings(), CancellationToken.None);
 
-        result.Should().Be((int)ExitCode.Error);
-        handler.Handled.Should().ContainSingle().Which.Should().BeOfType<IOException>();
-        executed.Should().BeFalse();
+        result.Should().Be((int)ExitCode.Success);
+        handler.Handled.Should().BeEmpty("no call reached the strict output, so nothing threw");
     }
 
     [Theory]

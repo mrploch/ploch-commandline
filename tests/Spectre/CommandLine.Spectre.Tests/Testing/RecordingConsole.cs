@@ -43,10 +43,15 @@ internal sealed class RecordingConsole : IDisposable
     public IAnsiConsole Console { get; }
 
     /// <summary>Gets the visible text written so far, with any ANSI escape sequences removed.</summary>
-    public string Output => EscapeSequence.Replace(RawOutput, string.Empty);
+    public string Output => StripEscapeSequences(RawOutput);
 
     /// <summary>Gets everything written so far, escape sequences included.</summary>
     public string RawOutput => _writer.ToString();
+
+    /// <summary>Removes any ANSI escape sequences from <paramref name="text" />, leaving the visible text.</summary>
+    /// <param name="text">Console output, possibly carrying escape sequences.</param>
+    /// <returns>The text a reader would see.</returns>
+    public static string StripEscapeSequences(string text) => EscapeSequence.Replace(text, string.Empty);
 
     public void Dispose() => _writer.Dispose();
 }

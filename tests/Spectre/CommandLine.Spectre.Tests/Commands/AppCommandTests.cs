@@ -11,8 +11,8 @@ namespace Ploch.CommandLine.Spectre.Tests.Commands;
 
 /// <summary>
 ///     Cover for the synchronous command base. It performs the same framework work as
-///     <see cref="AsyncAppCommand{TSettings}" />: the execution banner is printed, the settings processor runs before the
-///     implementation, exceptions are routed to the configured handler rather than propagating, cancellation requested
+///     <see cref="AsyncAppCommand{TSettings}" />: nothing is written to the output by the base itself (PLO-783 moved the
+///     "Executing command" announcement to standard error), the settings processor runs before the implementation, exceptions are routed to the configured handler rather than propagating, cancellation requested
 ///     through the supplied token is reported as <see cref="ExitCode.Cancelled" /> instead of being treated as a generic
 ///     failure while an <see cref="OperationCanceledException" /> nobody asked for is a fault like any other, and the
 ///     cancellation token reaches the implementation.
@@ -61,9 +61,13 @@ public class AppCommandTests
         processor.Received.Should().ContainSingle().Which.Should().BeSameAs(settings);
     }
 
+    /// <summary>
+    ///     Pins PLO-783: the base writes no preamble of its own. The "Executing command" line is written to standard
+    ///     error by the application before the command runs, so standard output carries only what the command renders.
+    /// </summary>
     [Theory]
     [AutoMockData]
-    public void Execute_should_print_the_execution_banner_before_processing_the_arguments(CommandContext context)
+    public void Execute_should_write_nothing_to_the_output_itself(CommandContext context)
     {
         var lines = new List<string>();
         var command = new StubCommand(_ =>
@@ -77,8 +81,7 @@ public class AppCommandTests
 
         command.Execute(context, new StubSettings(), CancellationToken.None);
 
-        lines.Should()
-             .Equal($"Executing command [bold underline]{nameof(StubSettings)}[/]", string.Empty, "Processing arguments...", "process", "execute");
+        lines.Should().Equal("process", "execute");
     }
 
     [Theory]
@@ -129,30 +132,6 @@ public class AppCommandTests
 
         result.Should().Be((int)ExitCode.Cancelled);
         handler.Handled.Should().BeEmpty("cancellation is a requested outcome, not a fault");
-    }
-
-    [Theory]
-    [AutoMockData]
-    public void Execute_should_route_a_banner_output_failure_to_the_exception_handler(CommandContext context)
-    {
-        var handler = new RecordingExceptionHandler();
-        var output = new Mock<IOutput>();
-        output.Setup(o => o.MarkupLineInterpolated(It.IsAny<FormattableString>())).Throws(new IOException("console gone"));
-        var executed = false;
-        var command = new StubCommand(_ =>
-                                      {
-                                          executed = true;
-
-                                          return ExitCode.Success;
-                                      },
-                                      handler,
-                                      output: output.Object);
-
-        var result = command.Execute(context, new StubSettings(), CancellationToken.None);
-
-        result.Should().Be((int)ExitCode.Error);
-        handler.Handled.Should().ContainSingle().Which.Should().BeOfType<IOException>();
-        executed.Should().BeFalse();
     }
 
     [Theory]

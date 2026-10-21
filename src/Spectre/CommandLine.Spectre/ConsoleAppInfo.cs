@@ -8,6 +8,18 @@ namespace Ploch.CommandLine.Spectre;
 public class ConsoleAppInfo(params IEnumerable<string>? args) : AppInfo(args)
 {
     /// <summary>
+    ///     Gets or sets a value indicating whether the library writes its own lines to standard error: the start-up
+    ///     banner — the name as FigletText, the name and version line and the description — when the application is
+    ///     built, and the "Executing command" line before each command. Default is <see langword="true" />.
+    /// </summary>
+    /// <remarks>
+    ///     Both go to standard error, so neither mixes with what a command writes to standard output; set this to
+    ///     <see langword="false" /> to drop both, for a tool whose standard error is captured too. Read when
+    ///     <see cref="AppBuilder.ConfigureCommandApp" /> builds the application.
+    /// </remarks>
+    public bool ShowBanner { get; set; } = true;
+
+    /// <summary>
     ///     Gets or sets the color used for displaying the application name in FigletText.
     ///     Default is Chartreuse2.
     /// </summary>
