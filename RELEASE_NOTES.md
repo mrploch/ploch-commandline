@@ -33,6 +33,8 @@ have been retired.
 - `IOutput.Markup(string)` and `IOutput.MarkupLine(string)`, the explicit entry
   points for rendering a string as Spectre markup, next to the existing
   `MarkupInterpolated` / `MarkupLineInterpolated`.
+- `AppBuilder.ShowBanner(bool)` and `ConsoleAppInfo.ShouldShowBanner`, to drop the
+  start-up banner and the `Executing command …` line together ([PLO-783](https://linear.app/ploch/issue/PLO-783)).
 
 ### Changed
 
@@ -99,6 +101,24 @@ have been retired.
   constructor-injects its own settings type now receives a fresh, unbound instance
   rather than the bound one Spectre passes to `Execute`
   ([PLO-781](https://linear.app/ploch/issue/PLO-781)).
+- **Breaking:** the start-up banner and the `Executing command …` line are written
+  to standard error rather than standard output, so `myapp list | cat` carries only
+  what the command rendered. The line names the command by its registered leaf
+  name (`add`; an alias by the name it aliases) rather than its settings type (a
+  default command as "the default command"), is
+  written by the application once the settings are bound and before the
+  command's `Validate` runs, and appears for every command, not only those
+  deriving from the base classes. `AppCommand<TSettings>` and
+  `AsyncAppCommand<TSettings>` write nothing to `IOutput` of their own (the
+  `Processing arguments…` line is gone), and a failure to write the announcement
+  no longer reaches the command's `IExceptionHandler`: it stops the run before the
+  command, as any failure ahead of execution does. The library registers the
+  announcement as an `ICommandInterceptor` ahead of every other registration, so
+  one you register through a services bundle, `ConfigureServices` or Spectre's
+  `SetInterceptor` runs after it.
+  `ConsoleAppInfoExtensions.PrintAppInfo` takes the `IAnsiConsole` to print to;
+  the parameterless overload, which wrote to standard output, is gone
+  ([PLO-783](https://linear.app/ploch/issue/PLO-783)).
 - **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
   `Run` or `RunAsync` on the same executor — whatever the first attempt's
   outcome — throws `InvalidOperationException`, synchronously and before any

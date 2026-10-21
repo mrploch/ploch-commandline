@@ -79,6 +79,10 @@ More commands, with observed results, are in [`docs/ai/TECH-STACK.md`](docs/ai/T
   console, `IOutput` and the `CancellationTokenSource` are singletons. A command that
   constructor-injects its own settings type gets an unbound instance; the bound settings are the
   `Execute` argument.
+- The start-up banner and the `Executing command <name>` line go to standard error, so a piped
+  command carries only its own output; `ShowBanner(false)` drops both. The announcement is written
+  once the settings are bound, before the command's `Validate`, so a validator rejection is still
+  announced; `IOutput` stays on standard output.
 - `IOutput.Write(string)` prints the text verbatim, through the registered `StringMessageWriter`; a `FormattableString` goes through `FormattableStringMessageWriter`, and a consumer writer registered for either type replaces the built-in one. Markup is parsed by `Markup`, `MarkupLine`, the `…Interpolated` overloads and a `FormattableString` passed to `Write`; caller data given to `Markup` / `MarkupLine` must be escaped.
 - A parse or validation failure exits with `-1`, not `ExitCode.InvalidInput` (2).
 - Configuration sources added through `ConfigureAppConfiguration` outrank the command line.

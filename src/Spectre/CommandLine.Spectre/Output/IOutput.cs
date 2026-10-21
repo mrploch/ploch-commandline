@@ -66,6 +66,9 @@ public interface IOutput
     /// </summary>
     /// <param name="value">The interpolated string with markup formatting.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    [SuppressMessage("ReSharper",
+                     "UnusedMethodReturnValue.Global",
+                     Justification = "Part of the public API: the return value exists for chaining by consumers, whether or not the library chains it.")]
     IOutput MarkupLineInterpolated(FormattableString value);
 
     /// <summary>
@@ -142,6 +145,9 @@ public interface IOutput
     ///     Writes a line break to the output.
     /// </summary>
     /// <returns>The current output instance for method chaining.</returns>
+    [SuppressMessage("ReSharper",
+                     "UnusedMemberInSuper.Global",
+                     Justification = "Part of the public API for consumers' commands; the library stopped calling it when the command preamble moved to standard error (PLO-783).")]
     IOutput WriteLine();
 
     /// <summary>
