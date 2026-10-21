@@ -153,9 +153,16 @@ public class MessageFormatterProcessor(IEnumerable<IMessageFormatter> formatters
                 continue;
             }
 
+            if (best is null)
+            {
+                best = handler;
+
+                continue;
+            }
+
             // A candidate whose type the incumbent can be assigned from is at least as derived. An equal type passes
             // the check too, so of two handlers for one type the later registration replaces the earlier one.
-            if (best is null || best.MessageType.IsAssignableFrom(handler.MessageType))
+            if (best.MessageType.IsAssignableFrom(handler.MessageType))
             {
                 best = handler;
             }

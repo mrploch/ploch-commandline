@@ -163,7 +163,9 @@ public sealed class OutputServicesBundleTests : IDisposable
         using var provider = BuildProvider(services => services.AddMessageWriter<FormattableString, FormatOnlyWriter>());
         var output = provider.GetRequiredService<IOutput>();
 
-        output.Write<FormattableString>($"[bold]{"x"}[/]");
+        var value = "x";
+
+        output.Write<FormattableString>($"[bold]{value}[/]");
 
         _console.Output.Should().Be("[bold]{0}[/]", "the consumer's writer replaced the built-in markup rendering");
     }
@@ -174,7 +176,9 @@ public sealed class OutputServicesBundleTests : IDisposable
         using var provider = BuildProvider();
         var output = provider.GetRequiredService<IOutput>();
 
-        output.Write<FormattableString>($"[bold]{"[literal]"}[/]");
+        var literal = "[literal]";
+
+        output.Write<FormattableString>($"[bold]{literal}[/]");
 
         _console.Output.Should().Be("[literal]", "the template's tag is parsed and the hole is escaped");
     }
@@ -256,6 +260,7 @@ public sealed class OutputServicesBundleTests : IDisposable
     }
 
     /// <summary>A consumer's replacement for the built-in interpolated-string writer that prints only the template.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local - the container instantiates it through AddMessageWriter.
     private sealed class FormatOnlyWriter(IAnsiConsole console) : TypeMessageWriter<FormattableString>
     {
         public override void Write(FormattableString? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
@@ -263,6 +268,7 @@ public sealed class OutputServicesBundleTests : IDisposable
     }
 
     /// <summary>A consumer's replacement for the built-in string writer, visibly different from a verbatim write.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local - the container instantiates it through AddMessageWriter.
     private sealed class UpperCasingStringWriter(IAnsiConsole console) : TypeMessageWriter<string>
     {
         public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>

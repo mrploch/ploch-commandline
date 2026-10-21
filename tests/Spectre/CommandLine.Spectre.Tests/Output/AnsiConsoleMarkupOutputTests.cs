@@ -367,10 +367,30 @@ public class AnsiConsoleMarkupOutputTests
     }
 
     /// <summary>
+    ///     The built-in interpolated-string writer leaves the holes to <c>string.Format</c>. A consumer writer that
+    ///     wants them formatted asks the processor it is handed, which is the path the writer's docs point to, so
+    ///     that path has to keep working through <see cref="IOutput" />.
+    /// </summary>
+    [Fact]
+    public void Write_should_let_a_custom_writer_format_the_holes_of_an_interpolated_string_through_the_processor()
+    {
+        using var console = new RecordingConsole();
+        var output = new AnsiConsoleMarkupOutput(console.Console,
+                                                 new MessageFormatterProcessor([new UpperCasingFormatter()], [new HoleFormattingWriter(console.Console)]));
+
+        var greeting = "hello";
+
+        output.Write<FormattableString>($"greeting: {greeting}", CultureInfo.InvariantCulture);
+
+        console.Output.Should().Be("greeting: HELLO", "the writer handed the holes to the formatters before rendering");
+    }
+
+    /// <summary>
     ///     A string is also an <c>IEnumerable</c>, so an enumerable writer accepts it. The string writer's type is
     ///     the more derived of the two, so it must win whichever was registered first; otherwise a string would be
     ///     written one character per line.
     /// </summary>
+    /// <param name="enumerableFirst">Whether the enumerable writer is registered ahead of the string writer.</param>
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -409,7 +429,9 @@ public class AnsiConsoleMarkupOutputTests
         using var console = new RecordingConsole();
         var output = new AnsiConsoleMarkupOutput(console.Console, new MessageFormatterProcessor([], []));
 
-        output.Write<FormattableString>($"[bold]{"x"}[/]", CultureInfo.InvariantCulture);
+        var value = "x";
+
+        output.Write<FormattableString>($"[bold]{value}[/]", CultureInfo.InvariantCulture);
 
         console.Output.Should().Be("[bold]x[/]", "with no writer there is nothing to parse the template as markup");
         console.RawOutput.Should().NotContain(BoldOn);
@@ -815,6 +837,8 @@ public class AnsiConsoleMarkupOutputTests
     ///     Wired like <c>OutputServicesBundle</c> for the two string types: the built-in writers render them, and the
     ///     convertible formatter is present so a number in an interpolation hole takes the production path.
     /// </summary>
+    /// <param name="console">The recording console the output and its writers render to.</param>
+    /// <returns>An output whose string and interpolated-string messages go through the built-in writers.</returns>
     private static AnsiConsoleMarkupOutput CreateOutput(RecordingConsole console) =>
         new(console.Console,
             new MessageFormatterProcessor([new StringMessageFormatter(), new ConvertibleMessageFormatter()],
@@ -845,6 +869,29 @@ public class AnsiConsoleMarkupOutputTests
         public List<string?> Written { get; } = [];
 
         public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => Written.Add(message);
+    }
+
+    /// <summary>A writer that opts into formatted holes by asking the processor it is handed, as the built-in writer's docs describe.</summary>
+    private sealed class HoleFormattingWriter(IAnsiConsole console) : TypeMessageWriter<FormattableString>
+    {
+        public override void Write(FormattableString? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
+        {
+            if (message is null)
+            {
+                return;
+            }
+
+            var formatted = formatterProcessor?.GetMessageText(message, formatProvider: formatProvider) ?? message;
+
+            console.MarkupInterpolated(formatProvider ?? CultureInfo.CurrentCulture, formatted);
+        }
+    }
+
+    /// <summary>A formatter that visibly transforms its input, so a test can prove it was applied to a hole.</summary>
+    private sealed class UpperCasingFormatter : TypeMessageFormatter<string>
+    {
+        public override string GetMessage(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+            message?.ToUpperInvariant() ?? string.Empty;
     }
 
     /// <summary>Records the interpolated strings it is handed and renders nothing.</summary>

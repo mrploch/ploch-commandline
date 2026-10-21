@@ -119,9 +119,11 @@ have been retired.
   `StringMessageWriter` and `FormattableStringMessageWriter` are now the code that
   writes them and a consumer writer registered for either type replaces the
   built-in one. The rendered output is unchanged: a string is still written
-  verbatim and an interpolated string still renders as markup with its holes
-  escaped and formatted by `string.Format`, so a format specifier such as
-  `{total:N2}` and an `ICustomFormatter` on the provider are honoured.
+  verbatim and a `FormattableString` (an interpolated string passed as
+  `Write<FormattableString>($"...")`; a bare `$"..."` argument infers `string`)
+  still renders as markup with its holes escaped and formatted by
+  `string.Format`, so a format specifier such as `{total:N2}` and an
+  `ICustomFormatter` on the provider are honoured.
   `FormattableStringMessageWriter` no longer pre-renders the interpolation holes
   through the registered formatters, which it did only when called directly;
   a writer that wants that behaviour calls
