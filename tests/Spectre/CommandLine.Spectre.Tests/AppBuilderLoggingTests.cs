@@ -119,13 +119,13 @@ public sealed class AppBuilderLoggingTests : IDisposable
     {
         public List<string> Messages { get; } = [];
 
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new RecordingLogger(Messages);
+        public ILogger CreateLogger(string categoryName) => new RecordingLogger(Messages);
 
         public void Dispose()
         {
         }
 
-        private sealed class RecordingLogger(List<string> messages) : Microsoft.Extensions.Logging.ILogger
+        private sealed class RecordingLogger(List<string> messages) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
