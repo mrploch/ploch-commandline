@@ -73,11 +73,6 @@ public sealed class AppBuilderTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>Counts how many times <paramref name="text" /> appears in the recorded standard output.</summary>
-    /// <param name="text">The text to count.</param>
-    /// <returns>The number of non-overlapping occurrences.</returns>
-    private int OccurrencesOf(string text) => _console.Output.Split(text).Length - 1;
-
     [Fact]
     public void WithName_should_set_the_name_used_by_the_start_up_banner()
     {
@@ -1836,6 +1831,11 @@ public sealed class AppBuilderTests : IDisposable
 
         return recorder;
     }
+
+    /// <summary>Counts how many times <paramref name="text" /> appears in the recorded standard output.</summary>
+    /// <param name="text">The text to count.</param>
+    /// <returns>The number of non-overlapping occurrences.</returns>
+    private int OccurrencesOf(string text) => _console.Output.Split(text).Length - 1;
 
     private sealed class Marker
     {
