@@ -311,8 +311,8 @@ public sealed class AppBuilderTests : IDisposable
     /// <summary>
     ///     The announcement is written before the command runs, so a failing standard error stream stops the run
     ///     before the command: Spectre hands the exception to the application's handler as it would any failure
-    ///     ahead of execution, which passes it to the registered <c>IExceptionHandler</c> - the default one returns
-    ///     <see cref="ExitCode.Error" /> - rather than through the command's own catch (PLO-783, PLO-782).
+    ///     ahead of execution, which passes it to the registered <c>IExceptionHandler</c>, whose return value is the
+    ///     exit code, rather than through the command's own catch (PLO-783, PLO-782).
     /// </summary>
     [Fact]
     public void ConfigureCommandApp_should_fail_the_run_before_the_command_when_the_announcement_cannot_be_written()
@@ -321,7 +321,9 @@ public sealed class AppBuilderTests : IDisposable
         ProbeCommand.Recorder = recorder;
         using var cancellationTokenSource = new CancellationTokenSource();
         var errorConsole = new ThrowingConsole(_errorConsole.Console);
-        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, errorConsole);
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource, errorConsole)
+            .ConfigureServices(services => services.AddSingleton<IExceptionHandler, RecordingExceptionHandler>());
+        RecordingExceptionHandler.Reset();
 
         var executor = builder.ConfigureCommandApp(configurator =>
                                                    {
@@ -333,7 +335,8 @@ public sealed class AppBuilderTests : IDisposable
         errorConsole.FailWrites = true;
         recorder.ExitCode = executor.Run("probe");
 
-        recorder.ExitCode.Should().Be((int)ExitCode.Error, "a run that could not announce its command did not complete, and the default handler reports Error");
+        recorder.ExitCode.Should().Be(RecordingExceptionHandler.ReturnedExitCode, "a run that could not announce its command did not complete, and the registered handler decided the exit code");
+        RecordingExceptionHandler.Exceptions.Should().ContainSingle("the registered handler was asked to handle the announcement failure, once");
         recorder.ExecutionToken.Should().Be(CancellationToken.None, "the command never ran, so it recorded nothing");
     }
 
@@ -1043,7 +1046,7 @@ public sealed class AppBuilderTests : IDisposable
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
             .ConfigureServices(services => services.AddSingleton<IExceptionHandler, RecordingExceptionHandler>());
         RecordingExceptionHandler.Reset();
-        ThrowingPlainCommand.ExceptionFactory = () => new InvalidOperationException("plain command failed");
+        ThrowingPlainCommand.ExceptionFactory = _ => new InvalidOperationException("plain command failed");
 
         var exitCode = builder.ConfigureCommandApp(configurator =>
                               {
@@ -1068,7 +1071,7 @@ public sealed class AppBuilderTests : IDisposable
             .ConfigureServices(services => services.AddSingleton<IExceptionHandler, RecordingExceptionHandler>());
         RecordingExceptionHandler.Reset();
         RecordingExceptionHandler.Throws = true;
-        ThrowingPlainCommand.ExceptionFactory = () => new InvalidOperationException("plain command failed");
+        ThrowingPlainCommand.ExceptionFactory = _ => new InvalidOperationException("plain command failed");
 
         var exitCode = builder.ConfigureCommandApp(configurator =>
                               {
@@ -1079,6 +1082,7 @@ public sealed class AppBuilderTests : IDisposable
 
         exitCode.Should().Be((int)ExitCode.Error);
         RecordingExceptionHandler.Exceptions.Should().ContainSingle("the handler is not asked to handle the exception it threw itself");
+        _console.Output.Should().Contain("Error: plain command failed", "the failure the handler was asked to report is not lost");
         _console.Output.Should().Contain("Error: the handler failed");
     }
 
@@ -1087,6 +1091,7 @@ public sealed class AppBuilderTests : IDisposable
     ///     surfaces as <see cref="ExceptionHandlerFailedException" />, which the installed handler reports without
     ///     calling the throwing handler a second time, for the synchronous and the asynchronous base class alike.
     /// </summary>
+    /// <param name="command">The registered name of the command to run: the synchronous or the asynchronous one.</param>
     [Theory]
     [InlineData("throw-sync")]
     [InlineData("throw-async")]
@@ -1108,6 +1113,7 @@ public sealed class AppBuilderTests : IDisposable
 
         exitCode.Should().Be((int)ExitCode.Error);
         RecordingExceptionHandler.Exceptions.Should().ContainSingle().Which.Message.Should().Be("base class command failed");
+        _console.Output.Should().Contain("Error: base class command failed", "the failure the handler was asked to report is not lost");
         _console.Output.Should().Contain("Error: the handler failed");
     }
 
@@ -1122,7 +1128,7 @@ public sealed class AppBuilderTests : IDisposable
         using var cancellationTokenSource = new CancellationTokenSource();
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
             .ConfigureServices(services => services.AddSingleton<IExceptionHandler>(_ => throw new InvalidOperationException("the handler factory failed")));
-        ThrowingPlainCommand.ExceptionFactory = () => new InvalidOperationException("plain command failed");
+        ThrowingPlainCommand.ExceptionFactory = _ => new InvalidOperationException("plain command failed");
 
         var exitCode = builder.ConfigureCommandApp(configurator =>
                               {
@@ -1169,7 +1175,7 @@ public sealed class AppBuilderTests : IDisposable
     {
         using var cancellationTokenSource = new CancellationTokenSource();
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
-        ThrowingPlainCommand.ExceptionFactory = () => new ExceptionHandlerFailedException("a bare wrapper from a command");
+        ThrowingPlainCommand.ExceptionFactory = _ => new ExceptionHandlerFailedException("a bare wrapper from a command");
         using var hostCancellationTokenSource = new CancellationTokenSource();
         var hostBuilder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, hostCancellationTokenSource)
             .ConfigureServices(_ => throw new ExceptionHandlerFailedException("a bare wrapper from the host"));
@@ -1214,6 +1220,74 @@ public sealed class AppBuilderTests : IDisposable
         _console.Output.Should().Contain("Could not resolve type");
     }
 
+    /// <summary>
+    ///     A <c>CommandRuntimeException</c> that reaches Spectre before any host exists cannot be a binding or
+    ///     validation failure, which happen after it: here a host delegate rethrows one captured from an earlier run.
+    ///     It is rendered and exits with <see cref="ExitCode.Error" />, not <see cref="ExitCode.InvalidInput" />.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_exit_with_Error_for_a_runtime_exception_raised_before_the_host_exists()
+    {
+        using var captureCancellationTokenSource = new CancellationTokenSource();
+        var captureBuilder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, captureCancellationTokenSource);
+        var captureExecutor = captureBuilder.ConfigureCommandApp(configurator =>
+        {
+            configurator.ConfigureConsole(_console.Console);
+            configurator.PropagateExceptions();
+            configurator.AddCommand<ArgumentCommand>("count");
+        });
+        var captured = Record.Exception(() => captureExecutor.Run("count"));
+        captured.Should().BeOfType<CommandRuntimeException>("a missing required argument is a binding failure");
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
+            .ConfigureServices(_ => throw captured!);
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<AcceptingCommand>("accept");
+                              })
+                              .Run("accept");
+
+        exitCode.Should().Be((int)ExitCode.Error, "no host, so no resolver: the failure cannot be a binding or validation failure");
+        _console.Output.Should().Contain("missing required argument 'number'");
+    }
+
+    /// <summary>
+    ///     Spectre renders a pretty inner exception after the outer message, and so does the installed handler. The
+    ///     inner one is a real parse exception captured from Spectre, since its constructors are not public.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_render_a_pretty_inner_exception_once_after_the_outer_message()
+    {
+        using var captureCancellationTokenSource = new CancellationTokenSource();
+        var captureBuilder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, captureCancellationTokenSource);
+        var captureExecutor = captureBuilder.ConfigureCommandApp(configurator =>
+        {
+            configurator.ConfigureConsole(_console.Console);
+            configurator.PropagateExceptions();
+            configurator.AddCommand<AcceptingCommand>("accept");
+        });
+        var captured = Record.Exception(() => captureExecutor.Run("no-such-command"));
+        captured.Should().BeOfType<CommandParseException>();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
+            .ConfigureServices(services => services.RemoveAll<IExceptionHandler>());
+        ThrowingPlainCommand.ExceptionFactory = _ => new InvalidOperationException("outer failure", captured);
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<ThrowingPlainCommand>("throw");
+                              })
+                              .Run("throw");
+
+        exitCode.Should().Be((int)ExitCode.Error);
+        _console.Output.Should().Contain("Error: outer failure");
+        _console.Output.Split("Unknown command 'no-such-command'").Should().HaveCount(2, "the inner parse error is rendered exactly once, after the outer message");
+        _console.Output.IndexOf("Error: outer failure", StringComparison.Ordinal).Should().BeLessThan(_console.Output.IndexOf("Unknown command", StringComparison.Ordinal));
+    }
+
     /// <summary>Spectre's early returns are untouched: a branch invoked without a sub-command shows help and returns 1.</summary>
     [Fact]
     public void ConfigureCommandApp_should_still_return_one_with_help_for_a_branch_without_a_sub_command()
@@ -1243,7 +1317,7 @@ public sealed class AppBuilderTests : IDisposable
         using var cancellationTokenSource = new CancellationTokenSource();
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
             .ConfigureServices(services => services.RemoveAll<IExceptionHandler>());
-        ThrowingPlainCommand.ExceptionFactory = () => new InvalidOperationException("plain command failed");
+        ThrowingPlainCommand.ExceptionFactory = _ => new InvalidOperationException("plain command failed");
 
         var exitCode = builder.ConfigureCommandApp(configurator =>
                               {
@@ -1291,11 +1365,11 @@ public sealed class AppBuilderTests : IDisposable
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
             .ConfigureServices(services => services.AddSingleton<IExceptionHandler, RecordingExceptionHandler>());
         RecordingExceptionHandler.Reset();
-        ThrowingPlainCommand.ExceptionFactory = () =>
+        ThrowingPlainCommand.ExceptionFactory = source =>
         {
-            cancellationTokenSource.Cancel();
+            source.Cancel();
 
-            return new OperationCanceledException(cancellationTokenSource.Token);
+            return new OperationCanceledException(source.Token);
         };
 
         var exitCode = builder.ConfigureCommandApp(configurator =>
@@ -1314,11 +1388,11 @@ public sealed class AppBuilderTests : IDisposable
     {
         using var cancellationTokenSource = new CancellationTokenSource();
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
-        ThrowingPlainCommand.ExceptionFactory = () =>
+        ThrowingPlainCommand.ExceptionFactory = source =>
         {
-            cancellationTokenSource.Cancel();
+            source.Cancel();
 
-            return new OperationCanceledException(cancellationTokenSource.Token);
+            return new OperationCanceledException(source.Token);
         };
 
         var exitCode = builder.ConfigureCommandApp(configurator =>
@@ -1339,7 +1413,7 @@ public sealed class AppBuilderTests : IDisposable
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource)
             .ConfigureServices(services => services.AddSingleton<IExceptionHandler, RecordingExceptionHandler>());
         RecordingExceptionHandler.Reset();
-        ThrowingPlainCommand.ExceptionFactory = () => new OperationCanceledException("an inner timeout");
+        ThrowingPlainCommand.ExceptionFactory = _ => new OperationCanceledException("an inner timeout");
 
         var exitCode = builder.ConfigureCommandApp(configurator =>
                               {
@@ -1361,7 +1435,7 @@ public sealed class AppBuilderTests : IDisposable
     {
         using var cancellationTokenSource = new CancellationTokenSource();
         var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
-        ThrowingPlainCommand.ExceptionFactory = () => new InvalidOperationException("plain command failed");
+        ThrowingPlainCommand.ExceptionFactory = _ => new InvalidOperationException("plain command failed");
 
         var parseExitCode = builder.ConfigureCommandApp(configurator =>
                                    {
@@ -1420,9 +1494,12 @@ public sealed class AppBuilderTests : IDisposable
     [Fact]
     public void Constructor_should_reject_a_null_app_info()
     {
-        using var cancellationTokenSource = new CancellationTokenSource();
+        var act = () =>
+        {
+            using var cancellationTokenSource = new CancellationTokenSource();
 
-        var act = () => new AppBuilder(null!, cancellationTokenSource);
+            return new AppBuilder(null!, cancellationTokenSource);
+        };
 
         act.Should().Throw<ArgumentNullException>("a null stored now would only surface as a NullReferenceException inside ConfigureCommandApp")
            .WithParameterName("appInfo");
@@ -1884,7 +1961,7 @@ public sealed class AppBuilderTests : IDisposable
     // ReSharper disable once ClassNeverInstantiated.Local
     private sealed class ArgumentCommand : Command<ArgumentSettings>
     {
-        public override int Execute(CommandContext context, ArgumentSettings settings, CancellationToken cancellationToken) => 0;
+        public override int Execute(CommandContext context, ArgumentSettings settings, CancellationToken cancellationToken) => settings.Number;
     }
 
     /// <summary>
@@ -1893,12 +1970,13 @@ public sealed class AppBuilderTests : IDisposable
     ///     command; safe in this non-parallel collection.
     /// </summary>
     // ReSharper disable once ClassNeverInstantiated.Local
-    private sealed class ThrowingPlainCommand : Command<AcceptingSettings>
+    private sealed class ThrowingPlainCommand(CancellationTokenSource cancellationTokenSource) : Command<AcceptingSettings>
     {
-        public static Func<Exception>? ExceptionFactory { get; set; }
+        /// <summary>Given the application's registered cancellation source, so a test can cancel it without capturing its own disposable.</summary>
+        public static Func<CancellationTokenSource, Exception>? ExceptionFactory { get; set; }
 
         public override int Execute(CommandContext context, AcceptingSettings settings, CancellationToken cancellationToken) =>
-            throw (ExceptionFactory ?? throw new InvalidOperationException("The exception factory was not set before the run."))();
+            throw (ExceptionFactory ?? throw new InvalidOperationException("The exception factory was not set before the run."))(cancellationTokenSource);
     }
 
     /// <summary>Throws from <c>DoExecute</c>, so the base class routes the exception to the registered handler.</summary>
@@ -1930,16 +2008,11 @@ public sealed class AppBuilderTests : IDisposable
         }
     }
 
-    /// <summary>A dependency nothing registers, so the container cannot construct the command that takes it.</summary>
-    private sealed class Opaque
-    {
-        public string Text { get; init; } = string.Empty;
-    }
-
+    /// <summary>Takes a dependency nothing registers, so the container cannot construct it.</summary>
     // ReSharper disable once ClassNeverInstantiated.Local
-    private sealed class UnresolvableCommand(Opaque dependency) : Command<AcceptingSettings>
+    private sealed class UnresolvableCommand(StringWriter dependency) : Command<AcceptingSettings>
     {
-        public override int Execute(CommandContext context, AcceptingSettings settings, CancellationToken cancellationToken) => dependency.Text.Length;
+        public override int Execute(CommandContext context, AcceptingSettings settings, CancellationToken cancellationToken) => dependency.NewLine.Length;
     }
 
     /// <summary>Records what it is asked to handle; static state for the same reason as the commands above.</summary>

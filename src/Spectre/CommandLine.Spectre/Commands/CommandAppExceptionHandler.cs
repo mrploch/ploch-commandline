@@ -17,14 +17,16 @@ namespace Ploch.CommandLine.Spectre.Commands;
 ///     </para>
 ///     <para>
 ///         The handler keeps Spectre's rendering - the pretty parse error with its caret, or <c>Error: message</c> -
-///         and maps the exception to an exit code: a parse or binding failure is
-///         <see cref="ExitCode.InvalidInput" />; an <see cref="OperationCanceledException" /> after the application's
+///         and maps the exception to an exit code. A parse failure, and a binding or validation failure, which Spectre
+///         raises once the host exists and so hands over together with a type resolver, is
+///         <see cref="ExitCode.InvalidInput" />. An <see cref="OperationCanceledException" /> after the application's
 ///         own token was cancelled is the configured cancellation exit code
-///         (<see cref="ICommandAppSettings.CancellationExitCode" />, <see cref="ExitCode.Cancelled" /> by default);
-///         anything else goes to the registered <see cref="IExceptionHandler" />, whose return value is the exit code.
-///         When no host exists yet - the failure happened while it was being built - or the handler itself throws
-///         or cannot be constructed, the exception is rendered the way Spectre would have rendered it and the exit
-///         code is <see cref="ExitCode.Error" />, so a failure is always reported and never exits <c>0</c>.
+///         (<see cref="ICommandAppSettings.CancellationExitCode" />, <see cref="ExitCode.Cancelled" /> by default).
+///         Anything else goes to the registered <see cref="IExceptionHandler" />, whose return value is the exit code.
+///         When no host exists yet - the failure happened while it was being built, or Spectre found a configuration
+///         defect while building the command model - or the handler is absent, throws or cannot be constructed, the
+///         exception is rendered the way Spectre would have rendered it and the exit code is
+///         <see cref="ExitCode.Error" />, so a failure is always reported and never exits <c>0</c>.
 ///     </para>
 ///     <para>
 ///         Spectre raises <see cref="CommandRuntimeException" /> for a few failures that are not input errors - a missing
@@ -52,34 +54,69 @@ internal sealed class CommandAppExceptionHandler(CancellationToken cancellationT
     {
         var console = settings.Console ?? AnsiConsole.Console;
 
-        // A handler that threw, from a command base class or from the call below. Reported once and the run exits
-        // non-zero; the handler is not asked to handle the exception it threw itself, and the exception it threw is
-        // never mistaken for an input error or a cancellation.
+        // A handler that threw, from a command base class. Recognised first so the exception it threw is never
+        // mistaken for an input error or a cancellation, and the handler is not asked to handle it.
         if (exception is ExceptionHandlerFailedException failed)
         {
-            // The public constructors allow an instance without an inner exception; such an instance is reported itself.
-            Render(console, failed.InnerException ?? failed);
-
-            return (int)ExitCode.Error;
+            return ReportFailedHandler(console, failed);
         }
 
-        // Cancellation first: an OperationCanceledException raised after the application's own token was cancelled is
-        // the outcome the user asked for, whatever stage it surfaced at. One raised while the token is still live is a
-        // fault nobody asked for and takes the handler path below (PLO-756).
-        if (exception is OperationCanceledException && cancellationToken.IsCancellationRequested)
+        if (IsRequestedCancellation(exception))
         {
             return settings.CancellationExitCode;
         }
 
-        // CommandParseException derives from CommandRuntimeException, so this is every parse, binding and validation
-        // failure Spectre raises.
-        if (exception is CommandRuntimeException)
+        if (IsInputError(exception, resolver))
         {
             Render(console, exception);
 
             return (int)ExitCode.InvalidInput;
         }
 
+        return RouteToExceptionHandler(console, exception, resolver);
+    }
+
+    /// <summary>
+    ///     Whether Spectre raised the exception for the command line or the settings. A parse failure happens before
+    ///     any host exists; a binding or validation failure happens after it, so it comes with a resolver. A
+    ///     <see cref="CommandRuntimeException" /> with no resolver was raised before the host - a configuration
+    ///     defect Spectre found while building the command model, or one a host delegate rethrew - and is not input.
+    /// </summary>
+    /// <param name="exception">The exception Spectre caught.</param>
+    /// <param name="resolver">Spectre's type resolver, or <see langword="null" /> before a host exists.</param>
+    /// <returns><see langword="true" /> when the exit code is <see cref="ExitCode.InvalidInput" />.</returns>
+    private static bool IsInputError(Exception exception, ITypeResolver? resolver) =>
+        exception is CommandParseException || (exception is CommandRuntimeException && resolver is not null);
+
+    /// <summary>
+    ///     Reports a handler that threw: what it was asked to handle, so the cause is not lost, then what it threw.
+    /// </summary>
+    /// <param name="console">The console to render on.</param>
+    /// <param name="failed">The wrapper the base class or <see cref="RouteToExceptionHandler" /> produced.</param>
+    /// <returns><see cref="ExitCode.Error" />.</returns>
+    private static int ReportFailedHandler(IAnsiConsole console, ExceptionHandlerFailedException failed)
+    {
+        if (failed.Original is not null)
+        {
+            Render(console, failed.Original);
+        }
+
+        // The public constructors allow an instance without an inner exception; such an instance is reported itself.
+        Render(console, failed.InnerException ?? failed);
+
+        return (int)ExitCode.Error;
+    }
+
+    /// <summary>
+    ///     Hands the exception to the registered <see cref="IExceptionHandler" />, reporting it here instead when
+    ///     there is no handler to ask or the handler fails.
+    /// </summary>
+    /// <param name="console">The console to render on.</param>
+    /// <param name="exception">The exception Spectre caught.</param>
+    /// <param name="resolver">Spectre's type resolver, or <see langword="null" /> before a host exists.</param>
+    /// <returns>The handler's exit code, or <see cref="ExitCode.Error" />.</returns>
+    private static int RouteToExceptionHandler(IAnsiConsole console, Exception exception, ITypeResolver? resolver)
+    {
         IExceptionHandler? handler;
         try
         {
@@ -108,9 +145,7 @@ internal sealed class CommandAppExceptionHandler(CancellationToken cancellationT
         }
         catch (ExceptionHandlerFailedException handlerFailed)
         {
-            Render(console, handlerFailed.InnerException ?? handlerFailed);
-
-            return (int)ExitCode.Error;
+            return ReportFailedHandler(console, handlerFailed);
         }
     }
 
@@ -160,4 +195,12 @@ internal sealed class CommandAppExceptionHandler(CancellationToken cancellationT
             console.Write(inner.Pretty);
         }
     }
+
+    /// <summary>
+    ///     Whether the exception is the cancellation the user asked for. One raised while the application's token is
+    ///     still live is a fault nobody asked for and takes the handler path (PLO-756).
+    /// </summary>
+    /// <param name="exception">The exception Spectre caught.</param>
+    /// <returns><see langword="true" /> for an <see cref="OperationCanceledException" /> after the token was cancelled.</returns>
+    private bool IsRequestedCancellation(Exception exception) => exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
 }

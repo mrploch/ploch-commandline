@@ -45,8 +45,7 @@ public sealed class ExceptionHandlerFailedException : Exception
     /// <param name="original">The exception the handler was asked to handle.</param>
     /// <param name="handlerException">The exception the handler threw.</param>
     public ExceptionHandlerFailedException(Exception original, Exception handlerException)
-        : base($"The exception handler threw {handlerException?.GetType().Name} while handling {original?.GetType().Name}: {handlerException?.Message}",
-               handlerException)
+        : base(DescribeFailure(original, handlerException), handlerException)
     {
         Original = original;
     }
@@ -56,4 +55,16 @@ public sealed class ExceptionHandlerFailedException : Exception
     ///     created for a failed handler call.
     /// </summary>
     public Exception? Original { get; }
+
+    /// <summary>Builds the message for a failed handler call; a static helper because it runs in the constructor chain.</summary>
+    /// <param name="original">The exception the handler was asked to handle.</param>
+    /// <param name="handlerException">The exception the handler threw.</param>
+    /// <returns>The exception message.</returns>
+    private static string DescribeFailure(Exception original, Exception handlerException)
+    {
+        ArgumentNullException.ThrowIfNull(original);
+        ArgumentNullException.ThrowIfNull(handlerException);
+
+        return $"The exception handler threw {handlerException.GetType().Name} while handling {original.GetType().Name}: {handlerException.Message}";
+    }
 }

@@ -15,8 +15,9 @@
   cancellation reaching Spectre to its configured cancellation exit code (130 by
   default; the base classes still return `ExitCode.Cancelled`), any other
   exception escaping a command to the registered `IExceptionHandler`, and a
-  failure before the host exists, or an `IExceptionHandler` that throws, to
-  `ExitCode.Error` (1). A script that tested
+  failure before the host exists (a host delegate that throws, or a
+  configuration defect Spectre finds before any host), or an `IExceptionHandler`
+  that throws, to `ExitCode.Error` (1). A script that tested
   for `255` tests for `2`; an application that wants a different mapping calls
   `SetExceptionHandler` or `PropagateExceptions()` in its `ConfigureCommandApp`
   delegate, which replaces the installed handler (PLO-782).

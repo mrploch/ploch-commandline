@@ -22,8 +22,10 @@ namespace Ploch.CommandLine.Spectre.Commands;
 ///     </para>
 ///     <para>
 ///         An exception thrown while writing — a closed standard error stream, say — propagates to Spectre, which
-///         handles it as it would any failure before a command runs; it does not reach the <see cref="IExceptionHandler" />
-///         the command would have used.
+///         hands it to the handler <see cref="AppBuilder.ConfigureCommandApp" /> installs as it would any failure before
+///         a command runs; that handler passes it to the registered <see cref="IExceptionHandler" />, whose return value
+///         is the exit code (<see cref="ExitCode.Error" /> from the default handler). The command's own catch is not
+///         involved, because the command never ran.
 ///     </para>
 /// </remarks>
 internal sealed class ExecutingCommandInterceptor(IAnsiConsole errorConsole) : ICommandInterceptor

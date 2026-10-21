@@ -415,9 +415,8 @@ is itself a symbolic link is refused. Re-exporting still overwrites the previous
 |---|---|---|
 | 0 | `ExitCode.Success` | The command completed |
 | 1 | `ExitCode.Error` | The command ran and failed |
-| 2 | `ExitCode.InvalidInput` | The command rejected its input |
+| 2 | `ExitCode.InvalidInput` | The input was rejected: by the command, or by `Spectre.Console.Cli` while parsing, binding or validating the command line |
 | 130 | `ExitCode.Cancelled` | Cancellation was requested (128 + SIGINT) |
-| 2 | `ExitCode.InvalidInput` | The command line could not be parsed, bound or validated (reported by `Spectre.Console.Cli`, exit code set by the library) |
 
 ## Development conveniences
 

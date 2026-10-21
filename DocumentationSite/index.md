@@ -172,8 +172,8 @@ shape of your implementation differs.
 | `ExitCode.Cancelled` | 130 | Cancelled before completing — the conventional shell code for termination by SIGINT (128 + 2). |
 
 A failed `Validate` exits with `InvalidInput` too. `Spectre.Console.Cli` runs validation before the
-command and reports the errors itself; the handler `AppBuilder.ConfigureCommandApp` installs maps
-that failure, and every command line Spectre cannot parse or bind — an unknown command, a missing
+command and reports the errors itself; `AppBuilder.ConfigureCommandApp` installs a Spectre exception
+handler that maps that failure, and every command line Spectre cannot parse or bind — an unknown command, a missing
 required argument, a value that does not convert — to `InvalidInput` in place of Spectre's own `-1`
 (`255` in a POSIX shell). `InvalidInput` therefore means "the input was rejected" whether your code
 or Spectre decided so — with one caveat: Spectre raises the same exception type for a few failures

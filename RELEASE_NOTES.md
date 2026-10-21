@@ -140,7 +140,9 @@ have been retired.
   still return `ExitCode.Cancelled`); any other exception that escapes a command goes
   to the registered `IExceptionHandler`, whose return value is the exit code; and a
   failure before the host exists — a `ConfigureServices` delegate that throws — is
-  reported and exits with `ExitCode.Error` (1), where it was also `-1`. An
+  reported and exits with `ExitCode.Error` (1), where it was also `-1`, as is a
+  `CommandRuntimeException` Spectre raises before the host exists, such as a command
+  whose settings type it cannot determine. An
   `IExceptionHandler` that throws is reported once and the run exits 1; the base
   classes no longer let its exception escape to Spectre. Spectre uses `CommandRuntimeException`
   for a few failures that are not input errors (a missing type converter, a dependency

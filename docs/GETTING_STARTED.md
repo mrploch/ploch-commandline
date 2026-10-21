@@ -741,7 +741,7 @@ Use case failed: A project with name 'SpectreDemo' already exists.
 | Member | Value | Meaning |
 |---|---|---|
 | `Success` | 0 | The command completed. |
-| `Error` | 1 | The command ran and failed. |
+| `Error` | 1 | The command ran and failed, or the application failed before it could run. |
 | `InvalidInput` | 2 | The input was rejected — by the command, or by `Spectre.Console.Cli` while parsing, binding or validating it. |
 | `Cancelled` | 130 | The command stopped because cancellation was requested (128 + SIGINT). |
 
@@ -764,8 +764,10 @@ Two exit codes do **not** come from this enumeration:
 - **`1`, with help shown** — `Spectre.Console.Cli`'s own early return for a branch invoked without a
   sub-command, or a default command invoked without its required arguments. Numerically the same
   as `ExitCode.Error`, but produced by Spectre, not by this library.
+
 A failure before the host exists — an exception thrown by a `ConfigureServices` delegate while
-the host is being built — is reported and exits with `ExitCode.Error` (1), as is an
+the host is being built, or a configuration defect Spectre finds while building its command
+model — is reported and exits with `ExitCode.Error` (1), as is an
 `IExceptionHandler` that throws, or that cannot be constructed when the application resolves it
 to handle an exception. A command derived from the base classes constructor-injects the handler,
 so a handler that cannot be constructed stops that command being constructed, which Spectre
