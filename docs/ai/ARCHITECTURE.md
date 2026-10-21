@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-13, against commit `6fdfc2d` (service lifetimes, PLO-781) |
+| Last verified | 2026-10-21, on the PLO-778 branch (Serilog opt-in; dependency arrows reversed in section 2) |
 | Verified by | Reading every project file and source file under `src/`; spot checks by `grep` |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
@@ -23,7 +23,7 @@ The library has no database, no web surface and no user interface beyond the con
 | Project | Package | Purpose |
 |---|---|---|
 | `core/` | `Ploch.CommandLine.Spectre` | `AppBuilder`, command bases, output pipeline, DI bridge |
-| `src/Spectre/CommandLine.Spectre.Serilog/` | `Ploch.CommandLine.Spectre.Serilog` | Serilog defaults and bundle |
+| `src/Spectre/CommandLine.Spectre.Serilog/` | `Ploch.CommandLine.Spectre.Serilog` | Opt-in Serilog: `UseSerilog`, defaults and bundle |
 | `src/Spectre/CommandLine.Spectre.FluentValidation/` | `Ploch.CommandLine.Spectre.FluentValidation` | Settings validator |
 | `src/Spectre/CommandLine.UseCases/` | `Ploch.CommandLine.UseCases` | Use-case commands on `Ardalis.Result` |
 | `tests/Spectre/*.Tests/` | not packed | One test project per source project |
@@ -33,7 +33,7 @@ The library has no database, no web surface and no user interface beyond the con
 graph LR
   FV[Spectre.FluentValidation] --> Core[Spectre core]
   UC[UseCases] --> Core
-  Core --> Ser[Spectre.Serilog]
+  Ser[Spectre.Serilog] --> Core
   Core --> PC[Ploch.Common packages]
   Ser --> PC
   FV --> PC
@@ -43,9 +43,9 @@ graph LR
   Sample --> UC
 ```
 
-The arrow from core to Serilog is real: `core/Ploch.CommandLine.Spectre.csproj` has a
-`ProjectReference` to the Serilog project, so the Serilog package is a mandatory dependency of the
-core package, not an optional add-on.
+No arrow leaves core for another package of the family: the core package references none of
+them and declares no Serilog dependency in its nuspec. Serilog is opt-in — the Serilog project
+references core so it can extend `AppBuilder` with `UseSerilog` (PLO-778).
 
 There is **no Autofac package**. A caller who wants another container uses
 `ConfigureHost(h => h.UseServiceProviderFactory(...))`.
@@ -94,7 +94,7 @@ The sample has its own `samples/SampleApp/Ploch.CommandLine.Spectre.SampleApp.sl
 
 | Package | Types |
 |---|---|
-| Serilog | `LoggerConfigurationExtensions.ConfigureSerilog`, `SerilogConfigurationBundle`, `SerilogLoggingConfigurator.AddSerilog` |
+| Serilog | `AppBuilderSerilogExtensions.UseSerilog`, `LoggerConfigurationExtensions.ConfigureSerilog`, `SerilogConfigurationBundle`, `SerilogLoggingConfigurator.AddSerilog` |
 | FluentValidation | `CommandLineFluentValidationServicesBundle`, `AddCommandLineSettingsFluentValidation`, `FluentCommandSettingsValidator<T>` |
 | UseCases | `IUseCase<TRequest,TResponse>`, `IResultUseCase<TRequest,TResponse>`, `UseCaseAsyncCommand<...>` |
 
@@ -152,7 +152,7 @@ The synchronous and asynchronous bases behave identically apart from `await`.
 
 | Package | Mechanism |
 |---|---|
-| Serilog | Always registered: `AppServicesBundle` declares `SerilogConfigurationBundle` as a dependency. Call `services.AddSerilog(configuration, logName:, logPath:)` to customise. `configuration` is optional: without one the bundle skips the base class's null check and registers the predefined sinks (rolling file, warnings-and-above file, Spectre.Console) at the `Information` minimum level |
+| Serilog | Opt-in: `appBuilder.UseSerilog(logName:, logPath:)` queues `services.AddSerilog(context.Configuration, ...)` through `ConfigureServices`, which registers `SerilogConfigurationBundle`. Without it the host's default providers serve `ILogger<T>` and nothing is written to disk. `configuration` is optional for `AddSerilog`: without one the bundle skips the base class's null check and registers the predefined sinks (rolling file, warnings-and-above file, Spectre.Console) at the `Information` minimum level. Call either entry point once |
 | FluentValidation | `services.AddCommandLineSettingsFluentValidation(b => b.AddAssembly(...))` registers an open-generic `ICommandSettingsValidator<>` after the default one, so it wins |
 | UseCases | Derive from `UseCaseAsyncCommand<...>`, implement `CreateRequest`, register the use case in DI |
 
@@ -229,14 +229,14 @@ Found during the 2026-10-05 review. None is tracked as its own issue yet; see
 
 | Area | Finding |
 |---|---|
-| Dependencies | Core depends on the Serilog package, so logging to files is on for every consumer |
 | Output | `StringMessageWriter` and `FormattableStringMessageWriter` are unreachable through `IOutput` |
 | Banner | The FIGlet banner and "Executing command" lines are always written to standard output |
 | Docs | Several snippets disagree with the API; tracked as PLO-620 |
 
 Resolved since the review: the cancellation catch now checks the supplied token, the three
 entry points null-check, and a second `Run` on one executor fails with a clear
-`InvalidOperationException` (PLO-756; see sections 4.1 and 4.2).
+`InvalidOperationException` (PLO-756; see sections 4.1 and 4.2); Serilog is opt-in and the core
+package no longer depends on it (PLO-778; see sections 2 and 4.3).
 
 ## 8. Where to look
 
@@ -246,6 +246,6 @@ entry points null-check, and a second `Run` on one executor fails with a clear
 | What is registered by default? | `core/Configuration/AppServicesBundle.cs`, `OutputServicesBundle.cs` |
 | How does a command run? | `core/Commands/AppCommand.cs` |
 | How is output dispatched? | `core/Output/AnsiConsoleMarkupOutput.cs`, `MessageFormatterProcessor.cs` |
-| What are the Serilog defaults? | `src/Spectre/CommandLine.Spectre.Serilog/LoggerConfigurationExtensions.cs` |
+| How is Serilog switched on, and what are its defaults? | `src/Spectre/CommandLine.Spectre.Serilog/AppBuilderSerilogExtensions.cs`, `LoggerConfigurationExtensions.cs` |
 | What does ordering guarantee? | `tests/Spectre/CommandLine.Spectre.Tests/AppBuilderTests.cs` |
 | How do I test a command? | `samples/SampleApp/tests/SampleApp.Tests/Commands/` |

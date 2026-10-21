@@ -45,6 +45,22 @@ have been retired.
   markup with their holes escaped.
 - **Breaking:** `IOutput` gains the two `Markup` / `MarkupLine` members, so a
   custom implementation of the interface must add them.
+- **Breaking:** Serilog is opt-in. `Ploch.CommandLine.Spectre` no longer depends
+  on `Ploch.CommandLine.Spectre.Serilog`, and `AppServicesBundle` no longer
+  registers `SerilogConfigurationBundle`, so an application that references only
+  the core package resolves `ILogger<T>` from the host's default providers and
+  writes no log file. To keep the Serilog logging of previous builds, add the
+  Serilog package and opt in on the builder, once:
+  `dotnet add package Ploch.CommandLine.Spectre.Serilog`, then
+  `AppBuilder.Create(args).UseSerilog()` (`using Ploch.CommandLine.Spectre.Serilog;`),
+  with `logName:`, `logPath:`, `template:` and `culture:` as optional arguments.
+  An application that already calls `services.AddSerilog(context.Configuration, ...)`
+  from `ConfigureServices` keeps working and needs no `UseSerilog`; that call is
+  now the only Serilog registration rather than a second one on top of the core
+  bundle's, so the container holds one `Serilog.ILogger` descriptor
+  ([PLO-778](https://linear.app/ploch/issue/PLO-778),
+  [PLO-765](https://linear.app/ploch/issue/PLO-765)). The Serilog package
+  depends on the core package rather than the other way round.
 
 - **Breaking:** `AppCommand<TSettings>.DoExecute` and
   `AsyncAppCommand<TSettings>.DoExecuteAsync` accept a `CancellationToken`.
@@ -114,10 +130,12 @@ have been retired.
   built the host, rendered the host builder's "Build can only be called once"
   error and returned -1; an attempt may build that host and it can only be
   built once, so the executor now says so up front.
-- `Ploch.CommandLine.Spectre` no longer declares the eight `Serilog.*` packages as
-  direct dependencies. They were duplicates of what its `Ploch.CommandLine.Spectre.Serilog`
-  dependency already declares, so the resolved package graph of a consumer is unchanged;
-  only the package's own dependency list is shorter.
+- `Ploch.CommandLine.Spectre` declares no `Serilog.*` package as a dependency.
+  It first dropped the eight direct `Serilog.*` references, which duplicated what
+  its `Ploch.CommandLine.Spectre.Serilog` dependency already declared, and then
+  that dependency itself when Serilog became opt-in (see the breaking entry
+  above); a consumer that wants Serilog restores the same graph by adding the
+  Serilog package.
 
 ### Removed
 
