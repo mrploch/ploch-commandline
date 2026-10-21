@@ -1954,6 +1954,8 @@ public sealed class AppBuilderTests : IDisposable
     // ReSharper disable once ClassNeverInstantiated.Local
     private sealed class ArgumentSettings : CommandSettings
     {
+        // Set by Spectre.Console.Cli through reflection while binding.
+        // ReSharper disable once UnusedAutoPropertyAccessor.Local
         [CommandArgument(0, "<number>")]
         public int Number { get; init; }
     }
