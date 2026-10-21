@@ -1383,6 +1383,27 @@ public sealed class AppBuilderTests : IDisposable
         RecordingExceptionHandler.Exceptions.Should().BeEmpty("requested cancellation is an outcome, not a fault");
     }
 
+    /// <summary>
+    ///     Spectre wraps a failure to construct a command in a <c>CommandRuntimeException</c>. A constructor that
+    ///     observed the requested cancellation and threw is still a requested cancellation, not an input error, so the
+    ///     handler looks through the wrapper.
+    /// </summary>
+    [Fact]
+    public void ConfigureCommandApp_should_exit_with_the_cancellation_exit_code_when_a_command_constructor_reports_requested_cancellation()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var builder = new AppBuilder(new ConsoleAppInfo { Name = "Probe App" }, cancellationTokenSource);
+
+        var exitCode = builder.ConfigureCommandApp(configurator =>
+                              {
+                                  configurator.ConfigureConsole(_console.Console);
+                                  configurator.AddCommand<CancellingConstructorCommand>("cancel");
+                              })
+                              .Run("cancel");
+
+        exitCode.Should().Be((int)ExitCode.Cancelled, "the OperationCanceledException sits inside Spectre's CommandRuntimeException wrapper");
+    }
+
     [Fact]
     public void ConfigureCommandApp_should_honour_a_configured_cancellation_exit_code()
     {
@@ -2007,6 +2028,22 @@ public sealed class AppBuilderTests : IDisposable
             await Task.Yield();
 
             throw new InvalidOperationException("base class command failed");
+        }
+    }
+
+    /// <summary>Cancels the application while being constructed and throws, so Spectre sees a wrapped cancellation.</summary>
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed class CancellingConstructorCommand(CancellationTokenSource cancellationTokenSource) : Command<AcceptingSettings>
+    {
+        private readonly CancellationToken _token = CancelAndThrow(cancellationTokenSource);
+
+        public override int Execute(CommandContext context, AcceptingSettings settings, CancellationToken cancellationToken) => _token.IsCancellationRequested ? 1 : 0;
+
+        private static CancellationToken CancelAndThrow(CancellationTokenSource cancellationTokenSource)
+        {
+            cancellationTokenSource.Cancel();
+
+            throw new OperationCanceledException(cancellationTokenSource.Token);
         }
     }
 

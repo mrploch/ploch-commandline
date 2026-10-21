@@ -770,8 +770,8 @@ the host is being built, or a configuration defect Spectre finds while building 
 model — is reported and exits with `ExitCode.Error` (1), as is an
 `IExceptionHandler` that throws, or that cannot be constructed when the application resolves it
 to handle an exception. A command derived from the base classes constructor-injects the handler,
-so a handler that cannot be constructed stops that command being constructed, which Spectre
-reports as a `CommandRuntimeException` and the application exits 2. Requested cancellation is
+so a handler that cannot be constructed, or is not registered at all, stops that command being
+constructed, which Spectre reports as a `CommandRuntimeException` and the application exits 2. Requested cancellation is
 `ExitCode.Cancelled` (130); only a plain `Spectre.Console.Cli` command can change that, see
 [Cancellation](#12-cancellation).
 

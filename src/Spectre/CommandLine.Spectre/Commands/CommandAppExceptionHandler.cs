@@ -198,9 +198,28 @@ internal sealed class CommandAppExceptionHandler(CancellationToken cancellationT
 
     /// <summary>
     ///     Whether the exception is the cancellation the user asked for. One raised while the application's token is
-    ///     still live is a fault nobody asked for and takes the handler path (PLO-756).
+    ///     still live is a fault nobody asked for and takes the handler path (PLO-756). The chain is walked because
+    ///     Spectre wraps a failure to construct a command in a <see cref="CommandRuntimeException" />, so a constructor
+    ///     that observed the cancellation surfaces here with the <see cref="OperationCanceledException" /> as an inner
+    ///     exception.
     /// </summary>
     /// <param name="exception">The exception Spectre caught.</param>
     /// <returns><see langword="true" /> for an <see cref="OperationCanceledException" /> after the token was cancelled.</returns>
-    private bool IsRequestedCancellation(Exception exception) => exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
+    private bool IsRequestedCancellation(Exception exception)
+    {
+        if (!cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is OperationCanceledException)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

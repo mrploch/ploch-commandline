@@ -1,7 +1,10 @@
 ﻿namespace Ploch.CommandLine.Spectre.Commands;
 
 /// <summary>
-///     Defines a contract for handling exceptions that occur during command execution.
+///     Defines a contract for handling exceptions that occur during command execution, and - through the handler
+///     <see cref="AppBuilder.ConfigureCommandApp" /> installs - a failure before the command runs that is not a parse,
+///     binding or validation failure, such as an exception from a command interceptor or from a command that does not
+///     derive from <see cref="AppCommand{TSettings}" /> or <see cref="AsyncAppCommand{TSettings}" />.
 /// </summary>
 public interface IExceptionHandler
 {
