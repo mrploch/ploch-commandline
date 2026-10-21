@@ -61,6 +61,65 @@ public class MessageFormatterProcessorTests
         writer.Processors.Should().ContainSingle().Which.Should().BeSameAs(processor, "formatting is the writer's job and it needs the processor to do it");
     }
 
+    /// <summary>
+    ///     Of two handlers for the same type the later registration wins. The built-in bundle registers before any
+    ///     consumer <c>ConfigureServices</c> delegate, so this is what lets a consumer replace a built-in writer or
+    ///     formatter; with first-wins their registration was silently ignored.
+    /// </summary>
+    [Fact]
+    public void WriteMessage_should_use_the_later_of_two_writers_registered_for_the_same_type()
+    {
+        var first = new RecordingStringWriter();
+        var second = new RecordingStringWriter();
+        var processor = new MessageFormatterProcessor([], [first, second]);
+
+        var selected = processor.WriteMessage("hello");
+
+        selected.Should().BeSameAs(second);
+        first.Written.Should().BeEmpty("the earlier registration is replaced, not run as well");
+        second.Written.Should().ContainSingle().Which.Should().Be("hello");
+    }
+
+    [Fact]
+    public void GetMessageText_should_use_the_later_of_two_formatters_registered_for_the_same_type()
+    {
+        var processor = new MessageFormatterProcessor([new StringMessageFormatter(), new UpperCasingFormatter()], []);
+
+        processor.GetMessageText("value").Should().Be("VALUE");
+    }
+
+    /// <summary>
+    ///     A string is both an <c>IEnumerable</c> and an <c>IConvertible</c>, and those two types are unrelated, so
+    ///     neither handler is the more derived. That tie still goes to the first registration: a later, unrelated
+    ///     handler is not a replacement for the incumbent.
+    /// </summary>
+    /// <param name="enumerableFirst">Whether the enumerable writer is registered ahead of the convertible writer.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WriteMessage_should_keep_the_first_of_two_unrelated_writers_that_both_accept_the_message(bool enumerableFirst)
+    {
+        var enumerableWriter = new RecordingWriter<System.Collections.IEnumerable>();
+        var convertibleWriter = new RecordingWriter<IConvertible>();
+        IMessageWriter[] writers = enumerableFirst ? [enumerableWriter, convertibleWriter] : [convertibleWriter, enumerableWriter];
+        var processor = new MessageFormatterProcessor([], writers);
+
+        processor.WriteMessage("hello").Should().BeSameAs(writers[0], "neither unrelated type is the more derived, so the earlier registration keeps precedence");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WriteMessage_should_prefer_the_string_writer_over_an_enumerable_writer_for_a_string(bool enumerableFirst)
+    {
+        var stringWriter = new RecordingStringWriter();
+        var enumerableWriter = new RecordingWriter<System.Collections.IEnumerable>();
+        IMessageWriter[] writers = enumerableFirst ? [enumerableWriter, stringWriter] : [stringWriter, enumerableWriter];
+        var processor = new MessageFormatterProcessor([], writers);
+
+        processor.WriteMessage("hello").Should().BeSameAs(stringWriter, "string derives from IEnumerable, so the string writer is the more specific match");
+    }
+
     [Fact]
     public void WriteMessage_should_report_no_writer_for_a_null_message()
     {
@@ -245,5 +304,14 @@ public class MessageFormatterProcessorTests
         public List<string?> Written { get; } = [];
 
         public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) => Written.Add(message);
+    }
+
+    /// <summary>A writer for an arbitrary type that renders nothing, so a selection test can compare instances.</summary>
+    private sealed class RecordingWriter<TMessage> : TypeMessageWriter<TMessage>
+    {
+        public override void Write(TMessage? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null)
+        {
+            // Selection is what is under test, not rendering.
+        }
     }
 }

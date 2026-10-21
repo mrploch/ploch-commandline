@@ -432,15 +432,36 @@ Because `Markup` and `MarkupLine` parse everything they are given, a value that 
 in your source file goes through `Markup.Escape(...)` first, or through the `…Interpolated` overloads,
 which escape it for you.
 
-**`IOutput.Write` dispatches on the type of the message.** A `FormattableString` is rendered as
-interpolated markup, a `string` is written verbatim and an `IRenderable` is rendered by the
-console; anything else is offered to the registered `IMessageWriter`s,
-and the writer whose message type matches receives the message itself along with the
-`IMessageFormatterProcessor`, so the writer decides how the value is formatted. Writing an
-`Exception` therefore renders the full exception through `ExceptionMessageWriter`, and writing a
-collection produces one line per item. Register your own with
-`services.AddMessageWriter<TMessage, TWriter>()` — and format the message inside `Write` rather than
-expecting to be handed formatted text.
+**`IOutput.Write` dispatches on the type of the message.** An `IRenderable` is rendered by the
+console; everything else is offered to the registered `IMessageWriter`s, and the writer whose message
+type is the most derived match receives the message itself along with the
+`IMessageFormatterProcessor`, so the writer decides how the value is formatted. A `string` is written
+verbatim by `StringMessageWriter`, a `FormattableString` is rendered as interpolated markup by
+`FormattableStringMessageWriter`, writing an `Exception` renders the full exception through
+`ExceptionMessageWriter`, and writing a collection produces one line per item. Only a message no
+writer accepts falls back to being written as text, through `IFormattable.ToString` with the
+caller's provider where the type supports it.
+
+Register your own with `services.AddMessageWriter<TMessage, TWriter>()` — and format the message
+inside `Write` rather than expecting to be handed formatted text. Of two writers for the same type
+the later registration wins, and the built-in bundle registers before your `ConfigureServices`
+delegates, so registering a writer for `string` or `FormattableString` replaces the built-in one and
+changes how `Write` and `WriteLine` render that type. A writer takes the `IAnsiConsole` it renders
+to, not `IOutput`, which depends on the writers:
+
+```csharp
+public sealed class QuotingStringWriter(IAnsiConsole console) : TypeMessageWriter<string>
+{
+    public override void Write(string? message, IMessageFormatterProcessor? formatterProcessor = null, IFormatProvider? formatProvider = null) =>
+        console.Write($"\"{message}\"");
+}
+
+AppBuilder.Create(args)
+          .ConfigureServices(services => services.AddMessageWriter<string, QuotingStringWriter>());
+```
+
+`WriteBold`, `WriteError` and their line forms do not go through the writers: they ask the
+formatters for the text, escape it and render it with `Markup`.
 
 ## 7. Composing a multi-level CLI
 
