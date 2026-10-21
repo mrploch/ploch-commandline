@@ -9,7 +9,7 @@ namespace Ploch.CommandLine.Spectre.Output;
 ///     <see cref="MessageFormatterProcessor" /> selects the handler whose message type is the most derived among
 ///     those that accept a message, and of two handlers for the same type it uses the later registration. The
 ///     built-in handlers are registered by the output services bundle before any <c>ConfigureServices</c> delegate
-///     runs, so registering a handler for a type the bundle already covers - <see cref="string" />,
+///     runs, so registering a handler for a type the bundle already covers - such as <see cref="string" />,
 ///     <see cref="FormattableString" />, <see cref="Exception" /> or <see cref="System.Collections.IEnumerable" /> -
 ///     replaces the built-in one for that type.
 /// </remarks>

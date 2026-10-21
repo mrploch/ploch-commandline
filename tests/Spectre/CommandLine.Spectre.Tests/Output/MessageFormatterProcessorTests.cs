@@ -93,14 +93,18 @@ public class MessageFormatterProcessorTests
     ///     neither handler is the more derived. That tie still goes to the first registration: a later, unrelated
     ///     handler is not a replacement for the incumbent.
     /// </summary>
-    [Fact]
-    public void WriteMessage_should_keep_the_first_of_two_unrelated_writers_that_both_accept_the_message()
+    /// <param name="enumerableFirst">Whether the enumerable writer is registered ahead of the convertible writer.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WriteMessage_should_keep_the_first_of_two_unrelated_writers_that_both_accept_the_message(bool enumerableFirst)
     {
         var enumerableWriter = new RecordingWriter<System.Collections.IEnumerable>();
         var convertibleWriter = new RecordingWriter<IConvertible>();
-        var processor = new MessageFormatterProcessor([], [enumerableWriter, convertibleWriter]);
+        IMessageWriter[] writers = enumerableFirst ? [enumerableWriter, convertibleWriter] : [convertibleWriter, enumerableWriter];
+        var processor = new MessageFormatterProcessor([], writers);
 
-        processor.WriteMessage("hello").Should().BeSameAs(enumerableWriter);
+        processor.WriteMessage("hello").Should().BeSameAs(writers[0], "neither unrelated type is the more derived, so the earlier registration keeps precedence");
     }
 
     [Theory]

@@ -19,7 +19,7 @@
   (PLO-784).
 - `MessageFormatterProcessor` selects the later of two writers or formatters
   registered for the same message type. The built-in bundle registers before
-  any `ConfigureServices` delegate, so a consumer registration for `string`,
-  `FormattableString`, `Exception` or `IEnumerable` now takes effect where it
-  was previously ignored. Unrelated types that both accept a message still keep
+  any `ConfigureServices` delegate, so a consumer registration for a type the
+  bundle already covers, such as `string`, `FormattableString`, `Exception` or
+  `IEnumerable`, now takes effect where it was previously ignored. Unrelated types that both accept a message still keep
   the first registration (PLO-784).
