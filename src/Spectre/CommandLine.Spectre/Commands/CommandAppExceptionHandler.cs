@@ -197,14 +197,16 @@ internal sealed class CommandAppExceptionHandler(CancellationToken cancellationT
     }
 
     /// <summary>
-    ///     Whether the exception is the cancellation the user asked for. One raised while the application's token is
-    ///     still live is a fault nobody asked for and takes the handler path (PLO-756). The chain is walked because
-    ///     Spectre wraps a failure to construct a command in a <see cref="CommandRuntimeException" />, so a constructor
-    ///     that observed the cancellation surfaces here with the <see cref="OperationCanceledException" /> as an inner
-    ///     exception.
+    ///     Whether the exception is the cancellation the user asked for: the application's token has cancellation
+    ///     requested, and the exception, or one it wraps, is an <see cref="OperationCanceledException" /> that does not
+    ///     carry a token still live - one with no token, the application's own, or a token cancelled along with it, such
+    ///     as a linked one. One raised while the application's token is still live, or for a token that is, is a fault
+    ///     nobody asked for and takes the handler path (PLO-756). Wrappers are looked through because Spectre wraps a
+    ///     failure to construct a command in a <see cref="CommandRuntimeException" />, and a command may throw an
+    ///     <see cref="AggregateException" />.
     /// </summary>
     /// <param name="exception">The exception Spectre caught.</param>
-    /// <returns><see langword="true" /> for an <see cref="OperationCanceledException" /> after the token was cancelled.</returns>
+    /// <returns><see langword="true" /> when the run was cancelled as requested.</returns>
     private bool IsRequestedCancellation(Exception exception)
     {
         if (!cancellationToken.IsCancellationRequested)
@@ -212,11 +214,29 @@ internal sealed class CommandAppExceptionHandler(CancellationToken cancellationT
             return false;
         }
 
-        for (var current = exception; current is not null; current = current.InnerException)
+        var pending = new Stack<Exception>();
+        pending.Push(exception);
+        while (pending.Count > 0)
         {
-            if (current is OperationCanceledException)
+            var current = pending.Pop();
+            switch (current)
             {
-                return true;
+                case OperationCanceledException cancelled when cancelled.CancellationToken == CancellationToken.None || cancelled.CancellationToken.IsCancellationRequested:
+                    return true;
+                case AggregateException aggregate:
+                    foreach (var inner in aggregate.InnerExceptions)
+                    {
+                        pending.Push(inner);
+                    }
+
+                    break;
+                default:
+                    if (current.InnerException is not null)
+                    {
+                        pending.Push(current.InnerException);
+                    }
+
+                    break;
             }
         }
 
