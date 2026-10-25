@@ -47,17 +47,18 @@ dotnet add package Ploch.CommandLine.Spectre
 dotnet add package Spectre.Console.Cli
 ```
 
-`Ploch.CommandLine.Spectre` is the only Ploch package you need to start. It depends on
-`Ploch.CommandLine.Spectre.Serilog` and registers its `SerilogConfigurationBundle` through
-`AppServicesBundle`, so logging goes through Serilog from the first run;
-[section 13](#13-logging-with-serilog) shows how to configure it. Add the remaining packages as
-you reach the steps that need them:
+`Ploch.CommandLine.Spectre` is the only Ploch package you need to start. It brings no logging
+provider of its own: `ILogger<T>` resolves from the host's defaults (console, debug and event
+source, plus the Windows event log on Windows), and the core package creates no application log
+file; those providers write only where they are configured to. Serilog is opt-in;
+[section 13](#13-logging-with-serilog) shows the one call that turns it on. Add the remaining packages as you reach the steps that need
+them:
 
 | Package | Adds |
 |---|---|
 | `Ploch.CommandLine.Spectre` | `AppBuilder`, the command base classes, `IOutput`, exit codes, token processing |
 | `Ploch.CommandLine.Spectre.FluentValidation` | FluentValidation-backed settings validation |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog wiring with the Spectre.Console console sink and two rolling log files — installed with the core package |
+| `Ploch.CommandLine.Spectre.Serilog` | Serilog wiring with the Spectre.Console console sink and two rolling log files — opt-in, through `UseSerilog` |
 | `Ploch.CommandLine.UseCases` | `IResultUseCase<,>` and `UseCaseAsyncCommand<,,,>` |
 
 ## 3. Bootstrap the application with AppBuilder
@@ -851,21 +852,30 @@ already-cancelled token; to run again after cancellation, start from a new build
 
 ## 13. Logging with Serilog
 
-`Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with the
-Spectre.Console console sink and two rolling files — everything, and warnings and above. The
-core package registers it with log files named after the process; call `AddSerilog` to choose
-your own name and directory:
+Serilog is opt-in. Without it the host's default providers serve `ILogger<T>` and the core package
+creates no application log file. `Ploch.CommandLine.Spectre.Serilog` configures Serilog as the logging provider, with the
+Spectre.Console console sink and two rolling files — everything, and warnings and above. Add the
+package and call `UseSerilog` on the builder, once; the log files are named after the process
+unless you choose a name and directory:
+
+```bash
+dotnet add package Ploch.CommandLine.Spectre.Serilog
+```
 
 ```csharp
+using Ploch.CommandLine.Spectre;
 using Ploch.CommandLine.Spectre.Serilog;
 
-.ConfigureServices((context, services) =>
-{
-    services.AddSerilog(context.Configuration,
-                        logName: "sample",
-                        logPath: Path.Combine(AppContext.BaseDirectory, "logs"));
-})
+using var appBuilder = AppBuilder.Create(args)
+                                 .UseSerilog(logName: "sample",
+                                             logPath: Path.Combine(AppContext.BaseDirectory, "logs"));
 ```
+
+`UseSerilog` queues `services.AddSerilog(context.Configuration, ...)` through `ConfigureServices`.
+An application that already makes that call itself needs no `UseSerilog` as well — the two
+together would register Serilog twice — but it must now reference
+`Ploch.CommandLine.Spectre.Serilog` directly, because the package no longer arrives through the
+core package.
 
 Levels come from the `Serilog` section of `appsettings.json`:
 
@@ -882,7 +892,7 @@ Levels come from the `Serilog` section of `appsettings.json`:
 
 Both log files are written with `CultureInfo.InvariantCulture`, so numbers and dates in them read the
 same on every machine, whatever its locale. If you prefer locale-formatted values in the files, pass
-`culture: System.Globalization.CultureInfo.CurrentCulture` to `AddSerilog`. Console output is not
+`culture: System.Globalization.CultureInfo.CurrentCulture` to `UseSerilog`. Console output is not
 affected.
 
 Inject `ILogger<TCommand>` into a command and use it for the operator's record, keeping `IOutput`

@@ -1,8 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ploch.CommandLine.Spectre.Commands;
-using Ploch.CommandLine.Spectre.Serilog;
 using Ploch.Common.DependencyInjection;
 using Spectre.Console;
 
@@ -12,15 +11,18 @@ namespace Ploch.CommandLine.Spectre.Configuration;
 ///     A services bundle that configures essential services for a Spectre.Console-based command-line application.
 /// </summary>
 /// <remarks>
-///     This bundle registers Spectre.Console components, logging services, and command-related handlers
-///     to provide a complete foundation for command-line applications.
+///     This bundle registers Spectre.Console components, the logging services and command-related handlers
+///     to provide a complete foundation for command-line applications. It does not choose a logging provider:
+///     an application built through <see cref="AppBuilder" /> logs through the providers
+///     <c>Host.CreateDefaultBuilder</c> installs (console, debug and event source), and Serilog is opt-in
+///     through the <c>Ploch.CommandLine.Spectre.Serilog</c> package.
 /// </remarks>
 public class AppServicesBundle : ConfigurableServicesBundle
 {
     /// <summary>
-    ///     Gets the bundles registered before this one — Serilog configuration and the output services.
+    ///     Gets the bundles registered before this one — the output services.
     /// </summary>
-    protected override IEnumerable<IServicesBundle>? Dependencies => [ new SerilogConfigurationBundle(), new OutputServicesBundle() ];
+    protected override IEnumerable<IServicesBundle>? Dependencies => [ new OutputServicesBundle() ];
 
     /// <summary>
     ///     Configures the service collection with required services for a Spectre.Console-based command-line application.
@@ -29,11 +31,12 @@ public class AppServicesBundle : ConfigurableServicesBundle
     /// <remarks>
     ///     This method registers:
     ///     - Spectre.Console input, cursor, exclusivity mode, and profile as singletons
-    ///     - Serilog configuration through SerilogConfigurationBundle
     ///     - CommandArgumentsRootProcessor and the TokensArgumentsProcessor implementation of ICommandSettingsProcessor
     ///       as transient services, so each resolution receives a fresh instance
     ///     - Command settings validation and exception handling services as singletons
-    ///     - The logging services, with Serilog as the provider through the dependency bundle.
+    ///     - The logging services, so that <c>ILogger&lt;T&gt;</c> resolves even when the bundle is used outside a host.
+    ///       No provider is added here: the host supplies its defaults, and Serilog is registered only by the
+    ///       <c>Ploch.CommandLine.Spectre.Serilog</c> package when the application opts in.
     /// </remarks>
     protected override void Configure(IConfiguration configuration)
     {
@@ -53,8 +56,9 @@ public class AppServicesBundle : ConfigurableServicesBundle
                 .AddSingleton(typeof(ICommandSettingsValidator<>), typeof(CommandSettingsValidator<>))
                 .AddSingleton<IExceptionHandler, DefaultExceptionHandler>();
 
-        // No AddConsole() here: SerilogConfigurationBundle already installs the Spectre.Console sink, and adding the
-        // Microsoft console logger as well duplicated every log line on the terminal.
+        // Only the logging infrastructure, no provider. Inside AppBuilder the host has already added its default
+        // providers and this call is a no-op; outside a host it makes ILogger<T> resolvable. A provider chosen here
+        // would be imposed on every consumer, which is what registering Serilog from this bundle used to do (PLO-778).
         Services.AddLogging();
     }
 }

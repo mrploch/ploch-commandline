@@ -34,6 +34,11 @@
     <ProjectReference Include="..\..\..\..\ploch-common\src\Common\Ploch.Common.csproj" />
   </ItemGroup>
 
+  <!-- The core package is a dependency of this one, never the other way round: Serilog is opt-in (PLO-778). -->
+  <ItemGroup>
+    <ProjectReference Include="..\CommandLine.Spectre\Ploch.CommandLine.Spectre.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Update="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>

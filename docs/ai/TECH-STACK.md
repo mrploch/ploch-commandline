@@ -98,11 +98,11 @@ verification date; "newer" is the latest stable on nuget.org that day.
 | Spectre.Console.Cli | 0.53.1 | S/Spectre.Console | core | 0.57.2 |
 | Microsoft.Extensions.Hosting | 10.0.5 | S/MicrosoftExtensions.Net9 | core | 10.0.12 |
 | Microsoft.Extensions.Configuration.Json | 10.0.5 | S/MicrosoftExtensions.Net9 | core | 10.0.12 |
-| Serilog | 4.3.0 | S/Serilog.Logging | Serilog (core transitively) | 4.4.0 |
-| Serilog.Settings.Configuration | 10.0.0 | S/Serilog.Logging | Serilog (core transitively) | 10.0.1 |
-| Serilog.Sinks.SpectreConsole | 0.3.3 | S/Serilog.Logging | Serilog (core transitively) | 0.4.0 |
-| Serilog.Sinks.File, .Sinks.Console, .Enrichers.Thread | 7.0.0, 6.1.1, 4.0.0 | S/Serilog.Logging | Serilog (core transitively) | current |
-| Serilog.Extensions.Hosting, .Extensions.Logging | 10.0.0 | S/Serilog.Logging | Serilog (core transitively) | current |
+| Serilog | 4.3.0 | S/Serilog.Logging | Serilog | 4.4.0 |
+| Serilog.Settings.Configuration | 10.0.0 | S/Serilog.Logging | Serilog | 10.0.1 |
+| Serilog.Sinks.SpectreConsole | 0.3.3 | S/Serilog.Logging | Serilog | 0.4.0 |
+| Serilog.Sinks.File, .Sinks.Console, .Enrichers.Thread | 7.0.0, 6.1.1, 4.0.0 | S/Serilog.Logging | Serilog | current |
+| Serilog.Extensions.Hosting, .Extensions.Logging | 10.0.0 | S/Serilog.Logging | Serilog | current |
 | FluentValidation.DependencyInjectionExtensions | 12.1.1 | L | FluentValidation | current |
 | Ardalis.Result | 10.1.0 | S/Common | UseCases | current |
 | Ploch.Common, Ploch.Common.DependencyInjection | 4.0.47 | S/Ploch | core, Serilog, FluentValidation | current |
