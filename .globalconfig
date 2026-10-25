@@ -1,0 +1,15 @@
+# Global analyser configuration. The SDK discovers this file from the directories above each
+# project's sources and applies it to every compilation, independent of the file a diagnostic is
+# reported in.
+#
+# RS0016 (public API not in the baseline) and RS0017 (baseline entry with no matching API) are
+# errors in their own right rather than warnings promoted by TreatWarningsAsErrors (PLO-788). The
+# SonarScanner for .NET build step in build-dotnet.yml sets TreatWarningsAsErrors=false and clears
+# WarningsAsErrors (SonarQube.Integration.targets, "OverrideRoslynCodeAnalysisProperties"), so a
+# warning-level rule would let baseline drift through CI (PLO-823). A .editorconfig section cannot
+# do this for RS0017, which is reported inside PublicAPI.Unshipped.txt rather than in a source file;
+# only a global config reaches it.
+is_global = true
+
+dotnet_diagnostic.RS0016.severity = error
+dotnet_diagnostic.RS0017.severity = error

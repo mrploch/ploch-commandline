@@ -1,0 +1,248 @@
+#nullable enable
+abstract Ploch.CommandLine.Spectre.Commands.AppCommand<TSettings>.DoExecute(Spectre.Console.Cli.CommandContext! context, TSettings! settings, System.Threading.CancellationToken cancellationToken) -> Ploch.CommandLine.Spectre.Commands.ExitCode
+abstract Ploch.CommandLine.Spectre.Commands.AsyncAppCommand<TSettings>.DoExecuteAsync(Spectre.Console.Cli.CommandContext! context, TSettings! settings, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Ploch.CommandLine.Spectre.Commands.ExitCode>!
+abstract Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>.DoProcessArguments() -> void
+abstract Ploch.CommandLine.Spectre.Output.TypeMessageFormatter<TMessage>.GetMessage(TMessage? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+abstract Ploch.CommandLine.Spectre.Output.TypeMessageWriter<TMessage>.Write(TMessage? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+const Ploch.CommandLine.Spectre.EnvironmentVariableNames.DevRuntimeVariablePrefix = "DEV_RUNTIME" -> string!
+const Ploch.CommandLine.Spectre.EnvironmentVariableNames.PauseBeforeExit = "DEV_RUNTIME_CONSOLE_EXIT_PAUSE" -> string!
+const Ploch.CommandLine.Spectre.EnvironmentVariableNames.Separator = "_" -> string!
+override Ploch.CommandLine.Spectre.Commands.AppCommand<TSettings>.Execute(Spectre.Console.Cli.CommandContext! context, TSettings! settings, System.Threading.CancellationToken cancellationToken) -> int
+override Ploch.CommandLine.Spectre.Commands.AppCommand<TSettings>.Validate(Spectre.Console.Cli.CommandContext! context, TSettings! settings) -> Spectre.Console.ValidationResult!
+override Ploch.CommandLine.Spectre.Commands.AsyncAppCommand<TSettings>.ExecuteAsync(Spectre.Console.Cli.CommandContext! context, TSettings! settings, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+override Ploch.CommandLine.Spectre.Commands.AsyncAppCommand<TSettings>.Validate(Spectre.Console.Cli.CommandContext! context, TSettings! settings) -> Spectre.Console.ValidationResult!
+override Ploch.CommandLine.Spectre.Commands.TokenInfo.Equals(object? obj) -> bool
+override Ploch.CommandLine.Spectre.Commands.TokenInfo.GetHashCode() -> int
+override Ploch.CommandLine.Spectre.Commands.TokenInfo.ToString() -> string!
+override Ploch.CommandLine.Spectre.Commands.TokensArgumentsProcessor.DoProcessArguments() -> void
+override Ploch.CommandLine.Spectre.Commands.TokensArgumentsProcessor.RequiredAttributes.get -> System.Type![]!
+override Ploch.CommandLine.Spectre.Configuration.AppServicesBundle.Configure(Microsoft.Extensions.Configuration.IConfiguration! configuration) -> void
+override Ploch.CommandLine.Spectre.Configuration.AppServicesBundle.Dependencies.get -> System.Collections.Generic.IEnumerable<Ploch.Common.DependencyInjection.IServicesBundle!>?
+override Ploch.CommandLine.Spectre.Configuration.OutputServicesBundle.DoConfigure() -> void
+override Ploch.CommandLine.Spectre.Output.BaseExceptionMessageFormatter<TException>.GetMessage(TException? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+override Ploch.CommandLine.Spectre.Output.ConvertibleMessageFormatter.GetMessage(System.IConvertible? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+override Ploch.CommandLine.Spectre.Output.EnumerableMessageFormatter.GetMessage(System.Collections.IEnumerable? enumerable, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+override Ploch.CommandLine.Spectre.Output.EnumerableMessageWriter.Write(System.Collections.IEnumerable? enumerable, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+override Ploch.CommandLine.Spectre.Output.EnumerableMessageWriter.WritesLineTerminator.get -> bool
+override Ploch.CommandLine.Spectre.Output.ExceptionMessageWriter.Write(System.Exception? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+override Ploch.CommandLine.Spectre.Output.ExceptionMessageWriter.WritesLineTerminator.get -> bool
+override Ploch.CommandLine.Spectre.Output.FormattableStringMessageWriter.Write(System.FormattableString? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+override Ploch.CommandLine.Spectre.Output.StringMessageFormatter.GetMessage(string? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+override Ploch.CommandLine.Spectre.Output.StringMessageWriter.Write(string? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+override Ploch.CommandLine.Spectre.Output.Win32ExceptionMessageFormatter.GetExceptionText(System.ComponentModel.Win32Exception? exception) -> string!
+Ploch.CommandLine.Spectre.AppBuilder
+Ploch.CommandLine.Spectre.AppBuilder.AddServicesBundle<TServicesBundle>() -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.AppBuilder(Ploch.CommandLine.Spectre.ConsoleAppInfo! appInfo, System.Threading.CancellationTokenSource! cancellationTokenSource) -> void
+Ploch.CommandLine.Spectre.AppBuilder.ConfigureAppConfiguration(System.Action<Microsoft.Extensions.Configuration.IConfigurationBuilder!>! appConfigurationConfigurator) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.ConfigureAppConfiguration(System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Configuration.IConfigurationBuilder!>! appConfigurationConfigurator) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.ConfigureCommandApp(System.Action<Spectre.Console.Cli.IConfigurator!>! configurator) -> Ploch.CommandLine.Spectre.ICommandAppExecutor!
+Ploch.CommandLine.Spectre.AppBuilder.ConfigureHost(System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>! configureDelegate) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.ConfigureServices(System.Action<Microsoft.Extensions.DependencyInjection.IServiceCollection!>! servicesConfigurator) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.ConfigureServices(System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>! servicesConfigurator) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.Dispose() -> void
+Ploch.CommandLine.Spectre.AppBuilder.ShowBanner(bool show) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.WithDescription(string! description) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.WithName(string! name) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.AppBuilder.WithVersion(System.Version! version) -> Ploch.CommandLine.Spectre.AppBuilder!
+Ploch.CommandLine.Spectre.CommandAppExecutor
+Ploch.CommandLine.Spectre.CommandAppExecutor.CommandAppExecutor(Spectre.Console.Cli.ICommandApp! commandApp, System.Threading.CancellationToken cancellationToken) -> void
+Ploch.CommandLine.Spectre.CommandAppExecutor.Run(params System.Collections.Generic.IEnumerable<string!>! args) -> int
+Ploch.CommandLine.Spectre.CommandAppExecutor.RunAsync(params System.Collections.Generic.IEnumerable<string!>! args) -> System.Threading.Tasks.Task<int>!
+Ploch.CommandLine.Spectre.Commands.AppCommand<TSettings>
+Ploch.CommandLine.Spectre.Commands.AppCommand<TSettings>.AppCommand(Ploch.CommandLine.Spectre.Commands.CommandArgumentsRootProcessor! settingsProcessor, Ploch.CommandLine.Spectre.Commands.ICommandSettingsValidator<TSettings!>! validator, Ploch.CommandLine.Spectre.Commands.IExceptionHandler! exceptionHandler, Ploch.CommandLine.Spectre.Output.IOutput! output) -> void
+Ploch.CommandLine.Spectre.Commands.AppCommand<TSettings>.Output.get -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Commands.AsyncAppCommand<TSettings>
+Ploch.CommandLine.Spectre.Commands.AsyncAppCommand<TSettings>.AsyncAppCommand(Ploch.CommandLine.Spectre.Commands.CommandArgumentsRootProcessor! settingsProcessor, Ploch.CommandLine.Spectre.Commands.ICommandSettingsValidator<TSettings!>! validator, Ploch.CommandLine.Spectre.Commands.IExceptionHandler! exceptionHandler, Ploch.CommandLine.Spectre.Output.IOutput! output) -> void
+Ploch.CommandLine.Spectre.Commands.AsyncAppCommand<TSettings>.Output.get -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Commands.CommandArgumentsRootProcessor
+Ploch.CommandLine.Spectre.Commands.CommandArgumentsRootProcessor.CommandArgumentsRootProcessor(System.Collections.Generic.IEnumerable<Ploch.CommandLine.Spectre.Commands.ICommandSettingsProcessor!>! processors) -> void
+Ploch.CommandLine.Spectre.Commands.CommandArgumentsRootProcessor.ProcessArguments(Spectre.Console.Cli.CommandSettings! arguments) -> void
+Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>
+Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>.CommandSettingsPropertyTypeProcessor() -> void
+Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>.ProcessArguments(Spectre.Console.Cli.CommandSettings! arguments) -> void
+Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>.Properties.get -> System.Collections.Generic.IDictionary<string!, Ploch.Common.Linq.OwnedPropertyInfo<TProperty>!>!
+Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>.SupportedPropertyType.get -> System.Type!
+Ploch.CommandLine.Spectre.Commands.CommandSettingsValidator<TSettings>
+Ploch.CommandLine.Spectre.Commands.CommandSettingsValidator<TSettings>.CommandSettingsValidator() -> void
+Ploch.CommandLine.Spectre.Commands.DefaultExceptionHandler
+Ploch.CommandLine.Spectre.Commands.DefaultExceptionHandler.DefaultExceptionHandler(Spectre.Console.IAnsiConsole! console, Ploch.CommandLine.Spectre.Output.IOutput! output) -> void
+Ploch.CommandLine.Spectre.Commands.DefaultExceptionHandler.HandleException(System.Exception! ex) -> int
+Ploch.CommandLine.Spectre.Commands.ExceptionHandlerFailedException
+Ploch.CommandLine.Spectre.Commands.ExceptionHandlerFailedException.ExceptionHandlerFailedException() -> void
+Ploch.CommandLine.Spectre.Commands.ExceptionHandlerFailedException.ExceptionHandlerFailedException(string! message) -> void
+Ploch.CommandLine.Spectre.Commands.ExceptionHandlerFailedException.ExceptionHandlerFailedException(string! message, System.Exception? innerException) -> void
+Ploch.CommandLine.Spectre.Commands.ExceptionHandlerFailedException.ExceptionHandlerFailedException(System.Exception! original, System.Exception! handlerException) -> void
+Ploch.CommandLine.Spectre.Commands.ExceptionHandlerFailedException.Original.get -> System.Exception?
+Ploch.CommandLine.Spectre.Commands.ExitCode
+Ploch.CommandLine.Spectre.Commands.ExitCode.Cancelled = 130 -> Ploch.CommandLine.Spectre.Commands.ExitCode
+Ploch.CommandLine.Spectre.Commands.ExitCode.Error = 1 -> Ploch.CommandLine.Spectre.Commands.ExitCode
+Ploch.CommandLine.Spectre.Commands.ExitCode.InvalidInput = 2 -> Ploch.CommandLine.Spectre.Commands.ExitCode
+Ploch.CommandLine.Spectre.Commands.ExitCode.Success = 0 -> Ploch.CommandLine.Spectre.Commands.ExitCode
+Ploch.CommandLine.Spectre.Commands.ICommandSettingsProcessor
+Ploch.CommandLine.Spectre.Commands.ICommandSettingsProcessor.ProcessArguments(Spectre.Console.Cli.CommandSettings! arguments) -> void
+Ploch.CommandLine.Spectre.Commands.ICommandSettingsValidator<TSettings>
+Ploch.CommandLine.Spectre.Commands.ICommandSettingsValidator<TSettings>.Validate(Spectre.Console.Cli.CommandContext! context, TSettings! settings) -> Spectre.Console.ValidationResult!
+Ploch.CommandLine.Spectre.Commands.IExceptionHandler
+Ploch.CommandLine.Spectre.Commands.IExceptionHandler.HandleException(System.Exception! ex) -> int
+Ploch.CommandLine.Spectre.Commands.SupportsTokensAttribute
+Ploch.CommandLine.Spectre.Commands.SupportsTokensAttribute.PathSafe.get -> bool
+Ploch.CommandLine.Spectre.Commands.SupportsTokensAttribute.SupportsTokensAttribute(bool pathSafe = true) -> void
+Ploch.CommandLine.Spectre.Commands.TokenInfo
+Ploch.CommandLine.Spectre.Commands.TokenInfo.Deconstruct(out string! TokenName, out System.Func<string!>! ValueProvider, out System.Func<string!>! PathSafeValueProvider) -> void
+Ploch.CommandLine.Spectre.Commands.TokenInfo.PathSafeValueProvider.get -> System.Func<string!>!
+Ploch.CommandLine.Spectre.Commands.TokenInfo.PathSafeValueProvider.init -> void
+Ploch.CommandLine.Spectre.Commands.TokenInfo.TokenInfo(Ploch.CommandLine.Spectre.Commands.TokenInfo! original) -> void
+Ploch.CommandLine.Spectre.Commands.TokenInfo.TokenInfo(string! TokenName, System.Func<string!>! ValueProvider, System.Func<string!>! PathSafeValueProvider) -> void
+Ploch.CommandLine.Spectre.Commands.TokenInfo.TokenName.get -> string!
+Ploch.CommandLine.Spectre.Commands.TokenInfo.TokenName.init -> void
+Ploch.CommandLine.Spectre.Commands.TokenInfo.ValueProvider.get -> System.Func<string!>!
+Ploch.CommandLine.Spectre.Commands.TokenInfo.ValueProvider.init -> void
+Ploch.CommandLine.Spectre.Commands.TokensArgumentsProcessor
+Ploch.CommandLine.Spectre.Commands.TokensArgumentsProcessor.TokensArgumentsProcessor() -> void
+Ploch.CommandLine.Spectre.Configuration.AppServicesBundle
+Ploch.CommandLine.Spectre.Configuration.AppServicesBundle.AppServicesBundle() -> void
+Ploch.CommandLine.Spectre.Configuration.OutputServicesBundle
+Ploch.CommandLine.Spectre.Configuration.OutputServicesBundle.OutputServicesBundle() -> void
+Ploch.CommandLine.Spectre.ConsoleAppInfo
+Ploch.CommandLine.Spectre.ConsoleAppInfo.AppDescriptionColor.get -> Spectre.Console.Color
+Ploch.CommandLine.Spectre.ConsoleAppInfo.AppDescriptionColor.set -> void
+Ploch.CommandLine.Spectre.ConsoleAppInfo.AppNameColor.get -> Spectre.Console.Color
+Ploch.CommandLine.Spectre.ConsoleAppInfo.AppNameColor.set -> void
+Ploch.CommandLine.Spectre.ConsoleAppInfo.AppNameInfoColor.get -> Spectre.Console.Color
+Ploch.CommandLine.Spectre.ConsoleAppInfo.AppNameInfoColor.set -> void
+Ploch.CommandLine.Spectre.ConsoleAppInfo.ConsoleAppInfo(params System.Collections.Generic.IEnumerable<string!>? args) -> void
+Ploch.CommandLine.Spectre.ConsoleAppInfo.ShouldShowBanner.get -> bool
+Ploch.CommandLine.Spectre.ConsoleAppInfo.ShouldShowBanner.set -> void
+Ploch.CommandLine.Spectre.ConsoleAppInfoExtensions
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeRegistrar
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeRegistrar.Build() -> Spectre.Console.Cli.ITypeResolver!
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeRegistrar.DependencyInjectionTypeRegistrar(Microsoft.Extensions.Hosting.IHostBuilder! builder) -> void
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeRegistrar.Register(System.Type! service, System.Type! implementation) -> void
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeRegistrar.RegisterInstance(System.Type! service, object! implementation) -> void
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeRegistrar.RegisterLazy(System.Type! service, System.Func<object!>? factory) -> void
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeResolver
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeResolver.DependencyInjectionTypeResolver(Microsoft.Extensions.Hosting.IHost! provider) -> void
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeResolver.Dispose() -> void
+Ploch.CommandLine.Spectre.DependencyInjection.DependencyInjectionTypeResolver.Resolve(System.Type? type) -> object?
+Ploch.CommandLine.Spectre.EnvironmentSettings
+Ploch.CommandLine.Spectre.EnvironmentSettings.DevRuntimeVariables.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
+Ploch.CommandLine.Spectre.EnvironmentSettings.EnvironmentSettings(bool isDebugging, bool pauseBeforeExit, System.Collections.Generic.IReadOnlyDictionary<string!, string?>! devRuntimeVariables) -> void
+Ploch.CommandLine.Spectre.EnvironmentSettings.IsDebugging.get -> bool
+Ploch.CommandLine.Spectre.EnvironmentSettings.PauseBeforeExit.get -> bool
+Ploch.CommandLine.Spectre.EnvironmentSettingsLoader
+Ploch.CommandLine.Spectre.EnvironmentSettingsLoader.EnvironmentSettingsLoader() -> void
+Ploch.CommandLine.Spectre.EnvironmentSettingsLoader.Load(System.EnvironmentVariableTarget target = System.EnvironmentVariableTarget.Process) -> Ploch.CommandLine.Spectre.EnvironmentSettings!
+Ploch.CommandLine.Spectre.EnvironmentVariableNames
+Ploch.CommandLine.Spectre.ICommandAppExecutor
+Ploch.CommandLine.Spectre.ICommandAppExecutor.Run(params System.Collections.Generic.IEnumerable<string!>! args) -> int
+Ploch.CommandLine.Spectre.ICommandAppExecutor.RunAsync(params System.Collections.Generic.IEnumerable<string!>! args) -> System.Threading.Tasks.Task<int>!
+Ploch.CommandLine.Spectre.IEnvironmentSettingsLoader
+Ploch.CommandLine.Spectre.IEnvironmentSettingsLoader.Load(System.EnvironmentVariableTarget target = System.EnvironmentVariableTarget.Process) -> Ploch.CommandLine.Spectre.EnvironmentSettings!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.AnsiConsoleMarkupOutput(Spectre.Console.IAnsiConsole! console, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor! formatterProcessor) -> void
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.EndLine() -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.Markup(string! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.MarkupInterpolated(System.FormattableString! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.MarkupLine(string! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.MarkupLineInterpolated(System.FormattableString! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.Write(Spectre.Console.Rendering.IRenderable! renderable) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.Write<TMessage>(TMessage message, System.IFormatProvider? format = null) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.WriteBold<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.WriteBoldLine<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.WriteError<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.WriteErrorLine<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.WriteException<TException>(TException? exception) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.WriteLine() -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.AnsiConsoleMarkupOutput.WriteLine<TMessage>(TMessage message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.BaseExceptionMessageFormatter<TException>
+Ploch.CommandLine.Spectre.Output.BaseExceptionMessageFormatter<TException>.BaseExceptionMessageFormatter() -> void
+Ploch.CommandLine.Spectre.Output.ConvertibleMessageFormatter
+Ploch.CommandLine.Spectre.Output.ConvertibleMessageFormatter.ConvertibleMessageFormatter() -> void
+Ploch.CommandLine.Spectre.Output.EnumerableMessageFormatter
+Ploch.CommandLine.Spectre.Output.EnumerableMessageFormatter.EnumerableMessageFormatter() -> void
+Ploch.CommandLine.Spectre.Output.EnumerableMessageWriter
+Ploch.CommandLine.Spectre.Output.EnumerableMessageWriter.EnumerableMessageWriter(Spectre.Console.IAnsiConsole! output) -> void
+Ploch.CommandLine.Spectre.Output.ExceptionMessageFormatter
+Ploch.CommandLine.Spectre.Output.ExceptionMessageFormatter.ExceptionMessageFormatter() -> void
+Ploch.CommandLine.Spectre.Output.ExceptionMessageWriter
+Ploch.CommandLine.Spectre.Output.ExceptionMessageWriter.ExceptionMessageWriter(Spectre.Console.IAnsiConsole! output) -> void
+Ploch.CommandLine.Spectre.Output.FormattableStringMessageWriter
+Ploch.CommandLine.Spectre.Output.FormattableStringMessageWriter.FormattableStringMessageWriter(Spectre.Console.IAnsiConsole! output) -> void
+Ploch.CommandLine.Spectre.Output.IMessageFormatter
+Ploch.CommandLine.Spectre.Output.IMessageFormatter.GetMessage(object? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor! formatterProcessor, System.IFormatProvider? formatProvider = null) -> string!
+Ploch.CommandLine.Spectre.Output.IMessageFormatter<TMessage>
+Ploch.CommandLine.Spectre.Output.IMessageFormatter<TMessage>.GetMessage(object? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+Ploch.CommandLine.Spectre.Output.IMessageFormatter<TMessage>.GetMessage(TMessage? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor
+Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor.GetMessageText(System.FormattableString? message, string? markupTag = null, System.IFormatProvider? formatProvider = null) -> System.FormattableString!
+Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor.GetMessageText<TMessage>(TMessage? message, string? markupTag = null, System.IFormatProvider? formatProvider = null) -> string?
+Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor.WriteMessage<TMessage>(TMessage message, System.IFormatProvider? formatProvider = null) -> Ploch.CommandLine.Spectre.Output.IMessageWriter?
+Ploch.CommandLine.Spectre.Output.IMessageHandler
+Ploch.CommandLine.Spectre.Output.IMessageHandler.CanHandle(object? message) -> bool
+Ploch.CommandLine.Spectre.Output.IMessageHandler.MessageType.get -> System.Type!
+Ploch.CommandLine.Spectre.Output.IMessageWriter
+Ploch.CommandLine.Spectre.Output.IMessageWriter.Write(object? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+Ploch.CommandLine.Spectre.Output.IMessageWriter.WritesLineTerminator.get -> bool
+Ploch.CommandLine.Spectre.Output.IMessageWriter<TMessage>
+Ploch.CommandLine.Spectre.Output.IMessageWriter<TMessage>.CanHandle(object? message) -> bool
+Ploch.CommandLine.Spectre.Output.IMessageWriter<TMessage>.MessageType.get -> System.Type!
+Ploch.CommandLine.Spectre.Output.IMessageWriter<TMessage>.Write(TMessage? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+Ploch.CommandLine.Spectre.Output.IOutput
+Ploch.CommandLine.Spectre.Output.IOutput.EndLine() -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.Markup(string! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.MarkupInterpolated(System.FormattableString! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.MarkupLine(string! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.MarkupLineInterpolated(System.FormattableString! value) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.Write(Spectre.Console.Rendering.IRenderable! renderable) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.Write<TMessage>(TMessage message, System.IFormatProvider? format = null) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.WriteBold<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.WriteBoldLine<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.WriteError<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.WriteErrorLine<TMessage>(TMessage? message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.WriteException<TException>(TException? exception) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.WriteLine() -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.IOutput.WriteLine<TMessage>(TMessage message) -> Ploch.CommandLine.Spectre.Output.IOutput!
+Ploch.CommandLine.Spectre.Output.MessageFormatterProcessor
+Ploch.CommandLine.Spectre.Output.MessageFormatterProcessor.GetMessageText(System.FormattableString? message, string? markupTag = null, System.IFormatProvider? formatProvider = null) -> System.FormattableString!
+Ploch.CommandLine.Spectre.Output.MessageFormatterProcessor.GetMessageText<TMessage>(TMessage? message, string? markupTag = null, System.IFormatProvider? formatProvider = null) -> string?
+Ploch.CommandLine.Spectre.Output.MessageFormatterProcessor.MessageFormatterProcessor(System.Collections.Generic.IEnumerable<Ploch.CommandLine.Spectre.Output.IMessageFormatter!>! formatters, System.Collections.Generic.IEnumerable<Ploch.CommandLine.Spectre.Output.IMessageWriter!>! writers) -> void
+Ploch.CommandLine.Spectre.Output.MessageFormatterProcessor.WriteMessage<TMessage>(TMessage? message, System.IFormatProvider? formatProvider = null) -> Ploch.CommandLine.Spectre.Output.IMessageWriter?
+Ploch.CommandLine.Spectre.Output.ServiceCollectionOutputExtensions
+Ploch.CommandLine.Spectre.Output.StringMessageFormatter
+Ploch.CommandLine.Spectre.Output.StringMessageFormatter.StringMessageFormatter() -> void
+Ploch.CommandLine.Spectre.Output.StringMessageWriter
+Ploch.CommandLine.Spectre.Output.StringMessageWriter.StringMessageWriter(Spectre.Console.IAnsiConsole! console) -> void
+Ploch.CommandLine.Spectre.Output.TypeMessageFormatter<TMessage>
+Ploch.CommandLine.Spectre.Output.TypeMessageFormatter<TMessage>.GetMessage(object? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> string!
+Ploch.CommandLine.Spectre.Output.TypeMessageFormatter<TMessage>.TypeMessageFormatter() -> void
+Ploch.CommandLine.Spectre.Output.TypeMessageHandler<TMessage>
+Ploch.CommandLine.Spectre.Output.TypeMessageHandler<TMessage>.TypeMessageHandler() -> void
+Ploch.CommandLine.Spectre.Output.TypeMessageWriter<TMessage>
+Ploch.CommandLine.Spectre.Output.TypeMessageWriter<TMessage>.TypeMessageWriter() -> void
+Ploch.CommandLine.Spectre.Output.TypeMessageWriter<TMessage>.Write(object? message, Ploch.CommandLine.Spectre.Output.IMessageFormatterProcessor? formatterProcessor = null, System.IFormatProvider? formatProvider = null) -> void
+Ploch.CommandLine.Spectre.Output.Win32ExceptionMessageFormatter
+Ploch.CommandLine.Spectre.Output.Win32ExceptionMessageFormatter.Win32ExceptionMessageFormatter() -> void
+static Ploch.CommandLine.Spectre.AppBuilder.Create(params System.Collections.Generic.IEnumerable<string!>! args) -> Ploch.CommandLine.Spectre.AppBuilder!
+static Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>.GetAttribute<TAttribute>(System.Reflection.PropertyInfo! property, bool inherit = true) -> TAttribute!
+static Ploch.CommandLine.Spectre.Commands.TokenInfo.operator !=(Ploch.CommandLine.Spectre.Commands.TokenInfo? left, Ploch.CommandLine.Spectre.Commands.TokenInfo? right) -> bool
+static Ploch.CommandLine.Spectre.Commands.TokenInfo.operator ==(Ploch.CommandLine.Spectre.Commands.TokenInfo? left, Ploch.CommandLine.Spectre.Commands.TokenInfo? right) -> bool
+static Ploch.CommandLine.Spectre.ConsoleAppInfoExtensions.PrintAppInfo(this Ploch.CommandLine.Spectre.ConsoleAppInfo! appInfo, Spectre.Console.IAnsiConsole! console) -> void
+static Ploch.CommandLine.Spectre.ConsoleAppInfoExtensions.Validate(this Ploch.CommandLine.Spectre.ConsoleAppInfo! appInfo) -> void
+static Ploch.CommandLine.Spectre.EnvironmentSettings.Current.get -> Ploch.CommandLine.Spectre.EnvironmentSettings!
+static Ploch.CommandLine.Spectre.EnvironmentSettings.Current.set -> void
+static Ploch.CommandLine.Spectre.EnvironmentSettings.Initialize(Ploch.CommandLine.Spectre.IEnvironmentSettingsLoader! settingsLoader) -> void
+static Ploch.CommandLine.Spectre.EnvironmentSettings.Reset() -> void
+static Ploch.CommandLine.Spectre.Output.BaseExceptionMessageFormatter<TException>.GetInnerExceptionMessage(System.Exception? innerException) -> string!
+static Ploch.CommandLine.Spectre.Output.ServiceCollectionOutputExtensions.AddMessageFormatter<TMessageType, TFormatter>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! service) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Ploch.CommandLine.Spectre.Output.ServiceCollectionOutputExtensions.AddMessageWriter<TMessageType, TWriter>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! service) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+virtual Ploch.CommandLine.Spectre.AppBuilder.Dispose(bool disposing) -> void
+virtual Ploch.CommandLine.Spectre.Commands.CommandSettingsPropertyTypeProcessor<TProperty>.RequiredAttributes.get -> System.Type![]!
+virtual Ploch.CommandLine.Spectre.Commands.CommandSettingsValidator<TSettings>.Validate(Spectre.Console.Cli.CommandContext! context, TSettings! settings) -> Spectre.Console.ValidationResult!
+virtual Ploch.CommandLine.Spectre.Commands.TokenInfo.<Clone>$() -> Ploch.CommandLine.Spectre.Commands.TokenInfo!
+virtual Ploch.CommandLine.Spectre.Commands.TokenInfo.EqualityContract.get -> System.Type!
+virtual Ploch.CommandLine.Spectre.Commands.TokenInfo.Equals(Ploch.CommandLine.Spectre.Commands.TokenInfo? other) -> bool
+virtual Ploch.CommandLine.Spectre.Commands.TokenInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Ploch.CommandLine.Spectre.Output.BaseExceptionMessageFormatter<TException>.GetExceptionText(TException? exception) -> string!
+virtual Ploch.CommandLine.Spectre.Output.TypeMessageHandler<TMessage>.CanHandle(object? message) -> bool
+virtual Ploch.CommandLine.Spectre.Output.TypeMessageHandler<TMessage>.MessageType.get -> System.Type!
+virtual Ploch.CommandLine.Spectre.Output.TypeMessageWriter<TMessage>.WritesLineTerminator.get -> bool

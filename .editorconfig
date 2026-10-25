@@ -698,3 +698,22 @@ resharper_parameter_type_can_be_enumerable_global_highlighting = suggestion
 resharper_csharp_outdent_commas = true
 
 resharper_class_with_virtual_members_never_inherited_global_highlighting = hint
+
+# Public API baseline (Microsoft.CodeAnalysis.PublicApiAnalyzers, PLO-788). RS0026/RS0027 object to
+# a public method having more than one overload with optional parameters, because adding an optional
+# parameter to one of them later can make existing call sites ambiguous. The output pipeline's
+# TypeMessageFormatter<T>.GetMessage, TypeMessageWriter<T>.Write and
+# MessageFormatterProcessor.GetMessageText deliberately pair a typed overload with an object /
+# FormattableString one, both with the same optional trailing parameters, and every override
+# inherits the finding (20 in total). Whether to keep that shape before 1.0 is an API design
+# question tracked separately as PLO-822; it is not silenced repository-wide, only lowered to a
+# suggestion for the folder that owns the pattern, so the rule still fails the build anywhere else.
+[src/Spectre/CommandLine.Spectre/Output/*.cs]
+dotnet_diagnostic.RS0026.severity = suggestion
+dotnet_diagnostic.RS0027.severity = suggestion
+
+# The baseline files themselves: one signature per line, however long, and LF to match the
+# .gitattributes pin, overriding the CRLF and 160-column defaults in [*] above.
+[PublicAPI.*.txt]
+end_of_line = lf
+max_line_length = off

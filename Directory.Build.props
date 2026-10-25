@@ -69,6 +69,26 @@
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
+  <!--
+    Public API baseline for every non-test project, today the four packable libraries (PLO-788).
+    The analyser compares the externally visible types and members of the assembly with
+    PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt next to the project file and fails the
+    build when a public member is added (RS0016) or removed (RS0017) without the baseline being
+    updated. The baseline is the permanent form of the one-off surface diff that proved
+    PLO-779 / PR #105 removed only the intended members. Until 1.0 ships every entry lives in
+    PublicAPI.Unshipped.txt; the release moves them to PublicAPI.Shipped.txt. How to update the
+    files: CONTRIBUTING.md, "The public API baseline". The two rules run at error severity through
+    the repository's .globalconfig, which the SDK discovers on its own (do not add it as an item: a
+    second inclusion makes the compiler drop the duplicated keys), so they still fail the build when
+    the SonarScanner step in CI switches TreatWarningsAsErrors off (PLO-823).
+  -->
+  <ItemGroup Condition="!$(IsTestProject)">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
   <!-- Opt-in build diagnostics: dotnet build -p:PrintPlochBuildSettings=true. Off by default so CI logs stay readable. -->
   <Target Name="PrintSettings" BeforeTargets="Build" Condition="'$(PrintPlochBuildSettings)' == 'true'">
     <Message Text="Building $(MSBuildProjectName) with settings:" Importance="high" />

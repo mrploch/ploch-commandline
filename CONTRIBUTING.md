@@ -138,6 +138,48 @@ This swaps the `Ploch.Common*` `PackageReference`s for `ProjectReference`s into
 
 Never commit a change that only builds in project-reference mode.
 
+## The public API baseline
+
+Every packable project under `src/Spectre/` carries two files next to its project file,
+`PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt`, checked by
+[Microsoft.CodeAnalysis.PublicApiAnalyzers](https://github.com/dotnet/roslyn-analyzers/blob/main/src/PublicApiAnalyzers/PublicApiAnalyzers.Help.md),
+which `Directory.Build.props` references for every non-test project. The files list every
+externally visible type and member in the analyser's notation, and they are the permanent form
+of the one-off surface diff that proved PLO-779 removed only the intended members before the 1.0
+freeze (PLO-788). The build fails when the assembly and the files disagree:
+
+- `RS0016`: a public type or member exists that the files do not list.
+- `RS0017`: the files list something that no longer exists.
+
+Both run at error severity through the repository's `.globalconfig` rather than relying on
+`TreatWarningsAsErrors`: the SonarScanner step in CI switches warnings-as-errors off for the build
+it wraps (PLO-823), and `RS0017` is reported inside the baseline file, which an `.editorconfig`
+section cannot reach. The SDK discovers `.globalconfig` on its own; do not add it as an item.
+
+How the files are maintained:
+
+- **Adding public API.** Let the analyser's code fix write the entry rather than typing it:
+  `dotnet format analyzers <project>.csproj --diagnostics RS0016 --severity warn` (run it per
+  project; the solution-level form only processes the first project), or use the "Add to public
+  API" light bulb in the IDE. Review the diff like any other change: the entry *is* the API review.
+- **Removing or renaming unreleased API.** Delete its line from `PublicAPI.Unshipped.txt` (and
+  add the new line for a rename).
+- **Until 1.0 ships** `PublicAPI.Shipped.txt` holds only the `#nullable enable` header and every
+  entry lives in `PublicAPI.Unshipped.txt`. Before `release.yml` is dispatched, a reviewed commit
+  moves every entry from `Unshipped` to `Shipped`, leaving `Unshipped` with the header alone.
+- **After 1.0** removing or changing a shipped member is a breaking change. Keep its line in
+  `Shipped`, add the same line to `Unshipped` prefixed with `*REMOVED*`, and add the new
+  signature as an ordinary entry; the next release promotion deletes the removed line from
+  `Shipped` and drops the marker.
+- Both files start with `#nullable enable`, so nullability is part of the recorded signature; a
+  `~` prefix marks an entry whose nullability is not annotated.
+
+Two companion rules, `RS0026` and `RS0027`, object to a method having several public overloads
+with optional parameters. The output pipeline in `src/Spectre/CommandLine.Spectre/Output/` pairs a
+typed overload with an `object?` / `FormattableString?` one on purpose, so for that folder alone
+`.editorconfig` lowers the two rules to a suggestion; whether to keep that shape before 1.0 is
+tracked separately (see the comment in `.editorconfig`).
+
 ## Commits, branches and pull requests
 
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).

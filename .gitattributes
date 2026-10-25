@@ -13,6 +13,11 @@
 # diffs in reviews, and let GitHub collapse it as generated (#55).
 .qodana/*.sarif.json    -text -diff linguist-generated=true
 
+# The public API baselines (PLO-788) are rewritten by the analyser's code fix, which uses the
+# platform newline. Pin LF so a Windows checkout does not turn every refresh into a whole-file
+# diff; the analyser itself reads either ending.
+PublicAPI.*.txt    text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

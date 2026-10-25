@@ -72,9 +72,10 @@ shape. This is what [PLO-565](https://linear.app/ploch/issue/PLO-565) proposed.
   is none of those. Several of its versions are also indirected through MSBuild
   properties (`$(PlochCommonPackagesVersion)`), which Dependabot does not rewrite.
   Enabling the ecosystem there is real work, not a configuration line.
-- Even once that is done, it would not cover this repository. Two package versions are
-  pinned **locally** in `Directory.Packages.props` — `FluentValidation.DependencyInjectionExtensions`
-  and `Nerdbank.GitVersioning` — and belong to this repository alone. Deleting the
+- Even once that is done, it would not cover this repository. Three package versions are
+  pinned **locally** in `Directory.Packages.props` — `FluentValidation.DependencyInjectionExtensions`,
+  `Nerdbank.GitVersioning` and `Microsoft.CodeAnalysis.PublicApiAnalyzers` — and belong to this
+  repository alone. Deleting the
   `nuget` ecosystem and pointing at `mrploch-development` would leave those permanently
   unwatched.
 
