@@ -13,3 +13,18 @@ is_global = true
 
 dotnet_diagnostic.RS0016.severity = error
 dotnet_diagnostic.RS0017.severity = error
+
+# The remaining baseline-integrity and API-design rules of the same analyser, for the same reason:
+# a warning would pass the scanner-wrapped CI build. None fires today. RS0026/RS0027 are lowered to
+# a suggestion for src/Spectre/CommandLine.Spectre/Output alone in .editorconfig, which takes
+# precedence over this file for the files it matches (PLO-822).
+dotnet_diagnostic.RS0022.severity = error
+dotnet_diagnostic.RS0024.severity = error
+dotnet_diagnostic.RS0025.severity = error
+dotnet_diagnostic.RS0026.severity = error
+dotnet_diagnostic.RS0027.severity = error
+dotnet_diagnostic.RS0036.severity = error
+dotnet_diagnostic.RS0037.severity = error
+dotnet_diagnostic.RS0041.severity = error
+dotnet_diagnostic.RS0048.severity = error
+dotnet_diagnostic.RS0050.severity = error

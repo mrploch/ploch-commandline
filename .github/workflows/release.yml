@@ -214,6 +214,29 @@ jobs:
       - name: Verify Ploch package versions are stable
         run: dotnet msbuild ./src/Spectre/CommandLine.Spectre/Ploch.CommandLine.Spectre.csproj -t:VerifyPlochPackageVersionsAreStable -nologo -v:minimal
 
+      # The public API baselines (PLO-788) must be promoted before a release: every entry of each
+      # PublicAPI.Unshipped.txt moved into PublicAPI.Shipped.txt in a reviewed commit, leaving only
+      # the "#nullable enable" header behind. A release cut from an unpromoted revision would ship an
+      # API that the Shipped baseline does not record, so later removals could pass unnoticed. This
+      # runs on dry runs too. See CONTRIBUTING.md, "The public API baseline". Raised by the Sourcery
+      # reviewer on PR #113.
+      - name: Verify the public API baselines were promoted
+        shell: bash
+        run: |
+          set -euo pipefail
+          unpromoted=0
+          for file in src/Spectre/*/PublicAPI.Unshipped.txt; do
+            if grep -qvE '^(#|[[:space:]]*$)' "$file"; then
+              echo "::error file=$file::PublicAPI.Unshipped.txt still has entries; promote them to PublicAPI.Shipped.txt before releasing."
+              grep -vE '^(#|[[:space:]]*$)' "$file" | head -5
+              unpromoted=1
+            fi
+          done
+          if [ "$unpromoted" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Every PublicAPI.Unshipped.txt holds only its header; the baselines are promoted."
+
       - name: Restore dependencies
         # Scoped to this step rather than the job, so the package credential is not exposed
         # to checkout, upload, release or other third-party actions (least privilege, raised

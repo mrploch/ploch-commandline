@@ -216,7 +216,8 @@ Facts worth knowing:
 - `RELEASE_NOTES.md` is maintained by hand; no workflow edits it.
 - Before `release.yml` is dispatched, the entries in every `PublicAPI.Unshipped.txt` are promoted
   to `PublicAPI.Shipped.txt` in a reviewed commit (`CONTRIBUTING.md`, "The public API baseline").
-  No workflow does this either.
+  No workflow does the promotion, but `release.yml` verifies it before restoring and fails,
+  dry run included, while any `Unshipped` file still has entries.
 - **State on the verification date:** no tags, no GitHub Releases, nothing on nuget.org. The only
   release run was a dry run, so the real publish path has never executed.
 
