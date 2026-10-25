@@ -19,7 +19,7 @@ stable releases go to [NuGet.org](https://www.nuget.org/profiles/mrploch).
 | Package | Purpose |
 |---|---|
 | `Ploch.CommandLine.Spectre` | Core framework — `AppBuilder`, command base classes, settings pipeline, output pipeline. |
-| `Ploch.CommandLine.Spectre.Serilog` | Serilog integration, including a `SerilogConfigurationBundle` for structured logging. The core package depends on it and `AppServicesBundle` registers the bundle, so it is installed and active without a separate `dotnet add package`. |
+| `Ploch.CommandLine.Spectre.Serilog` | Opt-in Serilog integration: `UseSerilog` on `AppBuilder`, backed by a `SerilogConfigurationBundle` for structured logging. The core package does not depend on it; without it `ILogger<T>` comes from the host's default providers. |
 | `Ploch.CommandLine.Spectre.FluentValidation` | Declarative validation of command settings using FluentValidation validators. |
 | `Ploch.CommandLine.UseCases` | Bridges commands to `IResultUseCase` for a Clean Architecture style, built on `Ardalis.Result`. |
 

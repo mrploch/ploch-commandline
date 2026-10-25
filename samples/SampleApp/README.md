@@ -12,7 +12,7 @@ Packages exercised:
 
 - `Ploch.CommandLine.Spectre` — `AppBuilder`, command base classes, `IOutput`, exit codes, tokens
 - `Ploch.CommandLine.Spectre.FluentValidation` — settings validation
-- `Ploch.CommandLine.Spectre.Serilog` — logging
+- `Ploch.CommandLine.Spectre.Serilog` — logging; opt-in, the sample registers it with `AddSerilog`
 - `Ploch.CommandLine.UseCases` — use cases with `Ardalis.Result`
 
 ## Build modes — read this first

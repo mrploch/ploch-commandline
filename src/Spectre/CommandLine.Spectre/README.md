@@ -109,7 +109,8 @@ This project provides following services bundles:
 - `AppServicesBundle` - registers services required for the app to run
 - `OutputServicesBundle` - registers services required for output formatting
 
-`AppServicesBundle` depends on `SerilogConfigurationBundle` from `Ploch.CommandLine.Spectre.Serilog`, which this
-package references, so every application built with `AppBuilder` logs through Serilog without adding another
-package. Call `AddSerilog` to set the log name, directory, output template or culture.
+Neither bundle chooses a logging provider: an application built with `AppBuilder` resolves `ILogger<T>` from the
+host's default providers, and the core package creates no application log file. Serilog is opt-in — add the `Ploch.CommandLine.Spectre.Serilog`
+package and call `UseSerilog` on the builder to log through Serilog, with the log name, directory, output template
+and culture as optional arguments.
 
