@@ -36,6 +36,13 @@ have been retired.
 - `AppBuilder.ShowBanner(bool)` and `ConsoleAppInfo.ShouldShowBanner`, to drop the
   start-up banner and the `Executing command …` line together ([PLO-783](https://linear.app/ploch/issue/PLO-783)).
 
+- `ExceptionHandlerFailedException`, thrown by `AppCommand<TSettings>` and
+  `AsyncAppCommand<TSettings>` when the registered `IExceptionHandler` throws while
+  handling an exception. The application's Spectre handler reports it once and exits
+  with `ExitCode.Error`; an application that calls `PropagateExceptions()` catches it
+  instead, with the handler's exception as `InnerException` and the one it was handling
+  as `Original` ([PLO-782](https://linear.app/ploch/issue/PLO-782)).
+
 ### Changed
 
 - **Breaking:** `IOutput.Write(string)` and `WriteLine(string)` write the text
@@ -130,14 +137,40 @@ have been retired.
   deriving from the base classes. `AppCommand<TSettings>` and
   `AsyncAppCommand<TSettings>` write nothing to `IOutput` of their own (the
   `Processing arguments…` line is gone), and a failure to write the announcement
-  no longer reaches the command's `IExceptionHandler`: it stops the run before the
-  command, as any failure ahead of execution does. The library registers the
+  stops the run before the command, as any failure ahead of execution does; the
+  application's Spectre handler passes it to the registered `IExceptionHandler`,
+  whose return value is the exit code (`ExitCode.Error` by default, see PLO-782),
+  rather than the command's own catch. The library registers the
   announcement as an `ICommandInterceptor` ahead of every other registration, so
   one you register through a services bundle, `ConfigureServices` or Spectre's
   `SetInterceptor` runs after it.
   `ConsoleAppInfoExtensions.PrintAppInfo` takes the `IAnsiConsole` to print to;
   the parameterless overload, which wrote to standard output, is gone
   ([PLO-783](https://linear.app/ploch/issue/PLO-783)).
+- **Breaking:** a command line `Spectre.Console.Cli` cannot parse or bind, and settings
+  that fail `Validate`, exit with `ExitCode.InvalidInput` (2) instead of Spectre's own
+  `-1` (`255` in a POSIX shell). `AppBuilder.ConfigureCommandApp` installs a Spectre
+  exception handler that keeps Spectre's error rendering and maps the exception to the
+  documented exit codes: `CommandParseException` and `CommandRuntimeException` — the
+  types Spectre raises for an unknown command or option, a missing required argument, a
+  value that does not convert, and a validation failure — exit 2; a requested
+  cancellation that reaches Spectre, from a command outside the base classes, exits
+  with Spectre's configured cancellation exit code (130 by default; the base classes
+  still return `ExitCode.Cancelled`); any other exception that escapes a command goes
+  to the registered `IExceptionHandler`, whose return value is the exit code; and a
+  failure before the host exists — a `ConfigureServices` delegate that throws — is
+  reported and exits with `ExitCode.Error` (1), where it was also `-1`, as is a
+  `CommandRuntimeException` Spectre raises before the host exists, such as a command
+  whose settings type it cannot determine. An
+  `IExceptionHandler` that throws is reported once and the run exits 1; the base
+  classes no longer let its exception escape to Spectre. Spectre uses `CommandRuntimeException`
+  for a few failures that are not input errors (a missing type converter, a dependency
+  it could not resolve); they exit 2 as well. A script that tested for `255` tests for
+  `2`; an application that wants a different mapping calls `SetExceptionHandler` or
+  `PropagateExceptions()` in its `ConfigureCommandApp` delegate, which replaces the
+  installed handler. Help, and Spectre's own `1` for a branch or default command invoked
+  without what it needs, are unchanged
+  ([PLO-782](https://linear.app/ploch/issue/PLO-782)).
 - **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
   `Run` or `RunAsync` on the same executor — whatever the first attempt's
   outcome — throws `InvalidOperationException`, synchronously and before any

@@ -15,8 +15,10 @@
   deriving from the base classes. `AppCommand<TSettings>` and
   `AsyncAppCommand<TSettings>` write nothing to `IOutput` of their own (the
   `Processing arguments…` line is gone), and a failure to write the announcement
-  no longer reaches the command's `IExceptionHandler`: it stops the run before the
-  command, as any failure ahead of execution does. The library registers the
+  stops the run before the command, as any failure ahead of execution does; the
+  application's Spectre handler passes it to the registered `IExceptionHandler`,
+  whose return value is the exit code (`ExitCode.Error` by default, see PLO-782),
+  rather than the command's own catch. The library registers the
   announcement as an `ICommandInterceptor` ahead of every other registration, so
   one you register through a services bundle, `ConfigureServices` or Spectre's
   `SetInterceptor` runs after it.

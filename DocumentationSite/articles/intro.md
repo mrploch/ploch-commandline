@@ -115,9 +115,9 @@ public class UserAddSettingsValidator : AbstractValidator<UserAddSettings>
 ```
 
 Validation runs before `DoExecute`/`DoExecuteAsync`. A failure short-circuits the command
-before your code runs: `Spectre.Console.Cli` reports the errors and exits with its own `-1`
-(`255` in a POSIX shell), not with `ExitCode.InvalidInput`. Reserve `InvalidInput` for input
-that parses and validates but which the command itself rejects — see
+before your code runs: `Spectre.Console.Cli` reports the errors and the application exits with
+`ExitCode.InvalidInput` (2) — the same code your command returns for input that parses and
+validates but which it rejects itself — see
 [exit codes](../../docs/GETTING_STARTED.md#11-exit-codes) in the Getting Started guide.
 
 ## Composing sub-commands

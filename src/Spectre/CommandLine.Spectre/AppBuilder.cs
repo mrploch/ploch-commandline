@@ -329,6 +329,18 @@ public class AppBuilder : IDisposable
     ///         builder's own source, whatever the container holds.
     ///     </para>
     ///     <para>
+    ///         The application exits with the codes <see cref="ExitCode" /> documents. A command line Spectre.Console.Cli
+    ///         cannot parse or bind, and settings that fail validation, are reported by Spectre as before but exit with
+    ///         <see cref="ExitCode.InvalidInput" /> rather than Spectre's own <c>-1</c>; an exception that escapes a
+    ///         command not derived from <see cref="AppCommand{TSettings}" /> or <see cref="AsyncAppCommand{TSettings}" />
+    ///         goes to the registered <see cref="IExceptionHandler" />, whose return value is the exit code; and a
+    ///         failure before the host exists - one thrown while building it - is reported and exits with
+    ///         <see cref="ExitCode.Error" />. The handler that does this is set before <paramref name="configurator" />
+    ///         runs, so a <c>SetExceptionHandler</c> or <c>PropagateExceptions</c> call in the delegate replaces it. Two
+    ///         of Spectre's own early returns are unchanged: a branch invoked without a sub-command, and a default command
+    ///         invoked without its required arguments, both show help and return <c>1</c>.
+    ///     </para>
+    ///     <para>
     ///         The host is built once a run of the returned executor has parsed its arguments and resolves the
     ///         command — a parse failure or <c>--version</c> returns before any host exists — and it exists for
     ///         dependency injection, configuration and logging only: the library never starts it. A CLI command is
@@ -407,7 +419,15 @@ public class AppBuilder : IDisposable
 
         var app = new CommandApp(registrar);
 
-        app.Configure(configurator);
+        // Installed before the caller's delegate runs, so a SetExceptionHandler or PropagateExceptions call in that
+        // delegate replaces it: Spectre keeps the last handler set. The settings are read when an exception is handled,
+        // not here, so a console the delegate configures afterwards is the one the error is rendered on.
+        var exceptionHandler = new CommandAppExceptionHandler(_cancellationTokenSource.Token);
+        app.Configure(config =>
+        {
+            config.SetExceptionHandler((exception, resolver) => exceptionHandler.Handle(exception, resolver, config.Settings));
+            configurator(config);
+        });
 
         return new CommandAppExecutor(app, _cancellationTokenSource.Token);
     }
