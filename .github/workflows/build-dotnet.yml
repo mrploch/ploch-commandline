@@ -201,14 +201,33 @@ jobs:
       #
       # Skipped for pull requests opened from a fork. GitHub withholds repository secrets from those
       # runs, so SONAR_TOKEN arrives empty and the scanner fails to authenticate - and because this
-      # step precedes Build and Test, an external contributor's pull request would fail before a
-      # single line was compiled, with an error about a token they cannot be given. Skipping keeps
+      # step precedes the scanner build and the tests, an external contributor's pull request would
+      # fail on an error about a token they cannot be given. Skipping keeps
       # the step blocking where it can actually run: every branch in this repository.
       #
       # Skipped for Dependabot too (PLO-622). GitHub gives Dependabot-triggered runs no repository
       # secrets either, but a Dependabot branch lives IN this repository, so the fork check above
       # is true for it and would not skip it. `github.actor` is the right test: it names whoever
       # triggered the run, and a re-run keeps the original actor - and its restricted privileges.
+      # Warnings-as-errors gate (PLO-823). The scanner-wrapped "Build" below cannot enforce the
+      # repository's zero-warning bar: SonarScanner for .NET injects SonarQube.Integration.targets,
+      # whose OverrideRoslynCodeAnalysisProperties target sets TreatWarningsAsErrors=false and clears
+      # WarningsAsErrors before CoreCompile for every project built between `begin` and `end`, so that
+      # the Sonar rules it injects at warning severity cannot break the build. Re-enabling the property
+      # after that target, or passing MSBuild -warnaserror, would turn those injected warnings into
+      # errors; the only faithful gate is a build the scanner does not see. This is that build: the
+      # same Release configuration as the scanner build, including packing, so every diagnostic the
+      # release build can raise (compiler, analysers, NU5xxx pack warnings, minus the documented
+      # NU1901/NU1902 exemptions) fails the job here. It shares "SonarScanner Begin"'s condition on
+      # purpose and must keep sharing it: when the scanner is skipped (fork and Dependabot runs) the
+      # "Build" step below runs without the override and already enforces the bar, so running the gate
+      # there would only compile twice for nothing. Scanner-enabled runs build twice; other runs once.
+      - name: Build (warnings-as-errors gate)
+        if: >-
+          github.actor != 'dependabot[bot]' &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: dotnet build ${{ env.SOLUTION_PATH }} --no-restore -c Release
+
       - name: SonarScanner Begin
         id: sonar-begin
         if: >-
@@ -230,9 +249,12 @@ jobs:
           /d:sonar.dotnet.excludeTestProjects=true
           /d:sonar.qualitygate.wait=true
 
-      # Build and Test
+      # Build and Test. --no-incremental is required, not a tidy-up: after the gate build above the
+      # Release outputs are up to date and MSBuild would skip CoreCompile, leaving the scanner (which
+      # analyses the compilations that happen between `begin` and `end`) with nothing to analyse. It
+      # forces every project to compile again under the scanner's targets (PLO-823).
       - name: Build
-        run: dotnet build ${{ env.SOLUTION_PATH }} --no-restore -c Release
+        run: dotnet build ${{ env.SOLUTION_PATH }} --no-restore --no-incremental -c Release
       - name: Test
         id: test
         run: dotnet test ${{ env.SOLUTION_PATH }} --verbosity normal --no-build -c Release --logger "trx;LogFileName=TestOutputResults.trx" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"

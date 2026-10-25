@@ -37,7 +37,10 @@ dotnet test  Ploch.CommandLine.Spectre.slnx
 ```
 
 The repository builds with `TreatWarningsAsErrors`, so a new warning is a broken build. Please
-keep the build clean rather than suppressing it.
+keep the build clean rather than suppressing it. CI enforces the same bar: scanner-enabled runs
+build twice, because the SonarScanner for .NET switches warnings-as-errors off for the build it
+wraps, so a plain Release build before the scanner is the gate; fork and Dependabot runs build
+once without the scanner. Only the NuGet audit advisories `NU1901` and `NU1902` stay warnings.
 
 The sample application is a separate, deliberately standalone solution and needs its own command
 line — see [`samples/SampleApp/README.md`](samples/SampleApp/README.md).
