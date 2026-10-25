@@ -227,8 +227,11 @@ jobs:
           unpromoted=0
           for file in src/Spectre/*/PublicAPI.Unshipped.txt; do
             if grep -qvE '^(#|[[:space:]]*$)' "$file"; then
+              # A relative annotation path is passed through by the runner and resolved against the
+              # repository root, so it must not carry the ploch-commandline/ checkout directory.
               echo "::error file=$file::PublicAPI.Unshipped.txt still has entries; promote them to PublicAPI.Shipped.txt before releasing."
-              grep -vE '^(#|[[:space:]]*$)' "$file" | head -5
+              # '|| true' keeps pipefail from aborting the loop if head closes the pipe early (SIGPIPE).
+              { grep -vE '^(#|[[:space:]]*$)' "$file" || true; } | head -n 5
               unpromoted=1
             fi
           done
