@@ -23,5 +23,3 @@ public interface IUseCase<in TRequest, TResponse>
     /// </returns>
     Task<TResponse> ExecuteAsync(TRequest request, CancellationToken cancellationToken = default);
 }
-
-#warning PLO-823 probe: this warning must fail the CI build at the warnings-as-errors gate
