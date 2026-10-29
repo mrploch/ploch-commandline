@@ -65,8 +65,9 @@ public interface IOutput
     ///     This is the safe way to put caller strings inside markup: the same string built with <c>string.Format</c>
     ///     and passed to <see cref="Markup" /> would have its values parsed as tags. Only <see cref="string" />
     ///     holes are escaped (Spectre.Console's rule): a value of any other type is formatted by
-    ///     <c>string.Format</c> and its text is parsed as markup, so convert such a value to a string first, or
-    ///     pass <c>Markup.Escape(value.ToString())</c>, when its text can contain <c>[</c>. The holes are formatted
+    ///     <c>string.Format</c> and its text is parsed as markup, so convert such a value to a string first
+    ///     (<c>{value.ToString()}</c>) when its text can contain <c>[</c>; do not <c>Markup.Escape</c> it as well,
+    ///     because a string hole is escaped here already. The holes are formatted
     ///     with the current culture; use <see cref="Write{TMessage}" /> with a <see cref="FormattableString" />
     ///     and a format provider to control that.
     /// </remarks>

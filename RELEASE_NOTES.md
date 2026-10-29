@@ -132,10 +132,12 @@ have been retired.
   decorating members (`WriteBold`, `WriteError` and their line forms). A message that is not an
   `IRenderable` and that no writer accepts is written as plain text rather than parsed as markup
   (#31).
-- Message formatters and writers are selected by specificity — the most derived handler that
-  accepts the message — rather than by registration order, so `Win32Exception` reaches
-  `Win32ExceptionMessageFormatter` and a consumer formatter for its own exception type is no
-  longer shadowed by the built-in `ExceptionMessageFormatter` registered before it (#11).
+- Message formatters and writers prefer the most derived matching handler over a broader one,
+  rather than the first registered; two handlers for the same type resolve to the later
+  registration, and matching handlers for unrelated types keep registration order. So
+  `Win32Exception` reaches `Win32ExceptionMessageFormatter`, and a consumer formatter for its
+  own exception type is no longer shadowed by the built-in `ExceptionMessageFormatter`
+  registered before it (#11).
 - **Breaking:** `EnvironmentSettings.DevRuntimeVariables` contains only
   `DEV_RUNTIME`-prefixed variables rather than the entire environment block,
   which routinely carries secrets.
@@ -232,7 +234,8 @@ have been retired.
 - **Breaking:** `CommandAppExecutor` takes a `CancellationToken` as a second constructor
   argument, required rather than optional so that an application built through it cannot
   silently run without cancellation. Code constructing the executor directly must supply one;
-  `AppBuilder.ConfigureCommandApp` passes the token of the source it owns (#14).
+  `AppBuilder.ConfigureCommandApp` passes the token of the builder's `CancellationTokenSource`,
+  whether the builder created it or the caller supplied it (#14).
 - **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
   `Run` or `RunAsync` on the same executor — whatever the first attempt's
   outcome — throws `InvalidOperationException`, synchronously and before any

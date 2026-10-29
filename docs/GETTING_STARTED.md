@@ -707,6 +707,9 @@ public class ProjectCreateCommand(IOutput output,
     : UseCaseAsyncCommand<ProjectCreateCommandSettings, CreateProjectUseCase, CreateProjectRequest, CreateProjectResponse>(
         output, useCase, settingsProcessor, validator, exceptionHandler)
 {
+    // Opt in to the Settings: echo shown below; it is off by default because it prints every public setting.
+    protected override bool EchoSettings => true;
+
     protected override CreateProjectRequest CreateRequest(ProjectCreateCommandSettings commandSettings) =>
         new(commandSettings.Name, commandSettings.Description, commandSettings.Template);
 }
