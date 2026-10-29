@@ -12,7 +12,8 @@ Packages exercised:
 
 - `Ploch.CommandLine.Spectre` — `AppBuilder`, command base classes, `IOutput`, exit codes, tokens
 - `Ploch.CommandLine.Spectre.FluentValidation` — settings validation
-- `Ploch.CommandLine.Spectre.Serilog` — logging; opt-in, the sample registers it with `AddSerilog`
+- `Ploch.CommandLine.Spectre.Serilog` — logging; opt-in, the sample registers it with `services.AddSerilog(...)`
+  (the pinned package predates `AppBuilder.UseSerilog`; the post-release pin bump adopts the one-call form)
 - `Ploch.CommandLine.UseCases` — use cases with `Ardalis.Result`
 
 ## Build modes — read this first
@@ -27,12 +28,17 @@ repository it lives in.
 | Standalone (default) | `dotnet build` | Restores `Ploch.*` from NuGet, as a consumer would |
 | In-repository | `dotnet build -p:UsePlochProjectReferences=true` | Swaps those packages for `ProjectReference`s to the library sources in this repository |
 
-**The default mode restores from GitHub Packages,** which needs a `GH_PACKAGES_TOKEN` with
-`read:packages` in the environment — `nuget.config` maps it to the `github` source. The
-`Ploch.CommandLine.*` packages are not on nuget.org yet (that is
-[issue #7](https://github.com/mrploch/ploch-commandline/issues/7)), so without that token a plain
-`dotnet build` still fails at restore. Use `-p:UsePlochProjectReferences=true`, which is what CI
-runs and needs no feed access, so the sample cannot drift away from the libraries.
+**The default mode is not yet usable without a token.** It restores the version pinned as
+`PlochPackagesVersion`, and until 1.0 ships that pin is a prerelease build (`1.0.20-prerelease`)
+that exists only on GitHub Packages, so a plain `dotnet build` needs a `GH_PACKAGES_TOKEN` with
+`read:packages` in the environment (`nuget.config` maps it to the `github` source) and fails at
+restore without one. The 1.0 release bumps the pin to the stable release on nuget.org
+([PLO-103](https://linear.app/ploch/issue/PLO-103)); from then on the default mode restores from
+nuget.org without a token — best-effort rather than guaranteed, for the same reason as the main
+solution: the sample inherits the repository's `nuget.config`, which keeps the unauthenticated GitHub
+Packages source eligible (see [`CONTRIBUTING.md`](../../CONTRIBUTING.md)). Until then, use
+`-p:UsePlochProjectReferences=true`, which is what CI runs and needs no feed access, so the sample
+cannot drift away from the libraries.
 
 The standalone mode compiles against the version pinned as `PlochPackagesVersion` in
 [`Directory.Packages.props`](Directory.Packages.props) — a published **main-branch** build, never a
@@ -310,14 +316,14 @@ Ctrl+C ends the command with `ExitCode.Cancelled` (130).
 ```text
 $ sample file report dataset.csv -t "Daily Report - {date}"
 
-╭─Daily Report - 2026-08-22─────────────────────────────────────────────────╮
-│ Report Title: Daily Report - 2026-08-22                                   │
-│ Source File: C:\Users\krzys\AppData\Local\Temp\wt9-sample-run\dataset.csv │
-│ Size: 17 bytes                                                            │
-│ Last Modified: 2026-08-22 13:01:07 UTC                                    │
-│ Status: Analysed                                                          │
-│ Generated: 2026-08-22 13:01:07 UTC                                        │
-╰───────────────────────────────────────────────────────────────────────────╯
+╭─Daily Report - 2026-08-22───────────────────────╮
+│ Report Title: Daily Report - 2026-08-22         │
+│ Source File: C:\projects\sample-app\dataset.csv │
+│ Size: 17 bytes                                  │
+│ Last Modified: 2026-08-22 13:01:07 UTC          │
+│ Status: Analysed                                │
+│ Generated: 2026-08-22 13:01:07 UTC              │
+╰─────────────────────────────────────────────────╯
 
 [exit code 0]
 ```
@@ -379,7 +385,9 @@ Use case failed: A project with name 'SpectreDemo' already exists.
 ```
 
 `ProjectCreateCommand` derives from `UseCaseAsyncCommand<,,,>` and implements one method,
-`CreateRequest`. Echoing the settings and rendering the result are inherited.
+`CreateRequest`. Rendering the result is inherited; the `Settings:` echo is opt-in (it prints every
+public property of the settings type), and the command turns it on with `EchoSettings => true`
+because a project name, description and template hold nothing sensitive.
 
 `project export` writes a real artefact — a success result from a use case that produced nothing
 would be a lie:

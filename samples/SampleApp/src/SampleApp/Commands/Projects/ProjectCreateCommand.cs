@@ -20,6 +20,11 @@ public class ProjectCreateCommand(IOutput output,
                                                                                                                            validator,
                                                                                                                            exceptionHandler)
 {
+    // The settings echo is opt-in in the library: it prints every public property of the settings type, which a
+    // command with a password or token option would not want. A project name, description and template hold
+    // nothing sensitive, so this command turns it on.
+    protected override bool EchoSettings => true;
+
     protected override CreateProjectRequest CreateRequest(ProjectCreateCommandSettings commandSettings)
     {
         return new CreateProjectRequest(commandSettings.Name, commandSettings.Description, commandSettings.Template);

@@ -16,7 +16,7 @@ namespace Ploch.CommandLine.Spectre;
 ///     Provides a builder for configuring and constructing a command-line application.
 /// </summary>
 /// <remarks>
-///     The <see cref="AppBuilder" /> class allows for the creation and customization of a command-line application
+///     The <see cref="AppBuilder" /> class allows for the creation and customisation of a command-line application
 ///     by specifying its name, description, version, and other configurations. It integrates with the Spectre.Console.Cli
 ///     library for command-line interface functionality and Microsoft.Extensions.Hosting for dependency injection and
 ///     configuration. The host it configures is built for those purposes once a run reaches command resolution, and
@@ -119,8 +119,8 @@ public class AppBuilder : IDisposable
     ///     <para>
     ///         The returned builder owns both the source it creates and the handler it installs, and releases them on
     ///         <see cref="Dispose()" />. Dispose it once the application has finished running — the cancellation token
-    ///         stays live for the whole run, so an earlier scope exit would tear down the application it is meant to
-    ///         be shutting down. The handler also detaches itself once an interrupt has been handled, so an
+    ///         stays live for the whole run, so an earlier scope exit would release the source and the handler while
+    ///         the run still needs them. The handler also detaches itself once an interrupt has been handled, so an
     ///         interrupted application releases the subscription without waiting for disposal.
     ///     </para>
     /// </remarks>
@@ -442,7 +442,7 @@ public class AppBuilder : IDisposable
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="appConfigurationConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
-    ///     This method simplifies the customization of the application's configuration by allowing direct access to the
+    ///     This method simplifies the customisation of the application's configuration by allowing direct access to the
     ///     <see cref="IConfigurationBuilder" />. It can be used to add configuration sources, modify existing configurations,
     ///     or apply specific settings without requiring access to the hosting context.
     ///     <para>
@@ -473,7 +473,7 @@ public class AppBuilder : IDisposable
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="appConfigurationConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
-    ///     This method allows for advanced customization of the application's configuration by enabling
+    ///     This method allows for advanced customisation of the application's configuration by enabling
     ///     the use of both the hosting context and the configuration builder. It can be used to add
     ///     configuration sources, modify existing configurations, or apply environment-specific settings.
     ///     <para>
@@ -507,7 +507,7 @@ public class AppBuilder : IDisposable
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="configureDelegate" /> is <see langword="null" />.</exception>
     /// <remarks>
-    ///     This method allows customization of the application's host builder, enabling the addition
+    ///     This method allows customisation of the application's host builder, enabling the addition
     ///     of services, configuration, and other host-level settings. It integrates with the
     ///     <see cref="Microsoft.Extensions.Hosting" /> framework.
     ///     <para>
@@ -544,7 +544,7 @@ public class AppBuilder : IDisposable
     /// <returns>The current instance of <see cref="AppBuilder" /> for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="servicesConfigurator" /> is <see langword="null" />.</exception>
     /// <remarks>
-    ///     This method allows customization of the application's services by providing a delegate
+    ///     This method allows customisation of the application's services by providing a delegate
     ///     that operates on the <see cref="IServiceCollection" />. It is useful for registering
     ///     dependencies and configuring services required by the application.
     ///     <para>
@@ -574,7 +574,7 @@ public class AppBuilder : IDisposable
     ///     Configures the services for the application using the specified configurator.
     /// </summary>
     /// <param name="servicesConfigurator">
-    ///     An action that allows customization of the service collection. The action provides access to the
+    ///     An action that allows customisation of the service collection. The action provides access to the
     ///     <see cref="HostBuilderContext" /> and <see cref="IServiceCollection" /> for configuring services.
     /// </param>
     /// <returns>The current instance of <see cref="AppBuilder" /> to allow method chaining.</returns>

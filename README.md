@@ -12,25 +12,114 @@
 
 ## Overview
 
-**Ploch CommandLine Applications** is an opinionated library for building console applications in .NET Core.
-It builds on top of the [Spectre.Console](https://spectreconsole.net/) library, providing a few additional features:
+**Ploch.CommandLine.Spectre** is an opinionated framework for building console applications on .NET
+(the packages target .NET 10). It layers [Spectre.Console.Cli](https://spectreconsole.net/cli/) on top
+of `Microsoft.Extensions.Hosting`, so a CLI gets dependency injection, configuration, logging,
+validation and output formatting from one builder chain.
 
-- app construction, including service registrations
-- unified command interfaces
-- command validation
-- command execution
-- exception handling
-- logging
-- configuration
-- output formatting
+| Package | Purpose |
+|---|---|
+| [`Ploch.CommandLine.Spectre`](https://www.nuget.org/packages/Ploch.CommandLine.Spectre) | Core framework: `AppBuilder`, the command base classes, the settings pipeline and the output pipeline. |
+| [`Ploch.CommandLine.Spectre.Serilog`](https://www.nuget.org/packages/Ploch.CommandLine.Spectre.Serilog) | Opt-in Serilog logging, switched on with `UseSerilog` on the builder. |
+| [`Ploch.CommandLine.Spectre.FluentValidation`](https://www.nuget.org/packages/Ploch.CommandLine.Spectre.FluentValidation) | Validation of command settings with FluentValidation validators. |
+| [`Ploch.CommandLine.UseCases`](https://www.nuget.org/packages/Ploch.CommandLine.UseCases) | Commands that delegate to an `IResultUseCase` built on `Ardalis.Result`. |
+
+## Quick start
+
+```bash
+dotnet new console -n greeter
+cd greeter
+dotnet add package Ploch.CommandLine.Spectre
+```
+
+Define a settings class and a command (`GreetCommand.cs`):
+
+```csharp
+using System.ComponentModel;
+using Ploch.CommandLine.Spectre;
+using Ploch.CommandLine.Spectre.Commands;
+using Ploch.CommandLine.Spectre.Output;
+using Spectre.Console.Cli;
+
+public class GreetSettings : CommandSettings
+{
+    [CommandArgument(0, "<name>")]
+    [Description("The name to greet.")]
+    public string Name { get; init; } = string.Empty;
+
+    [CommandOption("-l|--loud")]
+    [Description("Shout the greeting.")]
+    public bool Loud { get; init; }
+}
+
+public class GreetCommand(
+    CommandArgumentsRootProcessor settingsProcessor,
+    ICommandSettingsValidator<GreetSettings> validator,
+    IExceptionHandler exceptionHandler,
+    IOutput output)
+    : AppCommand<GreetSettings>(settingsProcessor, validator, exceptionHandler, output)
+{
+    protected override ExitCode DoExecute(
+        CommandContext context, GreetSettings settings, CancellationToken cancellationToken)
+    {
+        var greeting = $"Hello, {settings.Name}!";
+        Output.WriteLine(settings.Loud ? greeting.ToUpperInvariant() : greeting);
+
+        return ExitCode.Success;
+    }
+}
+```
+
+`AppCommand<TSettings>` takes the settings processor, the validator, the exception handler and an
+`IOutput`, which it exposes as the `Output` property. Anything else the command needs is an ordinary
+constructor parameter resolved from the container.
+
+Wire it up in `Program.cs`:
+
+```csharp
+using Ploch.CommandLine.Spectre;
+using Spectre.Console.Cli;
+
+// The builder owns the Ctrl+C handler and cancellation source it creates; dispose it after the run.
+using var appBuilder = AppBuilder.Create(args)
+                                 .WithName("greeter")
+                                 .WithVersion(new Version(1, 0, 0))
+                                 .WithDescription("A greeting utility.");
+
+var executor = appBuilder.ConfigureCommandApp(config =>
+{
+    config.SetApplicationName("greeter");
+    config.AddCommand<GreetCommand>("greet")
+          .WithDescription("Greet someone by name.")
+          .WithExample("greet", "Alice", "--loud");
+});
+
+return executor.Run(args);
+```
+
+```console
+$ dotnet run -- greet Alice --loud
+HELLO, ALICE!
+```
+
+That is standard output. The start-up banner and the `Executing command greet` line go to standard
+error, so `greeter greet Alice --loud | cat` prints just `HELLO, ALICE!`. A command line Spectre
+cannot parse, and settings that fail validation, exit with code 2; the
+[exit codes](https://commandline.github.ploch.dev/#exit-codes) are part of the contract.
 
 ## Documentation
 
-- [Getting started](docs/GETTING_STARTED.md) — building your first application with `AppBuilder`.
+- [Documentation site](https://commandline.github.ploch.dev/) — overview, core concepts and the
+  generated API reference.
+- [Getting started](docs/GETTING_STARTED.md) — build a CLI from an empty directory, one feature at
+  a time: commands, configuration, dependency injection, sub-commands, validation, token expansion,
+  use cases, exit codes, cancellation, logging and testing.
+- [Sample application](samples/SampleApp/README.md) — a complete multi-level CLI that exercises
+  every feature, with the output and exit code of every command.
+- [Release notes](RELEASE_NOTES.md) — what changed in each version.
 - [Dependency updates](docs/dependency-updates.md) — how NuGet and GitHub Actions
   dependencies are kept current, and why NuGet is handled by a scheduled workflow rather
   than by Dependabot.
-- [Release notes](RELEASE_NOTES.md) — what changed in each version.
 - [AI knowledge base](docs/ai/README.md) — architecture, stack, conventions and backlog written
   for AI agents; [`CLAUDE.md`](CLAUDE.md) is its entry point.
 

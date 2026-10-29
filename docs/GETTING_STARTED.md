@@ -35,8 +35,10 @@ would rather read the code than type it, start there.
 ## 1. Prerequisites
 
 - .NET SDK 10.0 or later (`dotnet --version`).
-- A NuGet feed carrying the `Ploch.*` packages. They are published to the MrPloch GitHub Packages
-  feed; see the repository README for the feed URL and authentication.
+- The `Ploch.CommandLine.*` packages, which `dotnet add package` restores from
+  [nuget.org](https://www.nuget.org/profiles/mrploch). (Prerelease builds of `main` are published to
+  GitHub Packages, `https://nuget.pkg.github.com/mrploch/index.json`, which needs a GitHub token with
+  `read:packages`.)
 
 ## 2. Create the project
 
@@ -68,10 +70,11 @@ them:
 
 ```csharp
 using Ploch.CommandLine.Spectre;
+using Spectre.Console.Cli;
 
 // The builder owns the Ctrl+C handler and the cancellation source it creates, so dispose it once
-// the run has returned. The token stays live for the whole run, so an earlier scope exit would
-// cancel the application it is meant to be shutting down.
+// the run has returned. The token stays live for the whole run, so disposing the builder earlier
+// would release the cancellation source and the Ctrl+C handler while the run still needs them.
 using var appBuilder = AppBuilder.Create(args)
                                  .WithName("My Tool")
                                  .WithVersion(new Version(1, 0, 0))
@@ -197,7 +200,7 @@ public class InfoCommand(CommandArgumentsRootProcessor settingsProcessor,
                          IExceptionHandler exceptionHandler,
                          IOutput output) : AppCommand<InfoCommandSettings>(settingsProcessor, validator, exceptionHandler, output)
 {
-    protected override ExitCode DoExecute(CommandContext? context, InfoCommandSettings settings, CancellationToken cancellationToken)
+    protected override ExitCode DoExecute(CommandContext context, InfoCommandSettings settings, CancellationToken cancellationToken)
     {
         Output.MarkupLineInterpolated($"[bold cyan]Hello from My Tool[/]");
 
@@ -709,7 +712,9 @@ public class ProjectCreateCommand(IOutput output,
 
 Success and failure are rendered by the base class, which returns `ExitCode.Success` and
 `ExitCode.Error` respectively. Override `ProcessSuccessResponse` or `ProcessFailureResponse` to
-change either.
+change either. The `Settings:` echo below is opt-in: it prints every public property of the
+settings type, so the base class leaves it off and a command whose settings hold nothing sensitive
+overrides `EchoSettings` to return `true`, as the sample's `ProjectCreateCommand` does.
 
 ```text
 $ sample project create MicroserviceDemo -d "Cloud native backend" -t WebAPI
@@ -803,14 +808,18 @@ A destructive command needs the same discipline in reverse: confirm before actin
 "you did not tell me it was safe to proceed" from "you told me to stop".
 
 ```csharp
-if (!AnsiConsole.Profile.Capabilities.Interactive)
+// Returns the exit code to stop with, or null when the deletion may go ahead.
+private ExitCode? ConfirmDeletion(int userId)
 {
-    Output.MarkupLineInterpolated($"[yellow]Refusing to delete user {userId} without confirmation. Re-run with --force.[/]");
+    if (!AnsiConsole.Profile.Capabilities.Interactive)
+    {
+        Output.MarkupLineInterpolated($"[yellow]Refusing to delete user {userId} without confirmation. Re-run with --force.[/]");
 
-    return ExitCode.InvalidInput;   // nobody can answer a prompt in a pipeline
+        return ExitCode.InvalidInput;   // nobody can answer a prompt in a pipeline
+    }
+
+    return AnsiConsole.Confirm($"Delete user {userId}?", defaultValue: false) ? null : ExitCode.Cancelled;
 }
-
-return AnsiConsole.Confirm($"Delete user {userId}?", defaultValue: false) ? null : ExitCode.Cancelled;
 ```
 
 ## 12. Cancellation

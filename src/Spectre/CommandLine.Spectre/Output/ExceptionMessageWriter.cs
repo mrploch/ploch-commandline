@@ -3,7 +3,7 @@
 namespace Ploch.CommandLine.Spectre.Output;
 
 /// <summary>
-///     Specialized message writer for handling and displaying exceptions.
+///     Specialised message writer for handling and displaying exceptions.
 /// </summary>
 /// <param name="output">The output interface used to write exception messages.</param>
 public class ExceptionMessageWriter(IAnsiConsole output) : TypeMessageWriter<Exception>

@@ -16,7 +16,7 @@
       ],
       "dest": "api",
       "memberLayout": "separatePages",
-      "namespaceLayout": "nested",
+      "namespaceLayout": "flattened",
       "includePrivateMembers": false,
       "disableGitFeatures": false,
       "disableDefaultFilter": false
@@ -27,7 +27,8 @@
       {
         "files": [
           "api/**.yml",
-          "api/index.md"
+          "api/index.md",
+          "api/Ploch.md"
         ]
       },
       {

@@ -7,7 +7,7 @@ namespace Ploch.CommandLine.Spectre.Serilog;
 /// <summary>
 ///     Provides a <see cref="ServicesBundle" /> for configuring Serilog logging, optionally reading further settings from
 ///     an <see cref="IConfiguration" />.
-///     Allows optional customization of the log output template, log name, log file path, and the culture used to
+///     Allows optional customisation of the log output template, log name, log file path, and the culture used to
 ///     format values in the log files.
 /// </summary>
 /// <param name="template">Optional log output template.</param>

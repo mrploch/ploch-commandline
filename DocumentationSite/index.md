@@ -11,8 +11,9 @@ configuration, logging, and validation with a single builder chain.
 dotnet add package Ploch.CommandLine.Spectre
 ```
 
-Prerelease builds are published to GitHub Packages on every push to `main`;
-stable releases go to [NuGet.org](https://www.nuget.org/profiles/mrploch).
+Stable releases are published to [nuget.org](https://www.nuget.org/profiles/mrploch), which is where
+`dotnet add package` finds them. Prerelease builds of every push to `main` go to GitHub Packages
+(`https://nuget.pkg.github.com/mrploch/index.json`), which needs a GitHub token with `read:packages`.
 
 ## Packages
 
@@ -72,13 +73,13 @@ Wire it up in `Program.cs`:
 
 ```csharp
 using Ploch.CommandLine.Spectre;
+using Spectre.Console.Cli;
 
 // The builder owns the Ctrl+C handler and cancellation source it creates; dispose it after the run.
 using var appBuilder = AppBuilder.Create(args)
                                  .WithName("greeter")
                                  .WithVersion(new Version(1, 0, 0))
-                                 .WithDescription("A greeting utility.")
-                                 .ConfigureServices(services => services.AddSingleton<IClock, SystemClock>());
+                                 .WithDescription("A greeting utility.");
 
 var executor = appBuilder.ConfigureCommandApp(config =>
 {
@@ -90,6 +91,10 @@ var executor = appBuilder.ConfigureCommandApp(config =>
 
 return executor.Run(args);
 ```
+
+Services your commands take as constructor parameters are registered on the builder with
+`ConfigureServices(services => services.AddSingleton<IGreetingService, GreetingService>())`
+(`using Microsoft.Extensions.DependencyInjection;`), before `ConfigureCommandApp`.
 
 ```console
 $ greeter greet Alice --loud
@@ -202,6 +207,6 @@ message type and falls back to `ToString()` when none matches.
 ## Learn more
 
 - [Getting Started](../docs/GETTING_STARTED.md) — build a CLI from an empty directory, one feature at a time.
-- [Articles](articles/intro.md) — task-focused guides.
-- [API documentation](api/index.md) — generated reference for every public type.
+- [Introduction](articles/intro.md) — wiring up services, configuration, logging and validation.
+- [API reference](api/index.md) — generated reference for every public type, by namespace.
 - [Sample application](https://github.com/mrploch/ploch-commandline/tree/main/samples) — a complete multi-level CLI showcase.

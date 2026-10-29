@@ -55,17 +55,28 @@ public interface IOutput
     IOutput MarkupLine(string value);
 
     /// <summary>
-    ///     Writes markup-formatted interpolated string to the output.
+    ///     Writes an interpolated string as Spectre.Console markup: the literal parts are parsed as markup and the
+    ///     interpolated values are escaped, so a value containing <c>[</c> is printed rather than parsed.
     /// </summary>
-    /// <param name="value">The interpolated string with markup formatting.</param>
+    /// <param name="value">The interpolated string, such as <c>$"[green]{path}[/]"</c>.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     This is the safe way to put caller data inside markup: the same string built with <c>string.Format</c>
+    ///     and passed to <see cref="Markup" /> would have its values parsed as tags. The interpolation holes are
+    ///     formatted with the current culture; use <see cref="Write{TMessage}" /> with a
+    ///     <see cref="FormattableString" /> and a format provider to control that.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     IOutput MarkupInterpolated(FormattableString value);
 
     /// <summary>
-    ///     Writes markup-formatted interpolated string to the output followed by a line break.
+    ///     Writes an interpolated string as Spectre.Console markup, followed by a line break: the literal parts are
+    ///     parsed as markup and the interpolated values are escaped.
     /// </summary>
-    /// <param name="value">The interpolated string with markup formatting.</param>
+    /// <param name="value">The interpolated string, such as <c>$"[green]{path}[/]"</c>.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>The line-terminating form of <see cref="MarkupInterpolated" />; the same escaping rule applies.</remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     [SuppressMessage("ReSharper",
                      "UnusedMethodReturnValue.Global",
                      Justification = "Part of the public API: the return value exists for chaining by consumers, whether or not the library chains it.")]

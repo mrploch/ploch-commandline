@@ -144,5 +144,5 @@ filling them in is what makes the CLI self-documenting.
 
 ## Next steps
 
-- Browse the [API documentation](../api/index.md) for the full public surface.
+- Browse the [API reference](../api/index.md) for the full public surface.
 - Read the [sample application](https://github.com/mrploch/ploch-commandline/tree/main/samples), which exercises every feature described here.

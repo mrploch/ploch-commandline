@@ -2,8 +2,9 @@
 
 ## Overview
 
-**Ploch CommandLine Applications** is an opinionated library for building console applications in .NET Core. It builds on top of
-the [Spectre.Console](https://spectreconsole.net/) library, providing a few additional features and prescribed ways of doing things.
+**Ploch.CommandLine.Spectre** is an opinionated library for building console applications on .NET (the packages target
+.NET 10). It builds on top of the [Spectre.Console](https://spectreconsole.net/) library, providing a few additional features
+and prescribed ways of doing things.
 
 ## Features
 
@@ -15,7 +16,7 @@ rich UI elements, and more.
 It includes:
 
 - App construction and configuration, including service registrations
-- Unified command interfaces providing opinionated way of organizing your app
+- Unified command interfaces providing an opinionated way of organising your app
 - Command validation
 - Command execution
 - Exception handling

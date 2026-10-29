@@ -36,6 +36,19 @@ have been retired.
 - `AppBuilder.ShowBanner(bool)` and `ConsoleAppInfo.ShouldShowBanner`, to drop the
   start-up banner and the `Executing command …` line together ([PLO-783](https://linear.app/ploch/issue/PLO-783)).
 
+- `AppBuilder` implements `IDisposable`: a builder created with `AppBuilder.Create` owns the
+  `Console.CancelKeyPress` handler and the `CancellationTokenSource` it installs and releases
+  both on `Dispose`, where previously every `Create` call left one more handler subscribed for
+  the life of the process. Hold the builder in a `using` declaration that ends *after* the run
+  returns, because the token stays live for the whole run; a builder constructed over a
+  caller-supplied source leaves that source alone. `ConfigureCommandApp` on a disposed builder
+  throws `ObjectDisposedException` (#11).
+- `IMessageWriter.WritesLineTerminator`, which a writer uses to declare that its output already
+  ends with a line break so `IOutput.WriteLine` does not add another (#31).
+- A `culture` parameter on `UseSerilog`, `AddSerilog`, `ConfigureSerilog` and the
+  `SerilogConfigurationBundle` constructor, controlling how values are formatted in both log
+  files. Source that calls these methods compiles unchanged, but the signatures changed, so an
+  assembly compiled against an earlier build must be rebuilt (#65).
 - `ExceptionHandlerFailedException`, thrown by `AppCommand<TSettings>` and
   `AsyncAppCommand<TSettings>` when the registered `IExceptionHandler` throws while
   handling an exception. The application's Spectre handler reports it once and exits
@@ -76,8 +89,51 @@ have been retired.
 
 - **Breaking:** `AppCommand<TSettings>.DoExecute` and
   `AsyncAppCommand<TSettings>.DoExecuteAsync` accept a `CancellationToken`.
-- **Breaking:** `IMessageFormatterProcessor.WriteMessage` returns `bool` rather
-  than `void`, so a caller can tell whether the message was handled.
+- **Breaking:** `IMessageFormatterProcessor.WriteMessage` returns the `IMessageWriter` that
+  rendered the message, or `null` when none could handle it, instead of `void`; a caller needs
+  the writer to consult `WritesLineTerminator`.
+  Replace `if (processor.WriteMessage(x))` with `if (processor.WriteMessage(x) is not null)`
+  (#20, #31).
+- **Breaking:** `IFormatProvider` is threaded through the whole output pipeline.
+  `IMessageFormatter.GetMessage`, `IMessageFormatterProcessor.GetMessageText` and
+  `WriteMessage`, and `IMessageWriter.Write` each take a trailing optional
+  `IFormatProvider? formatProvider = null`. Source-compatible for callers; a type that
+  implements or overrides these members must add the parameter, and compiled consumers must
+  be rebuilt (#11).
+- **Breaking:** `IMessageWriter` gains `WritesLineTerminator`, so a custom implementation of the
+  interface must add it (`TypeMessageWriter<TMessage>` supplies `false`). `EnumerableMessageWriter`
+  and `ExceptionMessageWriter` return `true`, so `WriteLine(aCollection)` no longer leaves a blank
+  line after the last item (#31).
+- **Breaking:** `AppCommand<TSettings>` takes the same constructor arguments as
+  `AsyncAppCommand<TSettings>` — `(CommandArgumentsRootProcessor settingsProcessor,
+  ICommandSettingsValidator<TSettings> validator, IExceptionHandler exceptionHandler, IOutput output)`
+  — and exposes the output as the protected `Output` property. A derived command adds the
+  processor and the `IOutput` to its own constructor and passes them to the base; both are
+  registered by `AppServicesBundle`, so container-resolved commands need no registration change
+  (#33).
+- **Breaking:** `UseCaseAsyncCommand<...>` no longer echoes the settings before running the use
+  case: the echo printed every public settings property, password or token options included.
+  It is opt-in through `protected virtual bool EchoSettings`, which defaults to `false`; a
+  command whose settings carry nothing sensitive overrides it to return `true` (#11).
+- **Breaking:** `FluentCommandSettingsValidator<TSettings>` takes an `IServiceScopeFactory`
+  instead of an optional `IValidator<TSettings>` and resolves the validator inside a scope per
+  validation, so a consumer validator may keep FluentValidation's scoped lifetime and depend on
+  a `DbContext` or another scoped service. Only code that constructed the validator by hand is
+  affected (#11).
+- **Breaking (log output):** both Serilog file sinks — the main log and the errors log — format
+  values with `CultureInfo.InvariantCulture` instead of the current culture, so a file reads the
+  same whatever the locale of the machine that wrote it: on `de-DE`, `{Amount:N2}` is now
+  `1,234.50` rather than `1.234,50`, and the timestamp's time separator is always `:`. Pass
+  `culture: CultureInfo.CurrentCulture` to restore locale-formatted files; console output is
+  unchanged (#65).
+- `IOutput.WriteLine<TMessage>` dispatches through the same path as `Write<TMessage>`, so
+  registered formatters and writers and `IRenderable` messages are honoured on both. A message
+  that is neither a `string` nor a `FormattableString` and has no registered handler is written
+  as plain text rather than parsed as markup (#31).
+- Message formatters and writers are selected by specificity — the most derived handler that
+  accepts the message — rather than by registration order, so `Win32Exception` reaches
+  `Win32ExceptionMessageFormatter` and a consumer formatter for its own exception type is no
+  longer shadowed by the built-in `ExceptionMessageFormatter` registered before it (#11).
 - **Breaking:** `EnvironmentSettings.DevRuntimeVariables` contains only
   `DEV_RUNTIME`-prefixed variables rather than the entire environment block,
   which routinely carries secrets.
@@ -171,6 +227,10 @@ have been retired.
   installed handler. Help, and Spectre's own `1` for a branch or default command invoked
   without what it needs, are unchanged
   ([PLO-782](https://linear.app/ploch/issue/PLO-782)).
+- **Breaking:** `CommandAppExecutor` takes a `CancellationToken` as a second constructor
+  argument, required rather than optional so that an application built through it cannot
+  silently run without cancellation. Code constructing the executor directly must supply one;
+  `AppBuilder.ConfigureCommandApp` passes the token of the source it owns (#14).
 - **Breaking:** an `ICommandAppExecutor` permits one execution attempt. A second
   `Run` or `RunAsync` on the same executor — whatever the first attempt's
   outcome — throws `InvalidOperationException`, synchronously and before any
@@ -243,6 +303,34 @@ have been retired.
   nullability):** the override's parameter is now declared `IConfiguration?`; with
   nullable warnings enabled, a subclass override with a non-nullable parameter produces
   CS8765 on recompilation and should declare `IConfiguration?` as well.
+- `AppCommand<TSettings>` never ran the `CommandArgumentsRootProcessor`, so every registered
+  settings processor — token expansion included — was silently skipped for synchronous commands
+  while `AsyncAppCommand<TSettings>` applied them. Both bases now do the same framework work
+  around the implementation (#33).
+- `IOutput.WriteError`, `WriteErrorLine`, `WriteBold` and `WriteBoldLine` threw
+  `InvalidOperationException` for a message containing a `[` that was not a valid style tag
+  (`WriteError("Value [archive] is invalid")` crashed with *Could not find color or style
+  'archive'*). The content is escaped before the library wraps it in its own tag (#31).
+- A format specifier on an interpolated argument was dropped: `$"total: {1234.5:N2}"` rendered
+  as `total: 1234.5`, because every argument was stringified before the string was composed.
+  Arguments no formatter claims are carried through as the original object (#31).
+- `IOutput.Write` honours the supplied `IFormatProvider` for every value, not only for a
+  `FormattableString`: `Write(1234.5, germanCulture)` rendered `1234.5`, and the provider was
+  lost before it reached `EnumerableMessageWriter` and the formatters it consults (#11).
+- `UseCaseAsyncCommand` renders a failed result's validation errors. `Result.Invalid(...)` stores
+  its messages in `ValidationErrors` and leaves `Errors` empty, and only `Errors` was read, so an
+  invalid request reached the console as `Use case failed:` with nothing after it (#11).
+- The start-up banner no longer crashes on an application name or description containing `[`:
+  `Widget [Dev]` threw *Could not find color or style 'Dev'* while rendering its own banner (#11).
+- `EnumerableMessageFormatter` renders each item's text when no `IMessageFormatterProcessor` is
+  supplied; every line was a bare emoji and the item itself was dropped (#11).
+- `EnvironmentSettings.Current` used a double-checked lock whose fast path read a non-volatile
+  field, so another thread could observe a half-initialised instance on ARM64 (#11).
+- `FluentCommandSettingsValidator<TSettings>` was a singleton that took the scoped FluentValidation
+  validator by constructor, a captive dependency that threw *Cannot consume scoped service ...
+  from singleton* once scope validation was on, as it is in Development by default (#11).
+- `AddCommandLineSettingsFluentValidation` registered the `ICommandSettingsValidator<>` mapping
+  twice, so `IEnumerable<ICommandSettingsValidator<T>>` resolved two identical instances (#11).
 - `ConvertibleMessageFormatter` was registered in DI but threw
   `NotImplementedException`, so writing any `IConvertible` — `int`, `bool`,
   `DateTime` — crashed.
@@ -271,7 +359,8 @@ have been retired.
   Cancellation is now reported only when the token the command received has
   cancellation requested; any other `OperationCanceledException` goes to the
   handler like every other exception.
-- `AppBuilder(ConsoleAppInfo, CancellationTokenSource)`,
-  `AppBuilder.ConfigureCommandApp` and `EnvironmentSettings.Initialize` throw
-  `ArgumentNullException` for a null argument instead of storing it and failing
-  later, far from the caller.
+- `AppBuilder(ConsoleAppInfo, CancellationTokenSource)`, `AppBuilder.ConfigureCommandApp`,
+  `ConfigureServices`, `ConfigureHost` and `ConfigureAppConfiguration` (both overloads of the
+  two that have them) and `EnvironmentSettings.Initialize` throw `ArgumentNullException` for a
+  null argument instead of storing it and failing later, far from the caller (#22,
+  [PLO-756](https://linear.app/ploch/issue/PLO-756)).
