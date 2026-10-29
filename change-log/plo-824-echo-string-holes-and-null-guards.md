@@ -5,8 +5,10 @@
   contains `[`: a value object, a `StringBuilder`, a number with a format
   that adds brackets. The echo interpolated each value as it was, and
   Spectre.Console escapes only holes whose runtime value is a `string`, so
-  such a value was parsed as markup and failed with *Could not find color or
-  style ...*; string values were already escaped. Every value is now rendered
+  such a value was parsed as markup: a valid tag changed the rendered style,
+  an invalid or unclosed one failed with *Could not find color or style ...*
+  or *Unbalanced markup stack*; string values were already escaped. Every
+  value is now rendered
   with composite formatting (the same current-culture `IFormattable` path as
   before) and passed as a string, so it is escaped and printed verbatim
   (PLO-824).

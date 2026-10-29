@@ -310,7 +310,8 @@ have been retired.
 - `UseCaseAsyncCommand` no longer throws when a command that opts in to `EchoSettings` has a
   settings value of a non-string type whose text contains `[` (a value object, a `StringBuilder`,
   a formatted number): Spectre.Console escapes only holes whose runtime value is a `string`, so
-  such a value was parsed as markup, while string values were already safe. Every value is now
+  such a value was parsed as markup (a valid tag changed the rendered style, an invalid one
+  threw), while string values were already safe. Every value is now
   rendered with composite formatting, as before, and passed as a string, so it is escaped and
   printed verbatim ([PLO-824](https://linear.app/ploch/issue/PLO-824)).
 - `IOutput.MarkupInterpolated` and `MarkupLineInterpolated` throw `ArgumentNullException` for a

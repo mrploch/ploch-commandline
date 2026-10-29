@@ -202,11 +202,13 @@ public string OutputPath { get; init; } = "./reports/{date}/report.txt";
 
 `IOutput` abstracts console writing so commands stay testable. `Write` and `WriteLine` render an
 `IRenderable` directly, or dispatch to the most derived registered `IMessageWriter` for the message
-type: a `string` is written verbatim, and a message no writer accepts is written as plain text.
+type: the default writer writes a `string` verbatim, and a message no writer accepts is written as
+plain text.
 Registered `IMessageFormatter`s apply where a writer consults them and in `WriteBold` /
 `WriteError`. Markup is parsed by `Markup`, `MarkupLine` and the `…Interpolated` members, by a
 `FormattableString` passed to `Write` or `WriteLine` (interpolated markup with its string holes
-escaped), and around the text of `WriteBold` / `WriteError`; a plain `string` is never parsed.
+escaped), and around the text of `WriteBold` / `WriteError`; a plain `string` is not parsed by the
+default writer (a custom writer registered for `string` decides for itself).
 
 ## Learn more
 

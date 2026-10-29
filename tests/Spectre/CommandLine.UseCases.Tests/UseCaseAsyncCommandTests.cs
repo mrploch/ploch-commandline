@@ -140,17 +140,15 @@ public class UseCaseAsyncCommandTests
         output.Written.Should().ContainMatch("*Target*widget-42*", "a command that opts in still gets the diagnostic");
     }
 
-    /// <summary>
-    ///     Spectre.Console escapes only holes whose runtime value is a <see cref="string" />. The echo passed each
-    ///     value as it was, so a value of any other type whose text contained <c>[</c> - here a value object - was
-    ///     parsed as markup and threw; a string value was already safe. This goes through the real output adapter and
-    ///     a real console, so the escaping is exercised rather than simulated.
-    /// </summary>
+    // Spectre.Console escapes only holes whose runtime value is a string. The echo passed each value as it was, so
+    // a value of any other type whose text contained '[' - here a value object - was parsed as markup and threw; a
+    // string value was already safe. This goes through the real output adapter and a real console, so the escaping
+    // is exercised rather than simulated.
     [Theory]
     [AutoMockData]
     public async Task ExecuteAsync_should_echo_a_non_string_settings_value_containing_a_bracket_verbatim_when_the_command_opts_in(CommandContext context)
     {
-        var writer = new StringWriter();
+        using var writer = new StringWriter();
         var console = AnsiConsole.Create(new AnsiConsoleSettings
                                          {
                                              Ansi = AnsiSupport.No,
@@ -160,11 +158,18 @@ public class UseCaseAsyncCommandTests
         var output = new AnsiConsoleMarkupOutput(console, new MessageFormatterProcessor([], []));
         var command = new EchoingCommand(output, new StubUseCase(_ => Result<string>.Success("done")));
 
-        var result = await command.ExecuteAsync(context, new StubSettings { Target = "Widget [Dev]", Tag = new BracketedTag() }, CancellationToken.None);
+        var settings = new StubSettings { Target = "Widget [Dev]", Tag = new BracketedTag() };
+        settings.Tag!.ToString().Should().Be("[Dev]", "the value object's text must look like a style tag for the test to mean anything");
+
+        var result = await command.ExecuteAsync(context, settings, CancellationToken.None);
 
         result.Should().Be((int)ExitCode.Success);
-        writer.ToString().Should().Contain("Tag: [Dev]", "a non-string value is converted to a string hole, which Spectre escapes");
-        writer.ToString().Should().Contain("Target: Widget [Dev]", "a string value stays escaped as before");
+
+        // Compared line by line after whitespace normalisation: the console renderer pads and wraps per platform,
+        // and the character codes in the failure message tell an invisible difference from a missing line.
+        var lines = RenderedLines(writer.ToString());
+        lines.Should().Contain("Tag: [Dev]", "a non-string value is converted to a string hole, which Spectre escapes; rendered: {0}", DescribeCodes(lines));
+        lines.Should().Contain("Target: Widget [Dev]", "a string value stays escaped as before; rendered: {0}", DescribeCodes(lines));
     }
 
     /// <summary>
@@ -220,6 +225,17 @@ public class UseCaseAsyncCommandTests
         CreateCommand(output, new StubUseCase(execute));
 
     private static StubUseCaseCommand CreateCommand(RecordingOutput output, StubUseCase useCase) => new(output, useCase);
+
+    /// <summary>Splits console output into lines with surrounding and repeated whitespace collapsed.</summary>
+    private static List<string> RenderedLines(string rendered) =>
+        rendered.Split('\n')
+                .Select(line => string.Join(' ', line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))
+                .Where(line => line.Length > 0)
+                .ToList();
+
+    /// <summary>Lists each line with the code of every character, so an invisible difference shows up in a failure message.</summary>
+    private static string DescribeCodes(IEnumerable<string> lines) =>
+        string.Join(" | ", lines.Select(line => line + " = " + string.Join(" ", line.Select(c => ((int)c).ToString("x4", CultureInfo.InvariantCulture)))));
 
     private sealed class StubSettings : CommandSettings
     {
