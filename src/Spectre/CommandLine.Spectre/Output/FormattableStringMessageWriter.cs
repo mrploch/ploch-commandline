@@ -36,7 +36,8 @@ public class FormattableStringMessageWriter(IAnsiConsole output) : TypeMessageWr
         }
 
         // Rendering the interpolated string is where its holes are formatted, so the provider has to be applied
-        // here; MarkupInterpolated escapes the holes, which is what keeps a '[' in caller data from being parsed.
+        // here; MarkupInterpolated escapes the string holes, which is what keeps a '[' in caller data from being parsed
+        // (a non-string hole is formatted and parsed, which is why the summary tells callers to convert such values).
         output.MarkupInterpolated(formatProvider ?? CultureInfo.CurrentCulture, message);
     }
 }

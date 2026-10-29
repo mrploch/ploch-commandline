@@ -19,7 +19,7 @@
   relied on `Write("[green]ok[/]")` rendering green text should call `Markup` /
   `MarkupLine`, or `MarkupLineInterpolated` when the string carries values.
   `FormattableString` messages are unchanged and still render as interpolated
-  markup with their holes escaped (PLO-755).
+  markup with their string holes escaped (PLO-755).
 
 - **Breaking:** `IOutput` gains the `Markup` and `MarkupLine` members, so a
   custom implementation of the interface must add them (PLO-755).

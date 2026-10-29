@@ -141,6 +141,33 @@ public class UseCaseAsyncCommandTests
     }
 
     /// <summary>
+    ///     Spectre.Console escapes only holes whose runtime value is a <see cref="string" />. The echo passed each
+    ///     value as it was, so a value of any other type whose text contained <c>[</c> - here a value object - was
+    ///     parsed as markup and threw; a string value was already safe. This goes through the real output adapter and
+    ///     a real console, so the escaping is exercised rather than simulated.
+    /// </summary>
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_echo_a_non_string_settings_value_containing_a_bracket_verbatim_when_the_command_opts_in(CommandContext context)
+    {
+        var writer = new StringWriter();
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+                                         {
+                                             Ansi = AnsiSupport.No,
+                                             ColorSystem = ColorSystemSupport.NoColors,
+                                             Out = new AnsiConsoleOutput(writer)
+                                         });
+        var output = new AnsiConsoleMarkupOutput(console, new MessageFormatterProcessor([], []));
+        var command = new EchoingCommand(output, new StubUseCase(_ => Result<string>.Success("done")));
+
+        var result = await command.ExecuteAsync(context, new StubSettings { Target = "Widget [Dev]", Tag = new BracketedTag() }, CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Success);
+        writer.ToString().Should().Contain("Tag: [Dev]", "a non-string value is converted to a string hole, which Spectre escapes");
+        writer.ToString().Should().Contain("Target: Widget [Dev]", "a string value stays escaped as before");
+    }
+
+    /// <summary>
     ///     Result.Invalid puts its messages in ValidationErrors and leaves Errors empty, so rendering only Errors
     ///     printed "Use case failed:" with nothing after it - the user was told it failed but not why.
     /// </summary>
@@ -197,6 +224,15 @@ public class UseCaseAsyncCommandTests
     private sealed class StubSettings : CommandSettings
     {
         public string Target { get; init; } = "default-target";
+
+        /// <summary>A non-string value, the kind Spectre.Console's interpolation does not escape on its own.</summary>
+        public BracketedTag? Tag { get; init; }
+    }
+
+    /// <summary>A value object whose text looks like a markup tag.</summary>
+    private sealed class BracketedTag
+    {
+        public override string ToString() => "[Dev]";
     }
 
     private sealed class StubUseCase(Func<string, Result<string>> execute) : IResultUseCase<string, string>
@@ -211,7 +247,7 @@ public class UseCaseAsyncCommandTests
         }
     }
 
-    private class StubUseCaseCommand(RecordingOutput output, StubUseCase useCase)
+    private class StubUseCaseCommand(IOutput output, StubUseCase useCase)
         : UseCaseAsyncCommand<StubSettings, StubUseCase, string, string>(output,
                                                                          useCase,
                                                                          new CommandArgumentsRootProcessor([]),
@@ -222,7 +258,7 @@ public class UseCaseAsyncCommandTests
     }
 
     /// <summary>A command that opts the settings echo back on, the way a consumer with non-sensitive settings would.</summary>
-    private sealed class EchoingCommand(RecordingOutput output, StubUseCase useCase) : StubUseCaseCommand(output, useCase)
+    private sealed class EchoingCommand(IOutput output, StubUseCase useCase) : StubUseCaseCommand(output, useCase)
     {
         protected override bool EchoSettings => true;
     }

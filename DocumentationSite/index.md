@@ -200,9 +200,13 @@ public string OutputPath { get; init; } = "./reports/{date}/report.txt";
 
 ### Output pipeline
 
-`IOutput` abstracts console writing so commands stay testable. Messages pass
-through `IMessageFormatterProcessor`, which selects a registered formatter by
-message type and falls back to `ToString()` when none matches.
+`IOutput` abstracts console writing so commands stay testable. `Write` and `WriteLine` render an
+`IRenderable` directly, or dispatch to the most derived registered `IMessageWriter` for the message
+type: a `string` is written verbatim, and a message no writer accepts is written as plain text.
+Registered `IMessageFormatter`s apply where a writer consults them and in `WriteBold` /
+`WriteError`. Markup is parsed by `Markup`, `MarkupLine` and the `…Interpolated` members, by a
+`FormattableString` passed to `Write` or `WriteLine` (interpolated markup with its string holes
+escaped), and around the text of `WriteBold` / `WriteError`; a plain `string` is never parsed.
 
 ## Learn more
 

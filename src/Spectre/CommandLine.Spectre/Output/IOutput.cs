@@ -111,8 +111,8 @@ public interface IOutput
     ///     writer for strings, which by default writes it verbatim: a <c>[</c> in it is printed, not parsed as a
     ///     markup tag, so a path or user input can be passed straight through. To render markup, call
     ///     <see cref="Markup" /> or <see cref="MarkupInterpolated" />. A <see cref="FormattableString" /> message is
-    ///     handed to the writer for that type, which by default renders it as interpolated markup with its holes
-    ///     escaped, but note that an interpolated string literal infers <see cref="string" /> here, so it has to be
+    ///     handed to the writer for that type, which by default renders it as interpolated markup with its
+    ///     <see cref="string" /> holes escaped, but note that an interpolated string literal infers <see cref="string" /> here, so it has to be
     ///     passed as <c>Write&lt;FormattableString&gt;($"...")</c> to take that path. Registering a writer for either
     ///     type with <c>AddMessageWriter</c> changes how it renders here and in <see cref="WriteLine{TMessage}" />;
     ///     the decorating members (<see cref="WriteBold{TMessage}" />, <see cref="WriteError{TMessage}" /> and their

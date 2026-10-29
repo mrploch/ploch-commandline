@@ -94,10 +94,9 @@ have been retired.
 - **Breaking:** `AppCommand<TSettings>.DoExecute` and
   `AsyncAppCommand<TSettings>.DoExecuteAsync` accept a `CancellationToken`.
 - **Breaking:** `IMessageFormatterProcessor.WriteMessage` returns the `IMessageWriter` that
-  rendered the message, or `null` when none could handle it, instead of `void`; a caller needs
-  the writer to consult `WritesLineTerminator`.
-  Replace `if (processor.WriteMessage(x))` with `if (processor.WriteMessage(x) is not null)`
-  (#20, #31).
+  rendered the message, or `null` when none could handle it (it returned nothing, then a `bool`,
+  in unpublished builds); a caller needs the writer to consult `WritesLineTerminator`, and tests
+  the result with `is not null` (#20, #31).
 - **Breaking:** `IFormatProvider` is threaded through the whole output pipeline.
   `IMessageFormatter.GetMessage`, `IMessageFormatterProcessor.GetMessageText` and
   `WriteMessage`, and `IMessageWriter.Write` each take a trailing optional
@@ -308,6 +307,15 @@ have been retired.
   nullability):** the override's parameter is now declared `IConfiguration?`; with
   nullable warnings enabled, a subclass override with a non-nullable parameter produces
   CS8765 on recompilation and should declare `IConfiguration?` as well.
+- `UseCaseAsyncCommand` no longer throws when a command that opts in to `EchoSettings` has a
+  settings value of a non-string type whose text contains `[` (a value object, a `StringBuilder`,
+  a formatted number): Spectre.Console escapes only holes whose runtime value is a `string`, so
+  such a value was parsed as markup, while string values were already safe. Every value is now
+  rendered with composite formatting, as before, and passed as a string, so it is escaped and
+  printed verbatim ([PLO-824](https://linear.app/ploch/issue/PLO-824)).
+- `IOutput.MarkupInterpolated` and `MarkupLineInterpolated` throw `ArgumentNullException` for a
+  `null` argument, as documented and as `Markup` / `MarkupLine` already did, instead of letting
+  the null reach Spectre.Console as a `NullReferenceException` ([PLO-824](https://linear.app/ploch/issue/PLO-824)).
 - `AppCommand<TSettings>` never ran the `CommandArgumentsRootProcessor`, so every registered
   settings processor — token expansion included — was silently skipped for synchronous commands
   while `AsyncAppCommand<TSettings>` applied them. Both bases now do the same framework work

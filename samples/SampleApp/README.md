@@ -434,7 +434,8 @@ when launching from an IDE.
 
 ```
 samples/SampleApp/
-  Directory.Build.props                    # Standalone build settings; imports ProjectReferences.props on demand
+  Directory.Build.props                    # Standalone build settings
+  Directory.Build.targets                  # Imports ProjectReferences.props when UsePlochProjectReferences=true
   Directory.Packages.props                 # All package versions, as an external consumer would declare them
   ProjectReferences.props                  # In-repository mode: PackageReference -> ProjectReference
   Ploch.CommandLine.Spectre.SampleApp.slnx

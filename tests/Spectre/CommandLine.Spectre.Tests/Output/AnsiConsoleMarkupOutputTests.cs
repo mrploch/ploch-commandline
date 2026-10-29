@@ -142,8 +142,27 @@ public class AnsiConsoleMarkupOutputTests
     }
 
     /// <summary>
+    ///     The interpolated pair documents the same <see cref="ArgumentNullException" /> contract as <c>Markup</c> /
+    ///     <c>MarkupLine</c>; without the guard Spectre dereferenced the null and threw a
+    ///     <see cref="NullReferenceException" /> from inside its own code instead.
+    /// </summary>
+    [Fact]
+    public void MarkupInterpolated_and_MarkupLineInterpolated_should_throw_ArgumentNullException_for_a_null_value()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        var markupInterpolated = () => output.MarkupInterpolated(null!);
+        var markupLineInterpolated = () => output.MarkupLineInterpolated(null!);
+
+        markupInterpolated.Should().Throw<ArgumentNullException>().WithParameterName("value");
+        markupLineInterpolated.Should().Throw<ArgumentNullException>().WithParameterName("value");
+        console.Output.Should().BeEmpty("a rejected argument must not leave a stray line behind");
+    }
+
+    /// <summary>
     ///     The verbatim change is scoped to <see cref="string" />. A <see cref="FormattableString" /> must still have
-    ///     its template parsed as markup and its holes escaped; a template without a style tag could not tell the two
+    ///     its template parsed as markup and its string holes escaped; a template without a style tag could not tell the two
     ///     apart, so this one carries a tag.
     /// </summary>
     [Fact]

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Globalization;
+using System.Linq;
 using Ardalis.Result;
 using Ploch.CommandLine.Spectre.Commands;
 using Ploch.CommandLine.Spectre.Output;
@@ -61,7 +62,8 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
     protected abstract TUseCaseRequest CreateRequest(TCommandSettings commandSettings);
 
     /// <summary>
-    ///     Executes the use case, echoing the supplied settings first and then rendering the outcome.
+    ///     Runs the use case and renders its outcome, echoing the supplied settings first only when
+    ///     <see cref="EchoSettings" /> is <see langword="true" />.
     /// </summary>
     /// <param name="context">The command context containing execution information.</param>
     /// <param name="settings">The settings to use for command execution.</param>
@@ -80,7 +82,12 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
             var propertyValues = settings.GetPropertyValues();
             foreach (var (propertyName, propertyValue) in propertyValues)
             {
-                Output.MarkupLineInterpolated($"[dim]{propertyName}[/]: {propertyValue}");
+                // Spectre escapes only string interpolation holes. A string value was already safe; a value of any
+                // other type (a value object, a StringBuilder, a formatted number) whose text contains '[' was parsed
+                // as markup and threw. Composite formatting keeps the IFormattable/current-culture rendering the hole
+                // had before, and the result is a string, so it is escaped and printed verbatim.
+                var text = string.Format(CultureInfo.CurrentCulture, "{0}", propertyValue);
+                Output.MarkupLineInterpolated($"[dim]{propertyName}[/]: {text}");
             }
         }
 

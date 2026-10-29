@@ -73,8 +73,11 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// </summary>
     /// <param name="value">The interpolated string to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     public IOutput MarkupInterpolated(FormattableString value)
     {
+        value.NotNull();
+
         console.MarkupInterpolated(value);
 
         return this;
@@ -85,8 +88,11 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// </summary>
     /// <param name="value">The interpolated string to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     public IOutput MarkupLineInterpolated(FormattableString value)
     {
+        value.NotNull();
+
         console.MarkupLineInterpolated(value);
 
         return this;

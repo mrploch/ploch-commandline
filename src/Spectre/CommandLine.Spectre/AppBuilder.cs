@@ -258,8 +258,9 @@ public class AppBuilder : IDisposable
     /// </summary>
     /// <remarks>
     ///     A builder created through <see cref="Create" /> owns both and releases both. A builder constructed with
-    ///     <see cref="AppBuilder(ConsoleAppInfo, CancellationTokenSource)" /> owns neither, so disposing it is a no-op
-    ///     and the caller's cancellation source is left intact.
+    ///     <see cref="AppBuilder(ConsoleAppInfo, CancellationTokenSource)" /> owns neither, so disposing it releases
+    ///     nothing and the caller's cancellation source is left intact; it still marks the builder disposed, so a
+    ///     later <see cref="ConfigureCommandApp" /> throws <see cref="ObjectDisposedException" />.
     /// </remarks>
     public void Dispose()
     {

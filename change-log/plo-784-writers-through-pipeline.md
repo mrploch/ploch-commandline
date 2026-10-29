@@ -22,6 +22,6 @@
   `AddMessageWriter<TMessage, TWriter>()` replaces the built-in one. The rendered
   output is unchanged: a string is still written verbatim and a
   `FormattableString` (passed as `Write<FormattableString>($"...")`; a bare
-  `$"..."` argument infers `string`) still renders as markup with its holes
-  escaped and formatted by `string.Format`, so `{total:N2}` and an
+  `$"..."` argument infers `string`) still renders as markup with its string
+  holes escaped and formatted by `string.Format`, so `{total:N2}` and an
   `ICustomFormatter` on the provider are honoured (PLO-784).
