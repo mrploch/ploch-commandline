@@ -9,7 +9,7 @@ namespace Ploch.CommandLine.Spectre.Serilog;
 
 /// <summary>
 ///     Provides extension methods for configuring Serilog logger instances with predefined settings
-///     optimized for command-line applications using Spectre.Console.
+///     optimised for command-line applications using Spectre.Console.
 /// </summary>
 /// <remarks>
 ///     This static class contains extension methods that configure Serilog with a comprehensive
@@ -107,7 +107,7 @@ public static class LoggerConfigurationExtensions
     ///     <para>
     ///         The configuration process first applies the predefined settings, then reads additional
     ///         configuration from the provided <paramref name="configuration" /> if available. This allows
-    ///         for both consistent defaults and flexible customization.
+    ///         for both consistent defaults and flexible customisation.
     ///     </para>
     /// </remarks>
     /// <example>
@@ -187,7 +187,7 @@ public static class LoggerConfigurationExtensions
     ///     The directory path where the log file will be stored. If null, the application's base directory
     ///     will be used.
     /// </param>
-    /// <param name="suffix">Optional suffix to append to the log file name, useful for categorizing different log types.</param>
+    /// <param name="suffix">Optional suffix to append to the log file name, useful for categorising different log types.</param>
     /// <returns>A full path to the log file, combining the directory path and file name with appropriate extension.</returns>
     private static string BuildFullLogPath(string? logName, string? logPath, string? suffix = null)
     {

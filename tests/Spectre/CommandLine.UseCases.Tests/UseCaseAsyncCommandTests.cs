@@ -140,6 +140,42 @@ public class UseCaseAsyncCommandTests
         output.Written.Should().ContainMatch("*Target*widget-42*", "a command that opts in still gets the diagnostic");
     }
 
+    // Spectre.Console escapes only holes whose runtime value is a string. The echo passed each value as it was, so
+    // a value of any other type whose text contained '[' - here a value object - was parsed as markup and threw; a
+    // string value was already safe. This goes through the real output adapter and a real console, so the escaping
+    // is exercised rather than simulated.
+    [Theory]
+    [AutoMockData]
+    public async Task ExecuteAsync_should_echo_a_non_string_settings_value_containing_a_bracket_verbatim_when_the_command_opts_in(CommandContext context)
+    {
+        await using var writer = new StringWriter();
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+                                         {
+                                             Ansi = AnsiSupport.No,
+                                             ColorSystem = ColorSystemSupport.NoColors,
+                                             Out = new AnsiConsoleOutput(writer),
+
+                                             // Spectre's default enrichers recognise CI environments and switch ANSI back on,
+                                             // which is how this test rendered escape sequences on the GitHub runner.
+                                             Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false }
+                                         });
+        var output = new AnsiConsoleMarkupOutput(console, new MessageFormatterProcessor([], []));
+        var command = new EchoingCommand(output, new StubUseCase(_ => Result<string>.Success("done")));
+
+        var settings = new StubSettings { Target = "Widget [Dev]", Tag = new BracketedTag() };
+        settings.Tag!.ToString().Should().Be("[Dev]", "the value object's text must look like a style tag for the test to mean anything");
+
+        var result = await command.ExecuteAsync(context, settings, CancellationToken.None);
+
+        result.Should().Be((int)ExitCode.Success);
+
+        // Compared line by line after whitespace normalisation: the console renderer pads and wraps per platform,
+        // and the character codes in the failure message tell an invisible difference from a missing line.
+        var lines = RenderedLines(writer.ToString());
+        lines.Should().Contain("Tag: [Dev]", "a non-string value is converted to a string hole, which Spectre escapes; rendered: {0}", DescribeCodes(lines));
+        lines.Should().Contain("Target: Widget [Dev]", "a string value stays escaped as before; rendered: {0}", DescribeCodes(lines));
+    }
+
     /// <summary>
     ///     Result.Invalid puts its messages in ValidationErrors and leaves Errors empty, so rendering only Errors
     ///     printed "Use case failed:" with nothing after it - the user was told it failed but not why.
@@ -194,9 +230,60 @@ public class UseCaseAsyncCommandTests
 
     private static StubUseCaseCommand CreateCommand(RecordingOutput output, StubUseCase useCase) => new(output, useCase);
 
+    /// <summary>
+    ///     Splits console output into lines with ANSI escape sequences removed and surrounding and repeated whitespace
+    ///     collapsed, so the assertions see the text a user reads whatever the renderer decided about styling.
+    /// </summary>
+    /// <param name="rendered">The text the console wrote.</param>
+    /// <returns>The non-empty lines, normalised.</returns>
+    private static List<string> RenderedLines(string rendered) =>
+        StripEscapeSequences(rendered).Split('\n')
+                                      .Select(line => string.Join(' ', line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))
+                                      .Where(line => line.Length > 0)
+                                      .ToList();
+
+    /// <summary>Removes every <c>ESC [ … m</c> styling sequence.</summary>
+    /// <param name="text">The text that may carry escape sequences.</param>
+    /// <returns>The text without them.</returns>
+    private static string StripEscapeSequences(string text)
+    {
+        var builder = new System.Text.StringBuilder(text.Length);
+        var index = 0;
+        while (index < text.Length)
+        {
+            if (text[index] == '\u001b' && index + 1 < text.Length && text[index + 1] == '[')
+            {
+                var end = text.IndexOf('m', index);
+                index = end < 0 ? text.Length : end + 1;
+
+                continue;
+            }
+
+            builder.Append(text[index]);
+            index++;
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>Lists each line with the code of every character, so an invisible difference shows up in a failure message.</summary>
+    /// <param name="lines">The lines to describe.</param>
+    /// <returns>One entry per line, separated by bars.</returns>
+    private static string DescribeCodes(IEnumerable<string> lines) =>
+        string.Join(" | ", lines.Select(line => line + " = " + string.Join(" ", line.Select(c => ((int)c).ToString("x4", CultureInfo.InvariantCulture)))));
+
     private sealed class StubSettings : CommandSettings
     {
         public string Target { get; init; } = "default-target";
+
+        /// <summary>A non-string value, the kind Spectre.Console's interpolation does not escape on its own.</summary>
+        public BracketedTag? Tag { get; init; }
+    }
+
+    /// <summary>A value object whose text looks like a markup tag.</summary>
+    private sealed class BracketedTag
+    {
+        public override string ToString() => "[Dev]";
     }
 
     private sealed class StubUseCase(Func<string, Result<string>> execute) : IResultUseCase<string, string>
@@ -211,7 +298,7 @@ public class UseCaseAsyncCommandTests
         }
     }
 
-    private class StubUseCaseCommand(RecordingOutput output, StubUseCase useCase)
+    private class StubUseCaseCommand(IOutput output, StubUseCase useCase)
         : UseCaseAsyncCommand<StubSettings, StubUseCase, string, string>(output,
                                                                          useCase,
                                                                          new CommandArgumentsRootProcessor([]),
@@ -222,7 +309,7 @@ public class UseCaseAsyncCommandTests
     }
 
     /// <summary>A command that opts the settings echo back on, the way a consumer with non-sensitive settings would.</summary>
-    private sealed class EchoingCommand(RecordingOutput output, StubUseCase useCase) : StubUseCaseCommand(output, useCase)
+    private sealed class EchoingCommand(IOutput output, StubUseCase useCase) : StubUseCaseCommand(output, useCase)
     {
         protected override bool EchoSettings => true;
     }

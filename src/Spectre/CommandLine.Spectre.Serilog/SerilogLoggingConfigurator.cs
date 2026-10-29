@@ -22,7 +22,7 @@ public static class SerilogLoggingConfigurator
 {
     /// <summary>
     ///     Adds Serilog to the service collection with a comprehensive predefined configuration
-    ///     optimized for command-line applications.
+    ///     optimised for command-line applications.
     /// </summary>
     /// <param name="services">
     ///     The service collection to configure. Serilog will be registered as the primary
@@ -30,7 +30,7 @@ public static class SerilogLoggingConfigurator
     /// </param>
     /// <param name="configuration">
     ///     Optional configuration instance to read Serilog settings from. If provided, settings
-    ///     from the "Serilog" section will be used to customize the logging behavior. The
+    ///     from the "Serilog" section will be used to customise the logging behaviour. The
     ///     configuration will be applied after the predefined setup, allowing for overrides.
     /// </param>
     /// <param name="logName">

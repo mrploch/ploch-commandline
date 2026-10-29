@@ -19,6 +19,8 @@ public class ProjectExportCommand(IOutput output,
                                                                                                                            validator,
                                                                                                                            exceptionHandler)
 {
+    // EchoSettings stays at the library default (off): OutputPath is a user-supplied path, and echoing it into
+    // captured console output is the disclosure the opt-in exists to avoid. ProjectCreateCommand shows the echo.
     protected override ExportProjectRequest CreateRequest(ProjectExportCommandSettings commandSettings)
     {
         return new ExportProjectRequest(commandSettings.Name, commandSettings.OutputPath);

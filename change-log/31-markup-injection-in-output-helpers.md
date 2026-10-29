@@ -14,9 +14,9 @@
 ### Changed
 
 - `IOutput.WriteLine<TMessage>` now dispatches through the same path as
-  `IOutput.Write<TMessage>`, so registered `IMessageFormatter` and
-  `IMessageWriter` instances and `IRenderable` messages are honoured on both
-  methods rather than only on `Write` (#31).
+  `IOutput.Write<TMessage>`, so registered `IMessageWriter` instances and `IRenderable` messages are
+  honoured on both methods rather than only on `Write`; a registered
+  `IMessageFormatter` applies where the selected writer consults it (#31).
 
   A message that is neither a `string` nor a `FormattableString` and has no
   registered formatter or writer is now written as plain text instead of being
