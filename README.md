@@ -9,6 +9,7 @@
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mrploch_ploch-commandline&metric=coverage)](https://sonarcloud.io/summary/new_code?id=mrploch_ploch-commandline)
 [![Codacy Grade](https://app.codacy.com/project/badge/Grade/96834038202e40868af2cb827f145301)](https://app.codacy.com/gh/mrploch/ploch-commandline/dashboard)
 [![Codacy Coverage](https://app.codacy.com/project/badge/Coverage/96834038202e40868af2cb827f145301)](https://app.codacy.com/gh/mrploch/ploch-commandline/dashboard)
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/mrploch/ploch-commandline?utm_source=oss&utm_medium=github&utm_campaign=mrploch%2Fploch-commandline&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
 
 ## Overview
 
