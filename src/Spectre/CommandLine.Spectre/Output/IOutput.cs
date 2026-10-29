@@ -67,6 +67,9 @@ public interface IOutput
     ///     <see cref="FormattableString" /> and a format provider to control that.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
+    [SuppressMessage("ReSharper",
+                     "UnusedMethodReturnValue.Global",
+                     Justification = "Part of the public API: the return value exists for chaining by consumers, whether or not the library chains it.")]
     IOutput MarkupInterpolated(FormattableString value);
 
     /// <summary>
