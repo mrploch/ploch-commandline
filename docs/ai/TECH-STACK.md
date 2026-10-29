@@ -125,6 +125,7 @@ verification date; "newer" is the latest stable on nuget.org that day.
 | StyleCop.Analyzers | 1.1.118 | S/Analyzers.Global | current stable |
 | codecracker.CSharp | 1.1.0 | S/Analyzers.Global | current |
 | Spectre.Console.Analyzer | 1.0.0 | S/Spectre.Console | current |
+| Microsoft.CodeAnalysis.PublicApiAnalyzers | 5.6.0 | L | current |
 
 FluentAssertions, Moq and AutoFixture arrive transitively through
 `Ploch.TestingSupport.XUnit3.AutoMoq`.
@@ -134,9 +135,9 @@ FluentAssertions, Moq and AutoFixture arrive transitively through
 - **No vulnerable or deprecated package** in the main solution, transitive included (nuget.org
   data).
 - **Updates to shared versions are made in `mrploch-development`,** not here. Only
-  `FluentValidation.DependencyInjectionExtensions` and `Nerdbank.GitVersioning` are pinned in this
-  repository; `Ploch.Common.Apps.Shared` is declared here but takes its version from the shared
-  property.
+  `FluentValidation.DependencyInjectionExtensions`, `Nerdbank.GitVersioning` and
+  `Microsoft.CodeAnalysis.PublicApiAnalyzers` are pinned in this repository;
+  `Ploch.Common.Apps.Shared` is declared here but takes its version from the shared property.
 - **The sample pins its own versions** in `samples/SampleApp/Directory.Packages.props`, including a
   prerelease build of this repository's packages (`1.0.20-prerelease` on the verification date,
   while `main` built `1.0.25`). `dependency-report.yml` watches that pin weekly.
@@ -148,6 +149,7 @@ FluentAssertions, Moq and AutoFixture arrive transitively through
 | Layer | What | Where |
 |---|---|---|
 | Compiler | Six analyser packages as `GlobalPackageReference`; `AnalysisLevel=latest-Recommended` | Shared `Analyzers.Global` file |
+| Public API | `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` per packable project; `RS0016`/`RS0017` at error severity in `.globalconfig` (so they survive the scanner's `TreatWarningsAsErrors=false`); `RS0026`/`RS0027` lowered to suggestion for the output folder only | `Directory.Build.props`, `.globalconfig`, `.editorconfig`, `CONTRIBUTING.md` |
 | Style | `EnforceCodeStyleInBuild=true`; naming rules at warning | `.editorconfig` |
 | Errors | 54 nullable-flow `CS8xxx` diagnostics and `IDE0002` | `.editorconfig` |
 | Documentation | `CS1591` at warning, so an error under warnings-as-errors | `.editorconfig` |
@@ -217,6 +219,10 @@ Facts worth knowing:
   GitHub Release from `change-log/*.md`, then opens a post-release pull request that bumps the
   version and archives the change-log entries.
 - `RELEASE_NOTES.md` is maintained by hand; no workflow edits it.
+- Before `release.yml` is dispatched, the entries in every `PublicAPI.Unshipped.txt` are promoted
+  to `PublicAPI.Shipped.txt` in a reviewed commit (`CONTRIBUTING.md`, "The public API baseline").
+  No workflow does the promotion, but `release.yml` verifies it before restoring and fails,
+  dry run included, while any `Unshipped` file still has entries.
 - **State on the verification date:** no tags, no GitHub Releases, nothing on nuget.org. The only
   release run was a dry run, so the real publish path has never executed.
 

@@ -16,6 +16,13 @@
   <ItemGroup>
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.94" />
+    <!--
+      Public API baseline analyser (PLO-788). Pinned here rather than in the shared
+      Analyzers.Global file because it is referenced per packable project, not as a
+      GlobalPackageReference: a global reference would also reach the test projects, where
+      every public test class would then need a baseline entry.
+    -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
   </ItemGroup>
   <!--
     Ploch package versions (ploch-common, ploch-data) come from the shared file so every

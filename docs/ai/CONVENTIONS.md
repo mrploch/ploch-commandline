@@ -76,7 +76,9 @@ section 10 says so.
   these into the GitHub Release notes and archives them.
 - `RELEASE_NOTES.md` is edited by hand in the same pull request.
 - A public API change updates the XML docs, `docs/GETTING_STARTED.md`, the package `README.md`
-  under `src/`, and the sample when it demonstrates the feature.
+  under `src/`, the sample when it demonstrates the feature, and the project's
+  `PublicAPI.Unshipped.txt`; the build fails until the baseline matches (PLO-788, see
+  [`CONTRIBUTING.md`](../../CONTRIBUTING.md), "The public API baseline").
 - Snippets in documentation must compile against the current API.
 - Prose is British English.
 

@@ -1,0 +1,10 @@
+#nullable enable
+override Ploch.CommandLine.Spectre.FluentValidation.CommandLineFluentValidationServicesBundle.DoConfigure() -> void
+Ploch.CommandLine.Spectre.FluentValidation.CommandLineFluentValidationServicesBundle
+Ploch.CommandLine.Spectre.FluentValidation.CommandLineFluentValidationServicesBundle.CommandLineFluentValidationServicesBundle(params System.Collections.Generic.IEnumerable<System.Reflection.Assembly!>! validatorAssemblies) -> void
+Ploch.CommandLine.Spectre.FluentValidation.CommandLineFluentValidationServicesBundleRegistration
+Ploch.CommandLine.Spectre.FluentValidation.FluentCommandSettingsValidator<TSettings>
+Ploch.CommandLine.Spectre.FluentValidation.FluentCommandSettingsValidator<TSettings>.FluentCommandSettingsValidator(Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory) -> void
+Ploch.CommandLine.Spectre.FluentValidation.FluentCommandSettingsValidator<TSettings>.Validate(Spectre.Console.Cli.CommandContext! context, TSettings! settings) -> Spectre.Console.ValidationResult!
+static Ploch.CommandLine.Spectre.FluentValidation.CommandLineFluentValidationServicesBundle.Create(System.Action<Ploch.Common.Reflection.AssemblyListBuilder!>! validatorAssembliesBuilderAction) -> Ploch.CommandLine.Spectre.FluentValidation.CommandLineFluentValidationServicesBundle!
+static Ploch.CommandLine.Spectre.FluentValidation.CommandLineFluentValidationServicesBundleRegistration.AddCommandLineSettingsFluentValidation(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Ploch.Common.Reflection.AssemblyListBuilder!>! validatorAssembliesBuilderAction) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
