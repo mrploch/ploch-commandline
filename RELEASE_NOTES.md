@@ -126,10 +126,12 @@ have been retired.
   `1,234.50` rather than `1.234,50`, and the timestamp's time separator is always `:`. Pass
   `culture: CultureInfo.CurrentCulture` to restore locale-formatted files; console output is
   unchanged (#65).
-- `IOutput.WriteLine<TMessage>` dispatches through the same path as `Write<TMessage>`, so
-  registered formatters and writers and `IRenderable` messages are honoured on both. A message
-  that is neither a `string` nor a `FormattableString` and has no registered handler is written
-  as plain text rather than parsed as markup (#31).
+- `IOutput.WriteLine<TMessage>` dispatches through the same path as `Write<TMessage>`, so the
+  registered writers and `IRenderable` messages are honoured on both; a registered formatter
+  applies where the selected writer consults it, as `EnumerableMessageWriter` does, and in the
+  decorating members (`WriteBold`, `WriteError` and their line forms). A message that is neither a
+  `string` nor a `FormattableString` and that no writer accepts is written as plain text rather
+  than parsed as markup (#31).
 - Message formatters and writers are selected by specificity — the most derived handler that
   accepts the message — rather than by registration order, so `Win32Exception` reaches
   `Win32ExceptionMessageFormatter` and a consumer formatter for its own exception type is no
