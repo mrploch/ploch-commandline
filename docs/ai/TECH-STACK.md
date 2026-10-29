@@ -168,7 +168,7 @@ All workflows are in `.github/workflows/`. Actions are pinned to commit SHAs, ex
 
 | Workflow | Runs on | Does |
 |---|---|---|
-| `build-dotnet.yml` | Push to `main`, every PR | Guard, restore, SonarCloud, Release build, tests with coverage, sample build and test, coverage upload, DocFX smoke test, publish to GitHub Packages |
+| `build-dotnet.yml` | Push to `main`, every PR | Guard, restore, warnings-as-errors gate build (scanner-enabled runs only), SonarCloud around a second, forced Release build, tests with coverage, sample build and test, coverage upload, DocFX smoke test, publish to GitHub Packages |
 | `codeql.yml` | Push to `main`, PR, weekly | Code scanning |
 | `qodana_code_quality.yml` | Push to `main`, PR | Qodana against the committed baseline |
 | `publish-docs.yml` | Push to `main` | DocFX build and GitHub Pages deployment |
@@ -182,6 +182,11 @@ Facts worth knowing:
 - The `main` ruleset requires a pull request, resolved threads, CodeQL and code-quality results.
   It has **no required status checks**, so `build`, SonarCloud, Qodana and Codacy do not block a
   merge at platform level.
+- The SonarScanner for .NET sets `TreatWarningsAsErrors=false` for the build it wraps, so that build
+  cannot enforce the zero-warning bar. Scanner-enabled runs therefore build the solution twice: a
+  plain Release build (with packing) before `SonarScanner Begin` is the gate, and the scanner-wrapped
+  build runs `--no-incremental` so there is a compilation to analyse. Fork and Dependabot runs skip
+  the scanner and build once, enforcing the bar directly (PLO-823).
 - Secrets used, by name: `GH_PACKAGES_TOKEN`, `SONAR_TOKEN`, `CODACY_PROJECT_TOKEN`, a Qodana
   token, `GH_TOKEN`. SonarCloud and coverage upload are skipped for forks and Dependabot.
 - `GH_PACKAGES_TOKEN` is exported by a guarded step only when the run has the secret, so a
