@@ -44,7 +44,11 @@ have been retired.
   caller-supplied source leaves that source alone. `ConfigureCommandApp` on a disposed builder
   throws `ObjectDisposedException` (#11).
 - `IMessageWriter.WritesLineTerminator`, which a writer uses to declare that its output already
-  ends with a line break so `IOutput.WriteLine` does not add another (#31).
+  ends with a line break so `IOutput.WriteLine` does not add another. It is a default interface
+  member returning `false`, so an existing writer that renders inline needs no change; only a
+  writer that already emits a trailing newline returns `true`, as `EnumerableMessageWriter` and
+  `ExceptionMessageWriter` now do, so `WriteLine(aCollection)` no longer leaves a blank line
+  after the last item (#31).
 - A `culture` parameter on `UseSerilog`, `AddSerilog`, `ConfigureSerilog` and the
   `SerilogConfigurationBundle` constructor, controlling how values are formatted in both log
   files. Source that calls these methods compiles unchanged, but the signatures changed, so an
@@ -100,10 +104,6 @@ have been retired.
   `IFormatProvider? formatProvider = null`. Source-compatible for callers; a type that
   implements or overrides these members must add the parameter, and compiled consumers must
   be rebuilt (#11).
-- **Breaking:** `IMessageWriter` gains `WritesLineTerminator`, so a custom implementation of the
-  interface must add it (`TypeMessageWriter<TMessage>` supplies `false`). `EnumerableMessageWriter`
-  and `ExceptionMessageWriter` return `true`, so `WriteLine(aCollection)` no longer leaves a blank
-  line after the last item (#31).
 - **Breaking:** `AppCommand<TSettings>` takes the same constructor arguments as
   `AsyncAppCommand<TSettings>` — `(CommandArgumentsRootProcessor settingsProcessor,
   ICommandSettingsValidator<TSettings> validator, IExceptionHandler exceptionHandler, IOutput output)`

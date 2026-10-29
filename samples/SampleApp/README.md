@@ -390,15 +390,13 @@ public property of the settings type), and the command turns it on with `EchoSet
 because a project name, description and template hold nothing sensitive.
 
 `project export` writes a real artefact — a success result from a use case that produced nothing
-would be a lie:
+would be a lie. It leaves the settings echo off: `OutputPath` is a user-supplied path, which is the kind
+of value the opt-in keeps out of captured output:
 
 ```text
 $ sample project export SpectreDemo -o "./exports-{date}"
 
 Starting use case ExportProjectUseCase
-Settings:
-Name: SpectreDemo
-OutputPath: ./exports-2026-08-22
 Use case completed successfully.
 
 $ cat exports-2026-08-22/SpectreDemo.json

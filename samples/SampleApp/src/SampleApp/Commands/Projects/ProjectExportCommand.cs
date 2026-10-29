@@ -19,9 +19,8 @@ public class ProjectExportCommand(IOutput output,
                                                                                                                            validator,
                                                                                                                            exceptionHandler)
 {
-    // Opt-in settings echo, as in ProjectCreateCommand: a project name and an output path hold nothing sensitive.
-    protected override bool EchoSettings => true;
-
+    // EchoSettings stays at the library default (off): OutputPath is a user-supplied path, and echoing it into
+    // captured console output is the disclosure the opt-in exists to avoid. ProjectCreateCommand shows the echo.
     protected override ExportProjectRequest CreateRequest(ProjectExportCommandSettings commandSettings)
     {
         return new ExportProjectRequest(commandSettings.Name, commandSettings.OutputPath);
