@@ -148,12 +148,16 @@ public class UseCaseAsyncCommandTests
     [AutoMockData]
     public async Task ExecuteAsync_should_echo_a_non_string_settings_value_containing_a_bracket_verbatim_when_the_command_opts_in(CommandContext context)
     {
-        using var writer = new StringWriter();
+        await using var writer = new StringWriter();
         var console = AnsiConsole.Create(new AnsiConsoleSettings
                                          {
                                              Ansi = AnsiSupport.No,
                                              ColorSystem = ColorSystemSupport.NoColors,
-                                             Out = new AnsiConsoleOutput(writer)
+                                             Out = new AnsiConsoleOutput(writer),
+
+                                             // Spectre's default enrichers recognise CI environments and switch ANSI back on,
+                                             // which is how this test rendered escape sequences on the GitHub runner.
+                                             Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false }
                                          });
         var output = new AnsiConsoleMarkupOutput(console, new MessageFormatterProcessor([], []));
         var command = new EchoingCommand(output, new StubUseCase(_ => Result<string>.Success("done")));
@@ -226,14 +230,45 @@ public class UseCaseAsyncCommandTests
 
     private static StubUseCaseCommand CreateCommand(RecordingOutput output, StubUseCase useCase) => new(output, useCase);
 
-    /// <summary>Splits console output into lines with surrounding and repeated whitespace collapsed.</summary>
+    /// <summary>
+    ///     Splits console output into lines with ANSI escape sequences removed and surrounding and repeated whitespace
+    ///     collapsed, so the assertions see the text a user reads whatever the renderer decided about styling.
+    /// </summary>
+    /// <param name="rendered">The text the console wrote.</param>
+    /// <returns>The non-empty lines, normalised.</returns>
     private static List<string> RenderedLines(string rendered) =>
-        rendered.Split('\n')
-                .Select(line => string.Join(' ', line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))
-                .Where(line => line.Length > 0)
-                .ToList();
+        StripEscapeSequences(rendered).Split('\n')
+                                      .Select(line => string.Join(' ', line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))
+                                      .Where(line => line.Length > 0)
+                                      .ToList();
+
+    /// <summary>Removes every <c>ESC [ … m</c> styling sequence.</summary>
+    /// <param name="text">The text that may carry escape sequences.</param>
+    /// <returns>The text without them.</returns>
+    private static string StripEscapeSequences(string text)
+    {
+        var builder = new System.Text.StringBuilder(text.Length);
+        var index = 0;
+        while (index < text.Length)
+        {
+            if (text[index] == '\u001b' && index + 1 < text.Length && text[index + 1] == '[')
+            {
+                var end = text.IndexOf('m', index);
+                index = end < 0 ? text.Length : end + 1;
+
+                continue;
+            }
+
+            builder.Append(text[index]);
+            index++;
+        }
+
+        return builder.ToString();
+    }
 
     /// <summary>Lists each line with the code of every character, so an invisible difference shows up in a failure message.</summary>
+    /// <param name="lines">The lines to describe.</param>
+    /// <returns>One entry per line, separated by bars.</returns>
     private static string DescribeCodes(IEnumerable<string> lines) =>
         string.Join(" | ", lines.Select(line => line + " = " + string.Join(" ", line.Select(c => ((int)c).ToString("x4", CultureInfo.InvariantCulture)))));
 
