@@ -167,10 +167,11 @@ How the files are maintained:
   API" light bulb in the IDE. Review the diff like any other change: the entry *is* the API review.
 - **Removing or renaming unreleased API.** Delete its line from `PublicAPI.Unshipped.txt` (and
   add the new line for a rename).
-- **Until 1.0 ships** `PublicAPI.Shipped.txt` holds only the `#nullable enable` header and every
-  entry lives in `PublicAPI.Unshipped.txt`. Before `release.yml` is dispatched, a reviewed commit
-  moves every entry from `Unshipped` to `Shipped`, leaving `Unshipped` with the header alone;
+- **Before a release** a reviewed commit moves every entry from `PublicAPI.Unshipped.txt` to
+  `PublicAPI.Shipped.txt`, leaving `Unshipped` with the `#nullable enable` header alone;
   `release.yml` checks this before it restores and refuses to release (or dry-run) otherwise.
+  Until the 1.0 promotion (PLO-103) `Shipped` held only the header and every entry lived in
+  `Unshipped`.
 - **After 1.0** removing or changing a shipped member is a breaking change. Keep its line in
   `Shipped`, add the same line to `Unshipped` prefixed with `*REMOVED*`, and add the new
   signature as an ordinary entry; the next release promotion deletes the removed line from

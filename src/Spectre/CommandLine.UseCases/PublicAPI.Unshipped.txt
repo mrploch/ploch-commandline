@@ -1,13 +1,1 @@
 #nullable enable
-abstract Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>.CreateRequest(TCommandSettings! commandSettings) -> TUseCaseRequest
-override Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>.DoExecuteAsync(Spectre.Console.Cli.CommandContext! context, TCommandSettings! settings, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Ploch.CommandLine.Spectre.Commands.ExitCode>!
-Ploch.CommandLine.UseCases.IResultUseCase<TRequest, TResponse>
-Ploch.CommandLine.UseCases.IResultUseCase<TRequest, TResponse>.UseCaseName.get -> string?
-Ploch.CommandLine.UseCases.IUseCase<TRequest, TResponse>
-Ploch.CommandLine.UseCases.IUseCase<TRequest, TResponse>.ExecuteAsync(TRequest request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<TResponse>!
-Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>
-Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>.UseCase.get -> TUseCase
-Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>.UseCaseAsyncCommand(Ploch.CommandLine.Spectre.Output.IOutput! output, TUseCase useCase, Ploch.CommandLine.Spectre.Commands.CommandArgumentsRootProcessor! settingsProcessor, Ploch.CommandLine.Spectre.Commands.ICommandSettingsValidator<TCommandSettings!>! validator, Ploch.CommandLine.Spectre.Commands.IExceptionHandler! exceptionHandler) -> void
-virtual Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>.EchoSettings.get -> bool
-virtual Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>.ProcessFailureResponse(Ardalis.Result.Result<TUseCaseResponse>! result) -> Ploch.CommandLine.Spectre.Commands.ExitCode
-virtual Ploch.CommandLine.UseCases.UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRequest, TUseCaseResponse>.ProcessSuccessResponse(Ardalis.Result.Result<TUseCaseResponse>! result) -> Ploch.CommandLine.Spectre.Commands.ExitCode
