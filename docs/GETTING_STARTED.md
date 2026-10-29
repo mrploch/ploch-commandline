@@ -419,8 +419,10 @@ containing `[` throws during rendering or injects formatting:
 table.AddRow(user.Id.ToString(), Markup.Escape(user.Name), Markup.Escape(user.Email));
 ```
 
-`MarkupLineInterpolated` escapes its interpolation holes automatically — that is the difference
-between it and building a `Markup` from an interpolated string, which does not.
+`MarkupLineInterpolated` escapes its string interpolation holes automatically — that is the difference
+between it and building a `Markup` from an interpolated string, which does not. Only `string` holes
+are escaped (Spectre.Console's rule): a value of any other type is formatted and its text parsed, so
+convert it to a string first when that text can contain `[`.
 
 **`Write` and `WriteLine` print a string as-is; markup is an explicit opt-in.** This mirrors the
 split Spectre.Console makes between `IAnsiConsole.Write(string)` and `IAnsiConsole.Markup(string)`:

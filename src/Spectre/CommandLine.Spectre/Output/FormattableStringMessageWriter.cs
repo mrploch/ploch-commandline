@@ -5,8 +5,9 @@ namespace Ploch.CommandLine.Spectre.Output;
 
 /// <summary>
 ///     Renders a <see cref="FormattableString" /> as interpolated markup: the template is parsed as Spectre markup,
-///     the interpolated values are escaped rather than parsed, and the holes are formatted with the caller's format
-///     provider.
+///     the <see cref="string" /> values in the holes are escaped rather than parsed (a value of another type is
+///     formatted and its text parsed as markup, as Spectre.Console does), and the holes are formatted with the
+///     caller's format provider.
 /// </summary>
 /// <param name="output">The console the messages are written to.</param>
 /// <remarks>

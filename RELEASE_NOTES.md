@@ -68,7 +68,7 @@ have been retired.
   `Write("[green]ok[/]")` rendering green text should call `Markup` /
   `MarkupLine`, or `MarkupLineInterpolated` for a string with values in it.
   `FormattableString` messages are unchanged and still render as interpolated
-  markup with their holes escaped.
+  markup with their string holes escaped.
 - **Breaking:** `IOutput` gains the two `Markup` / `MarkupLine` members, so a
   custom implementation of the interface must add them.
 - **Breaking:** Serilog is opt-in. `Ploch.CommandLine.Spectre` no longer depends
@@ -129,9 +129,9 @@ have been retired.
 - `IOutput.WriteLine<TMessage>` dispatches through the same path as `Write<TMessage>`, so the
   registered writers and `IRenderable` messages are honoured on both; a registered formatter
   applies where the selected writer consults it, as `EnumerableMessageWriter` does, and in the
-  decorating members (`WriteBold`, `WriteError` and their line forms). A message that is neither a
-  `string` nor a `FormattableString` and that no writer accepts is written as plain text rather
-  than parsed as markup (#31).
+  decorating members (`WriteBold`, `WriteError` and their line forms). A message that is not an
+  `IRenderable` and that no writer accepts is written as plain text rather than parsed as markup
+  (#31).
 - Message formatters and writers are selected by specificity — the most derived handler that
   accepts the message — rather than by registration order, so `Win32Exception` reaches
   `Win32ExceptionMessageFormatter` and a consumer formatter for its own exception type is no
@@ -268,7 +268,7 @@ have been retired.
   built-in one. The rendered output is unchanged: a string is still written
   verbatim and a `FormattableString` (an interpolated string passed as
   `Write<FormattableString>($"...")`; a bare `$"..."` argument infers `string`)
-  still renders as markup with its holes escaped and formatted by
+  still renders as markup with its string holes escaped and formatted by
   `string.Format`, so a format specifier such as `{total:N2}` and an
   `ICustomFormatter` on the provider are honoured.
 - `Ploch.CommandLine.Spectre` declares no `Serilog.*` package as a dependency.

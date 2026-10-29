@@ -89,7 +89,8 @@ standard error is captured too.
 
 `IOutput.Write` and `WriteLine` print a string as-is, so a path or user input containing `[` is safe
 to pass straight through. Markup is an explicit opt-in: `Markup` / `MarkupLine` parse their argument
-as Spectre markup, and `MarkupInterpolated` / `MarkupLineInterpolated` escape the interpolated values.
+as Spectre markup, and `MarkupInterpolated` / `MarkupLineInterpolated` escape the interpolated string values
+(a non-string value is formatted and its text parsed, so convert it to a string first).
 
 ## Getting Started
 

@@ -24,7 +24,7 @@ public interface IOutput
     ///     <paramref name="value" /> is read as the start of a style tag, so text that came from outside the source
     ///     file - a path, a user name, a configuration value - must be escaped with
     ///     <see cref="global::Spectre.Console.Markup.Escape(string)" /> first, or passed through <see cref="MarkupInterpolated" />,
-    ///     which escapes its interpolation holes for you.
+    ///     which escapes its string interpolation holes for you.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     /// <exception cref="InvalidOperationException">
@@ -56,15 +56,19 @@ public interface IOutput
 
     /// <summary>
     ///     Writes an interpolated string as Spectre.Console markup: the literal parts are parsed as markup and the
-    ///     interpolated values are escaped, so a value containing <c>[</c> is printed rather than parsed.
+    ///     <see cref="string" /> values in the holes are escaped, so a string containing <c>[</c> is printed rather
+    ///     than parsed.
     /// </summary>
     /// <param name="value">The interpolated string, such as <c>$"[green]{path}[/]"</c>.</param>
     /// <returns>The current output instance for method chaining.</returns>
     /// <remarks>
-    ///     This is the safe way to put caller data inside markup: the same string built with <c>string.Format</c>
-    ///     and passed to <see cref="Markup" /> would have its values parsed as tags. The interpolation holes are
-    ///     formatted with the current culture; use <see cref="Write{TMessage}" /> with a
-    ///     <see cref="FormattableString" /> and a format provider to control that.
+    ///     This is the safe way to put caller strings inside markup: the same string built with <c>string.Format</c>
+    ///     and passed to <see cref="Markup" /> would have its values parsed as tags. Only <see cref="string" />
+    ///     holes are escaped (Spectre.Console's rule): a value of any other type is formatted by
+    ///     <c>string.Format</c> and its text is parsed as markup, so convert such a value to a string first, or
+    ///     pass <c>Markup.Escape(value.ToString())</c>, when its text can contain <c>[</c>. The holes are formatted
+    ///     with the current culture; use <see cref="Write{TMessage}" /> with a <see cref="FormattableString" />
+    ///     and a format provider to control that.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     [SuppressMessage("ReSharper",
@@ -74,7 +78,7 @@ public interface IOutput
 
     /// <summary>
     ///     Writes an interpolated string as Spectre.Console markup, followed by a line break: the literal parts are
-    ///     parsed as markup and the interpolated values are escaped.
+    ///     parsed as markup and the <see cref="string" /> values in the holes are escaped.
     /// </summary>
     /// <param name="value">The interpolated string, such as <c>$"[green]{path}[/]"</c>.</param>
     /// <returns>The current output instance for method chaining.</returns>
