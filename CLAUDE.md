@@ -4,8 +4,8 @@ Opinionated .NET library family for building console applications. `AppBuilder` 
 `Microsoft.Extensions.Hosting` and `Spectre.Console.Cli` so a CLI gets dependency injection,
 configuration, logging, validation and output formatting from one fluent chain.
 
-Public repository, Apache-2.0, **pre-1.0**: prerelease packages go to GitHub Packages, nothing is
-on nuget.org yet.
+Public repository, Apache-2.0. Stable releases (**1.0.51** onwards) are on nuget.org; every push to
+`main` also publishes a `1.1.<height>-prerelease` build to GitHub Packages.
 
 This file holds the essentials. The verified detail lives in [`docs/ai/`](docs/ai/README.md) —
 read the document that matches the task before changing anything.

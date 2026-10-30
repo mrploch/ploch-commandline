@@ -16,7 +16,7 @@
 | Nullable | Enabled | `Directory.Build.props` |
 | Warnings | `TreatWarningsAsErrors=true`; `NU1901`, `NU1902` stay warnings | `Directory.Build.props` |
 | Package management | Central (`Directory.Packages.props`) | Root, plus shared files |
-| Versioning | Nerdbank.GitVersioning, `1.0-prerelease` | `version.json` |
+| Versioning | Nerdbank.GitVersioning, `1.1-prerelease` | `version.json` |
 | Tests | xUnit v3, FluentAssertions, Moq, AutoFixture, Coverlet | Shared files |
 | Docs site | DocFX 2.78.5 | Version: `.config/dotnet-tools.json`; site: `DocumentationSite/docfx.json` |
 | Licence | Apache-2.0 | `LICENSE`, `Directory.Build.props` |
@@ -207,9 +207,9 @@ Facts worth knowing:
 
 ## 7. Versioning and release
 
-- `version.json` sets `1.0-prerelease`. The patch number is the git height. `main` and `v*` tags
+- `version.json` sets `1.1-prerelease`. The patch number is the git height. `main` and `v*` tags
   are public release refs; other refs get a `.g<sha>` suffix.
-- Every push to `main` publishes `1.0.<height>-prerelease` packages to GitHub Packages. A pull
+- Every push to `main` publishes `1.1.<height>-prerelease` packages to GitHub Packages. A pull
   request targeting `main` from a branch in this repository publishes `-pr.<n>.<branch>` versions.
   Pull requests from forks and from Dependabot receive no `GH_PACKAGES_TOKEN`, so that step skips
   with a warning and nothing is published for them.
