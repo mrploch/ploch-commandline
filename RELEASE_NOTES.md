@@ -4,7 +4,7 @@ All notable changes to the `Ploch.CommandLine` packages are recorded here. Each
 released version also has a [GitHub Release](https://github.com/mrploch/ploch-commandline/releases)
 generated from the entries in [`change-log/`](./change-log/README.md).
 
-## v1.0 — First supported release (2026-10-29)
+## v1.0.51 — First supported release (2026-10-30)
 
 The first supported release of the library. `Ploch.CommandLine.Spectre` replaces
 the earlier `Ploch.Common.CommandLine` packages, which were never published and
