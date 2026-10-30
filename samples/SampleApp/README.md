@@ -34,8 +34,10 @@ guaranteed, for the same reason as the main solution: the sample inherits the re
 `nuget.config`, which keeps the unauthenticated GitHub Packages source eligible, so NuGet can
 surface that feed's failure as `NU1301` before nuget.org answers (see
 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)). If you hit that, retry, or export a `GH_PACKAGES_TOKEN`
-with `read:packages`. `-p:UsePlochProjectReferences=true` is what CI runs; it needs no feed access
-at all, so the sample cannot drift away from the libraries.
+with `read:packages`. `-p:UsePlochProjectReferences=true` is what CI runs: the `Ploch.CommandLine.*`
+packages come from this repository's sources and only third-party packages are restored (from
+nuget.org), so that mode never needs the GitHub Packages source and the sample cannot drift away
+from the libraries.
 
 The standalone mode compiles against the version pinned as `PlochPackagesVersion` in
 [`Directory.Packages.props`](Directory.Packages.props) — the **stable release** on nuget.org, never a

@@ -82,7 +82,8 @@ tracked file — export it in your shell.
 its own `Directory.Packages.props`, pinning the *stable* release of this repository's own
 `Ploch.CommandLine.*` packages (`1.0.51` onwards), which nuget.org serves. Its default (package)
 mode therefore restores without a token, with the same best-effort caveat as above. CI builds it
-with `-p:UsePlochProjectReferences=true`, which needs no feed access at all. See
+with `-p:UsePlochProjectReferences=true`, which takes the `Ploch.CommandLine.*` packages from source
+and restores only third-party packages from nuget.org. See
 [`samples/SampleApp/README.md`](samples/SampleApp/README.md).
 
 ## Ploch dependencies are always stable (policy)
