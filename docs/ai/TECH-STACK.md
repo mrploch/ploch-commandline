@@ -138,9 +138,9 @@ FluentAssertions, Moq and AutoFixture arrive transitively through
   `FluentValidation.DependencyInjectionExtensions`, `Nerdbank.GitVersioning` and
   `Microsoft.CodeAnalysis.PublicApiAnalyzers` are pinned in this repository;
   `Ploch.Common.Apps.Shared` is declared here but takes its version from the shared property.
-- **The sample pins its own versions** in `samples/SampleApp/Directory.Packages.props`, including a
-  prerelease build of this repository's packages (`1.0.20-prerelease` on the verification date,
-  while `main` built `1.0.25`). `dependency-report.yml` watches that pin weekly.
+- **The sample pins its own versions** in `samples/SampleApp/Directory.Packages.props`, including
+  the stable release of this repository's packages (`1.0.51`, bumped by hand after each release;
+  `main` now builds `1.1.<height>-prerelease`). `dependency-report.yml` watches that pin weekly.
 - **Dependabot handles GitHub Actions only.** NuGet is covered by the weekly dependency report;
   see [`docs/dependency-updates.md`](../dependency-updates.md).
 

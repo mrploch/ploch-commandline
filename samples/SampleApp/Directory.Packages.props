@@ -21,14 +21,16 @@
          while appearing to pin one. A floating 1.0.*-* fixed that but replaced it with a different
          problem: this sample is copied by consumers, and floating makes its restore time-dependent,
          lets the four Ploch packages resolve to different builds, and does not settle onto the
-         stable release once v1 ships. Bump this deliberately as part of the release commit.
+         stable release once v1 ships. Bump this deliberately after each release; the release
+         workflow does not touch it.
 
-         Pin a MAIN-branch build (`x.y.z-prerelease`), never a pull-request build
-         (`x.y.z-pr.N...`): a PR build carries whatever that branch had, and its larger patch number
-         says nothing about how current it is. 1.0.26-pr.11.3 predated #80, #81 and #83 and stopped
-         compiling (PLO-583). The weekly Dependency report workflow builds this sample in standalone
-         mode, so a pin that falls behind the library's API fails loudly instead of rotting. -->
-    <PlochPackagesVersion>1.0.20-prerelease</PlochPackagesVersion>
+         Pin the STABLE release on nuget.org (`x.y.z`), never a prerelease or pull-request build:
+         a sample is copied by consumers, so it must not instruct them to depend on a prerelease,
+         and a PR build carries whatever that branch had, so its larger patch number says nothing
+         about how current it is. 1.0.26-pr.11.3 predated #80, #81 and #83 and stopped compiling
+         (PLO-583). The weekly Dependency report workflow builds this sample in standalone mode,
+         so a pin that falls behind the library's API fails loudly instead of rotting. -->
+    <PlochPackagesVersion>1.0.51</PlochPackagesVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Ploch packages">

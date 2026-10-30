@@ -78,11 +78,11 @@ certainty — the measurement above is one sample of it. If you hit it, retry, o
 (a personal access token with `read:packages`), which removes the race. Do not put a token in any
 tracked file — export it in your shell.
 
-**The sample application is a separate case.** `samples/SampleApp` is a standalone solution with
-its own `Directory.Packages.props`, and it deliberately pins a *prerelease* build of this
-repository's own `Ploch.CommandLine.*` packages, which exist only on GitHub Packages. Its default
-(package) mode therefore does need a token. Build it the way CI does — with
-`-p:UsePlochProjectReferences=true`, which needs no feed access at all. See
+**The sample application follows the same rule.** `samples/SampleApp` is a standalone solution with
+its own `Directory.Packages.props`, pinning the *stable* release of this repository's own
+`Ploch.CommandLine.*` packages (`1.0.51` onwards), which nuget.org serves. Its default (package)
+mode therefore restores without a token, with the same best-effort caveat as above. CI builds it
+with `-p:UsePlochProjectReferences=true`, which needs no feed access at all. See
 [`samples/SampleApp/README.md`](samples/SampleApp/README.md).
 
 ## Ploch dependencies are always stable (policy)
@@ -90,9 +90,9 @@ repository's own `Ploch.CommandLine.*` packages, which exist only on GitHub Pack
 > The **main solution** must never reference a **prerelease** `Ploch.*` version. Prerelease
 > consumption is opt-in local work only.
 
-The policy is about the main solution's `ploch-common` dependencies. `samples/SampleApp` is
-outside it by design — it is a separate central-package root pinning a prerelease build of this
-repository's *own* packages, which is a different thing and is documented in its own files.
+The policy is about the main solution's `ploch-common` dependencies. `samples/SampleApp` is a
+separate central-package root pinning a stable release of this repository's *own* packages, which
+is a different thing and is documented in its own files.
 
 The versions come from `../mrploch-development/dependencies/Ploch.Packages.props`, which CI reads
 from that repository's moving `main` branch — so this policy has to be honoured *there* as well
