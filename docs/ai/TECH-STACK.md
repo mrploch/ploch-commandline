@@ -231,7 +231,7 @@ Facts worth knowing:
 | Service | Used for |
 |---|---|
 | GitHub Actions, Packages, Pages | CI, prerelease feed, documentation site |
-| nuget.org | Stable packages (not yet published) |
+| nuget.org | Stable packages, published by `release.yml` through Trusted Publishing (OIDC); 1.0.51 is the first |
 | SonarCloud, Codacy, Qodana Cloud, CodeQL | Static analysis and coverage |
 | Linear | Issue tracking, see [`CONVENTIONS.md`](CONVENTIONS.md) |
 
