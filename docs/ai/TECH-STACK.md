@@ -31,8 +31,9 @@ There is no database, container image or external runtime service.
   `MicrosoftExtensions.Net9.Packages.props` (the file name is historical).
 - **Sibling checkout `../ploch-common`** is needed only with `-p:UsePlochProjectReferences=true`.
 - **`GH_PACKAGES_TOKEN`** (environment variable, read by `nuget.config`) is optional for the main
-  solution and required for the sample's default package mode. See
-  [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for why a tokenless restore is best-effort.
+  solution and, since the sample pins the stable 1.0.51 release, for the sample's default package
+  mode too. See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for why a tokenless restore is
+  best-effort.
 - **Local tools:** `dotnet tool restore` installs `nbgv`, `docfx`, `dotnet-sonarscanner` and
   `reportgenerator` from `.config/dotnet-tools.json`.
 
@@ -49,7 +50,7 @@ were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds
 | `dotnet test Ploch.CommandLine.Spectre.slnx` | 289 passed, about 5 s |
 | Sample build, CI mode (below) | Succeeds, about 18 s |
 | Sample test, CI mode | 49 passed |
-| `dotnet restore` on the sample, default mode | Fails with `NU1301` without a token |
+| `dotnet restore` on the sample, default mode | Failed with `NU1301` without a token while the pin was `1.0.20-prerelease`; on 2026-10-30, with the pin at `1.0.51`, it restores all four packages from nuget.org without a token (best-effort, see CONTRIBUTING) |
 | Stable-version guard (below) | Passes |
 | `dotnet tool restore` then `dotnet nbgv get-version` | Prints the computed version |
 | `dotnet docfx DocumentationSite/docfx.json` | 0 warnings, about 7 s |
