@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-05, against commit `6a2c931` |
+| Last verified | 2026-10-05, against commit `6a2c931`; sections 3, 4 and 7 partially re-verified on 2026-10-30 on the PLO-103 branch after the 1.0.51 release (sample restore row, sample pin, release state) |
 | Verified by | Running the commands in section 3 on macOS arm64; reading every build and workflow file |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
@@ -40,7 +40,8 @@ There is no database, container image or external runtime service.
 ## 3. Commands
 
 Observed on 2026-10-05 with SDK 10.0.401 and no `GH_PACKAGES_TOKEN`; the two `dotnet build` rows
-were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds packing.
+were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds packing, and the
+sample's default-mode restore row on 2026-10-30, after the pin moved to the 1.0.51 release.
 
 | Command | Result |
 |---|---|
