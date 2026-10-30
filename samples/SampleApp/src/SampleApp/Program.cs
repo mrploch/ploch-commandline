@@ -13,10 +13,9 @@ using Ploch.CommandLine.Spectre.Serilog;
 using Spectre.Console.Cli;
 
 // 1. Create and configure the AppBuilder
-// AppBuilder becomes IDisposable in the next release, at which point this becomes a "using"
-// declaration so the Ctrl+C handler and cancellation source it owns are released after the run.
-// This sample builds against the published package, so it adopts that once the package ships.
-var appBuilder = AppBuilder.Create(args)
+// AppBuilder is IDisposable: the "using" declaration releases the Ctrl+C handler and the
+// cancellation source it owns once the run is over.
+using var appBuilder = AppBuilder.Create(args)
                            .WithName("Ploch.CommandLine.Spectre Sample CLI")
                            .WithVersion(new Version(1, 0, 0))
                            .WithDescription("Showcase application demonstrating Ploch.CommandLine.Spectre features, " +
@@ -30,18 +29,14 @@ var appBuilder = AppBuilder.Create(args)
                            // source added afterwards is appended on top of both, so the file would silently override
                            // "--SampleAppSettings:MaxBatchSize=5". See HostBuilderExtensions.
                            .ConfigureHost(host => host.UseSettingsFromDeploymentDirectory(AppContext.BaseDirectory))
+
+                           // Serilog is opt-in: the core package registers no logging provider, so this call is what
+                           // turns it on. It reads its minimum level from the "Serilog" section of appsettings.json and
+                           // writes to the console plus a rolling log file under the application's log directory.
+                           // Call it once: it queues services.AddSerilog(context.Configuration, ...) for you.
+                           .UseSerilog(logName: "sample", logPath: Path.Combine(AppContext.BaseDirectory, "logs"))
                            .ConfigureServices((context, services) =>
                            {
-                               // Serilog is opt-in: the core package registers no logging provider, so this call is what
-                               // turns it on. It reads its minimum level from the "Serilog" section of appsettings.json and
-                               // writes to the console plus a rolling log file under the application's log directory.
-                               // appBuilder.UseSerilog(logName: ..., logPath: ...) is the same registration in one call on
-                               // the builder; this sample builds against the published package and adopts it once the
-                               // package that ships UseSerilog is pinned here.
-                               services.AddSerilog(context.Configuration,
-                                                   logName: "sample",
-                                                   logPath: Path.Combine(AppContext.BaseDirectory, "logs"));
-
                                // Register domain services & repositories
                                services.AddSingleton<IUserService, UserService>();
                                services.AddSingleton<IProjectRepository, InMemoryProjectRepository>();

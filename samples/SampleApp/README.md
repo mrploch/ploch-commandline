@@ -12,16 +12,16 @@ Packages exercised:
 
 - `Ploch.CommandLine.Spectre` — `AppBuilder`, command base classes, `IOutput`, exit codes, tokens
 - `Ploch.CommandLine.Spectre.FluentValidation` — settings validation
-- `Ploch.CommandLine.Spectre.Serilog` — logging; opt-in, the sample registers it with `services.AddSerilog(...)`
-  (the pinned package predates `AppBuilder.UseSerilog`; the post-release pin bump adopts the one-call form)
+- `Ploch.CommandLine.Spectre.Serilog` — logging; opt-in, turned on with one `UseSerilog(...)` call on the builder
 - `Ploch.CommandLine.UseCases` — use cases with `Ardalis.Result`
 
 ## Build modes — read this first
 
 The sample is deliberately **standalone**: it references the Ploch libraries as
 `PackageReference`, exactly as an external consumer would, and it has its own
-`Directory.Build.props` and `Directory.Packages.props` so it does not inherit anything from the
-repository it lives in.
+`Directory.Build.props` and `Directory.Packages.props`, so it inherits none of the repository's
+MSBuild settings or package versions. The one thing it does inherit is the repository's
+`nuget.config` (NuGet walks up the directory tree), which is where the feed caveat below comes from.
 
 | Mode | Command | What it does |
 |---|---|---|

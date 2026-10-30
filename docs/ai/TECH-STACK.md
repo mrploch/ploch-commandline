@@ -223,8 +223,9 @@ Facts worth knowing:
   to `PublicAPI.Shipped.txt` in a reviewed commit (`CONTRIBUTING.md`, "The public API baseline").
   No workflow does the promotion, but `release.yml` verifies it before restoring and fails,
   dry run included, while any `Unshipped` file still has entries.
-- **State on the verification date:** no tags, no GitHub Releases, nothing on nuget.org. The only
-  release run was a dry run, so the real publish path has never executed.
+- **State on 2026-10-30:** `release.yml` has run for real once: tag `v1.0.51`, GitHub Release
+  "Release 1.0.51", all four packages on nuget.org at 1.0.51, bookkeeping PR #118 merged. The sample
+  pins that release.
 
 ## 8. External services
 
