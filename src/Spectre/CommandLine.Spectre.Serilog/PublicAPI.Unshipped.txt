@@ -1,11 +1,1 @@
 #nullable enable
-override Ploch.CommandLine.Spectre.Serilog.SerilogConfigurationBundle.Configure(Microsoft.Extensions.Configuration.IConfiguration? configuration) -> void
-override Ploch.CommandLine.Spectre.Serilog.SerilogConfigurationBundle.DoConfigure() -> void
-Ploch.CommandLine.Spectre.Serilog.AppBuilderSerilogExtensions
-Ploch.CommandLine.Spectre.Serilog.LoggerConfigurationExtensions
-Ploch.CommandLine.Spectre.Serilog.SerilogConfigurationBundle
-Ploch.CommandLine.Spectre.Serilog.SerilogConfigurationBundle.SerilogConfigurationBundle(string? template = null, string? logName = null, string? logPath = null, System.Globalization.CultureInfo? culture = null) -> void
-Ploch.CommandLine.Spectre.Serilog.SerilogLoggingConfigurator
-static Ploch.CommandLine.Spectre.Serilog.AppBuilderSerilogExtensions.UseSerilog(this Ploch.CommandLine.Spectre.AppBuilder! appBuilder, string? logName = null, string? logPath = null, string? template = null, System.Globalization.CultureInfo? culture = null) -> Ploch.CommandLine.Spectre.AppBuilder!
-static Ploch.CommandLine.Spectre.Serilog.LoggerConfigurationExtensions.ConfigureSerilog(this Serilog.LoggerConfiguration! loggerConfiguration, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, string? template = null, string? logName = null, string? logPath = null, System.Globalization.CultureInfo? culture = null) -> Serilog.LoggerConfiguration!
-static Ploch.CommandLine.Spectre.Serilog.SerilogLoggingConfigurator.AddSerilog(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, string? logName = null, string? logPath = null, string? template = null, System.Globalization.CultureInfo? culture = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
