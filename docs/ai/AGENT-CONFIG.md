@@ -28,11 +28,11 @@ repository is checked out inside the workspace.
 | Path | Files | Size | Read by | Verdict |
 |---|---|---|---|---|
 | `CLAUDE.md` | 1 | 5 KB | Claude Code, every session | Keep; replaced by this work |
-| `AGENTS.md` | 1 | 32 KB | Codex | Replace: ContextStream instructions only, no repository knowledge |
-| `GEMINI.md` | 1 | 31 KB | Gemini, Antigravity | Replace: near-copy of `AGENTS.md` |
-| `.cursorrules` | 1 | 1 KB | Cursor | Remove: ContextStream block |
-| `.contextstream/config.json` | 1 | under 1 KB | ContextStream | Remove with ContextStream |
-| `.cursor/mcp.json` | 1 | 1 KB | Cursor | Remove or replace: defines only ContextStream |
+| `AGENTS.md` | 1 | 32 KB | Codex | Replace: was ContextStream instructions only; the block is removed (PLO-653), the pointer is proposal 5 |
+| `GEMINI.md` | 1 | 31 KB | Gemini, Antigravity | Replaced with a pointer to `CLAUDE.md` and `docs/ai/` (PLO-653) |
+| `.cursorrules` | 1 | 1 KB | Cursor | Removed (PLO-653) |
+| `.contextstream/config.json` | 1 | under 1 KB | ContextStream | Removed (PLO-653) |
+| `.cursor/mcp.json` | 1 | 1 KB | Cursor | Removed (PLO-653) |
 | `.claude/rules/` | 27 | 154 KB | Claude Code, all of it, every session | Reduce; see section 3 |
 | `.claude/skills/` | 9 | 228 KB | Claude Code, on demand | Keep 4 of 6 skills |
 | `.claude/mrploch-dev/` | 2 | 35 KB | Nothing; unregistered plugin | Remove |
@@ -67,7 +67,7 @@ Problems in the committed rules:
 - **Dead tool references.** `external-ai-review.md` and several skills call MCP tools for Codex and
   Gemini reviewers that are not configured. `todo-tasks-execution.md` points at a skill that does
   not exist.
-- **ContextStream** is referenced in ten committed files while being retired.
+- **ContextStream** was referenced in ten committed files; PLO-653 removed them.
 - **Machine-specific paths** (a Windows drive root) appear in several rules.
 
 ## 4. Skills and tools
@@ -131,7 +131,7 @@ Ordered by value. "Where" names the layer that has to change.
 | 3 | Scope project-type rules with `paths:` front matter, or turn them into on-demand skills: the three `data-*` rules, `domain-model`, `qa`, `local-setup-scripts` | Workspace | About 10,600 tokens saved per loaded copy |
 | 4 | Split `project-naming` into a short always-on core and a reference loaded on demand | Workspace | About 7,000 tokens saved |
 | 5 | Replace `AGENTS.md` and `GEMINI.md` with a few lines pointing at `CLAUDE.md` and `docs/ai/` | Repository | Every agent gets the same knowledge base |
-| 6 | Remove ContextStream leftovers: `.cursorrules`, `.contextstream/`, the server in `.cursor/mcp.json` | Repository | No instructions for a retired tool |
+| 6 | Remove ContextStream leftovers: `.cursorrules`, `.contextstream/`, the server in `.cursor/mcp.json` | Repository | No instructions for a retired tool — done (PLO-653) |
 | 7 | Fix or remove the dead reviewer-tool references in `external-ai-review` and the skills that use it | Workspace | Review skills work as written |
 
 ### Priority 2 — safety and day-to-day speed
