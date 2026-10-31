@@ -12,38 +12,37 @@ Packages exercised:
 
 - `Ploch.CommandLine.Spectre` — `AppBuilder`, command base classes, `IOutput`, exit codes, tokens
 - `Ploch.CommandLine.Spectre.FluentValidation` — settings validation
-- `Ploch.CommandLine.Spectre.Serilog` — logging; opt-in, the sample registers it with `services.AddSerilog(...)`
-  (the pinned package predates `AppBuilder.UseSerilog`; the post-release pin bump adopts the one-call form)
+- `Ploch.CommandLine.Spectre.Serilog` — logging; opt-in, turned on with one `UseSerilog(...)` call on the builder
 - `Ploch.CommandLine.UseCases` — use cases with `Ardalis.Result`
 
 ## Build modes — read this first
 
 The sample is deliberately **standalone**: it references the Ploch libraries as
 `PackageReference`, exactly as an external consumer would, and it has its own
-`Directory.Build.props` and `Directory.Packages.props` so it does not inherit anything from the
-repository it lives in.
+`Directory.Build.props` and `Directory.Packages.props`, so it inherits none of the repository's
+MSBuild settings or package versions. The one thing it does inherit is the repository's
+`nuget.config` (NuGet walks up the directory tree), which is where the feed caveat below comes from.
 
 | Mode | Command | What it does |
 |---|---|---|
 | Standalone (default) | `dotnet build` | Restores `Ploch.*` from NuGet, as a consumer would |
 | In-repository | `dotnet build -p:UsePlochProjectReferences=true` | Swaps those packages for `ProjectReference`s to the library sources in this repository |
 
-**The default mode is not yet usable without a token.** It restores the version pinned as
-`PlochPackagesVersion`, and until 1.0 ships that pin is a prerelease build (`1.0.20-prerelease`)
-that exists only on GitHub Packages, so a plain `dotnet build` needs a `GH_PACKAGES_TOKEN` with
-`read:packages` in the environment (`nuget.config` maps it to the `github` source) and fails at
-restore without one. The 1.0 release bumps the pin to the stable release on nuget.org
-([PLO-103](https://linear.app/ploch/issue/PLO-103)); from then on the default mode restores from
-nuget.org without a token — best-effort rather than guaranteed, for the same reason as the main
-solution: the sample inherits the repository's `nuget.config`, which keeps the unauthenticated GitHub
-Packages source eligible (see [`CONTRIBUTING.md`](../../CONTRIBUTING.md)). Until then, use
-`-p:UsePlochProjectReferences=true`, which is what CI runs and needs no feed access, so the sample
-cannot drift away from the libraries.
+**The default mode needs no token.** It restores the version pinned as `PlochPackagesVersion`
+(`1.0.51`, the first stable release) from nuget.org. Tokenless restore is best-effort rather than
+guaranteed, for the same reason as the main solution: the sample inherits the repository's
+`nuget.config`, which keeps the unauthenticated GitHub Packages source eligible, so NuGet can
+surface that feed's failure as `NU1301` before nuget.org answers (see
+[`CONTRIBUTING.md`](../../CONTRIBUTING.md)). If you hit that, retry, or export a `GH_PACKAGES_TOKEN`
+with `read:packages`. `-p:UsePlochProjectReferences=true` is what CI runs: the `Ploch.CommandLine.*`
+packages come from this repository's sources and only third-party packages are restored (from
+nuget.org), so that mode never needs the GitHub Packages source and the sample cannot drift away
+from the libraries.
 
 The standalone mode compiles against the version pinned as `PlochPackagesVersion` in
-[`Directory.Packages.props`](Directory.Packages.props) — a published **main-branch** build, never a
-pull-request build. The weekly *Dependency report* workflow builds and tests the sample against that
-pin, so a pin that falls behind the library's API is caught within a week.
+[`Directory.Packages.props`](Directory.Packages.props) — the **stable release** on nuget.org, never a
+prerelease or pull-request build. The weekly *Dependency report* workflow builds and tests the sample
+against that pin, so a pin that falls behind the library's API is caught within a week.
 
 The switch lives in [`ProjectReferences.props`](ProjectReferences.props), imported conditionally by
 [`Directory.Build.targets`](Directory.Build.targets) — **targets**, not props: `Directory.Build.props`

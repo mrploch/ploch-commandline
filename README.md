@@ -144,9 +144,9 @@ expected. That "stable versions only" rule is a policy, enforced by a check in C
 
 Tokenless restore is best-effort rather than guaranteed: the GitHub Packages source stays eligible
 while unauthenticated, and NuGet can surface its failure as `NU1301` before nuget.org answers. If
-you hit that, retry, or set a token. The
-[sample application](samples/SampleApp/README.md) is a separate case — it pins a prerelease build
-of this repository's own packages and does need a token in its default mode.
+you hit that, retry, or set a token. The same applies to the
+[sample application](samples/SampleApp/README.md), which pins the stable release of this
+repository's own packages and restores it from nuget.org in its default mode.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the reasoning, the escape hatch for working against
 unreleased `ploch-common` code, and the rest of the contributor setup.

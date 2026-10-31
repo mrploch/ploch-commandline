@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-05, against commit `6a2c931` |
+| Last verified | 2026-10-05, against commit `6a2c931`; sections 3, 4 and 7 partially re-verified on 2026-10-30 on the PLO-103 branch after the 1.0.51 release (sample restore row, sample pin, release state) |
 | Verified by | Running the commands in section 3 on macOS arm64; reading every build and workflow file |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
@@ -31,15 +31,17 @@ There is no database, container image or external runtime service.
   `MicrosoftExtensions.Net9.Packages.props` (the file name is historical).
 - **Sibling checkout `../ploch-common`** is needed only with `-p:UsePlochProjectReferences=true`.
 - **`GH_PACKAGES_TOKEN`** (environment variable, read by `nuget.config`) is optional for the main
-  solution and required for the sample's default package mode. See
-  [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for why a tokenless restore is best-effort.
+  solution and, since the sample pins the stable 1.0.51 release, for the sample's default package
+  mode too. See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for why a tokenless restore is
+  best-effort.
 - **Local tools:** `dotnet tool restore` installs `nbgv`, `docfx`, `dotnet-sonarscanner` and
   `reportgenerator` from `.config/dotnet-tools.json`.
 
 ## 3. Commands
 
 Observed on 2026-10-05 with SDK 10.0.401 and no `GH_PACKAGES_TOKEN`; the two `dotnet build` rows
-were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds packing.
+were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds packing, and the
+sample's default-mode restore row on 2026-10-30, after the pin moved to the 1.0.51 release.
 
 | Command | Result |
 |---|---|
@@ -49,7 +51,7 @@ were re-measured on 2026-10-12 on the PLO-758 branch, which stopped Debug builds
 | `dotnet test Ploch.CommandLine.Spectre.slnx` | 289 passed, about 5 s |
 | Sample build, CI mode (below) | Succeeds, about 18 s |
 | Sample test, CI mode | 49 passed |
-| `dotnet restore` on the sample, default mode | Fails with `NU1301` without a token |
+| `dotnet restore` on the sample, default mode | Failed with `NU1301` without a token while the pin was `1.0.20-prerelease`; on 2026-10-30, with the pin at `1.0.51`, it restores all four packages from nuget.org without a token (best-effort, see CONTRIBUTING) |
 | Stable-version guard (below) | Passes |
 | `dotnet tool restore` then `dotnet nbgv get-version` | Prints the computed version |
 | `dotnet docfx DocumentationSite/docfx.json` | 0 warnings, about 7 s |
@@ -138,9 +140,9 @@ FluentAssertions, Moq and AutoFixture arrive transitively through
   `FluentValidation.DependencyInjectionExtensions`, `Nerdbank.GitVersioning` and
   `Microsoft.CodeAnalysis.PublicApiAnalyzers` are pinned in this repository;
   `Ploch.Common.Apps.Shared` is declared here but takes its version from the shared property.
-- **The sample pins its own versions** in `samples/SampleApp/Directory.Packages.props`, including a
-  prerelease build of this repository's packages (`1.0.20-prerelease` on the verification date,
-  while `main` built `1.0.25`). `dependency-report.yml` watches that pin weekly.
+- **The sample pins its own versions** in `samples/SampleApp/Directory.Packages.props`, including
+  the stable release of this repository's packages (`1.0.51`, bumped by hand after each release;
+  `main` now builds `1.1.<height>-prerelease`). `dependency-report.yml` watches that pin weekly.
 - **Dependabot handles GitHub Actions only.** NuGet is covered by the weekly dependency report;
   see [`docs/dependency-updates.md`](../dependency-updates.md).
 
@@ -223,8 +225,9 @@ Facts worth knowing:
   to `PublicAPI.Shipped.txt` in a reviewed commit (`CONTRIBUTING.md`, "The public API baseline").
   No workflow does the promotion, but `release.yml` verifies it before restoring and fails,
   dry run included, while any `Unshipped` file still has entries.
-- **State on the verification date:** no tags, no GitHub Releases, nothing on nuget.org. The only
-  release run was a dry run, so the real publish path has never executed.
+- **State on 2026-10-30:** `release.yml` has run for real once: tag `v1.0.51`, GitHub Release
+  "Release 1.0.51", all four packages on nuget.org at 1.0.51, bookkeeping PR #118 merged. The sample
+  pins that release.
 
 ## 8. External services
 
