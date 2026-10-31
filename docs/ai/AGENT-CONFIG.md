@@ -7,7 +7,7 @@
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
 Sizes are bytes of committed files; tokens are estimated as bytes divided by four. Section 6 is a
-list of **proposals**. Nothing in it has been applied.
+list of **proposals**. Only proposal 6 has been applied (PLO-653); nothing else in it has been.
 
 ## 1. Scope and layers
 
@@ -28,11 +28,11 @@ repository is checked out inside the workspace.
 | Path | Files | Size | Read by | Verdict |
 |---|---|---|---|---|
 | `CLAUDE.md` | 1 | 5 KB | Claude Code, every session | Keep; replaced by this work |
-| `AGENTS.md` | 1 | 32 KB | Codex | Replace: was ContextStream instructions only; the block is removed (PLO-653), the pointer is proposal 5 |
-| `GEMINI.md` | 1 | 31 KB | Gemini, Antigravity | Replaced with a pointer to `CLAUDE.md` and `docs/ai/` (PLO-653) |
-| `.cursorrules` | 1 | 1 KB | Cursor | Removed (PLO-653) |
-| `.contextstream/config.json` | 1 | under 1 KB | ContextStream | Removed (PLO-653) |
-| `.cursor/mcp.json` | 1 | 1 KB | Cursor | Removed (PLO-653) |
+| `AGENTS.md` | 1 | 32 KB → under 1 KB | Codex | The ContextStream block is removed (PLO-653); the Claude alignment and worktree sections remain. A pointer to `docs/ai/` is still proposal 5 |
+| `GEMINI.md` | 1 | 31 KB → under 1 KB | Gemini, Antigravity | Now a pointer to `CLAUDE.md` and `docs/ai/` (PLO-653) |
+| ~~`.cursorrules`~~ | 0 | deleted | Cursor | Removed (PLO-653) |
+| ~~`.contextstream/config.json`~~ | 0 | deleted | ContextStream | Removed (PLO-653) |
+| ~~`.cursor/mcp.json`~~ | 0 | deleted | Cursor | Removed (PLO-653) |
 | `.claude/rules/` | 27 | 154 KB | Claude Code, all of it, every session | Reduce; see section 3 |
 | `.claude/skills/` | 9 | 228 KB | Claude Code, on demand | Keep 4 of 6 skills |
 | `.claude/mrploch-dev/` | 2 | 35 KB | Nothing; unregistered plugin | Remove |
@@ -67,7 +67,8 @@ Problems in the committed rules:
 - **Dead tool references.** `external-ai-review.md` and several skills call MCP tools for Codex and
   Gemini reviewers that are not configured. `todo-tasks-execution.md` points at a skill that does
   not exist.
-- **ContextStream** was referenced in ten committed files; PLO-653 removed them.
+- **ContextStream** instructions and configuration were in ten committed files; PLO-653 removed them. The
+  notes-keeping rule still names "ContextStream calls" as an example of what not to log, matching the workspace rule.
 - **Machine-specific paths** (a Windows drive root) appear in several rules.
 
 ## 4. Skills and tools
@@ -110,7 +111,7 @@ of context before the first prompt, about 96,000 of them rules.
 | 3 | Rules for projects this repository does not have | About 10,600 tokens per loaded copy |
 | 4 | Committed rules name the wrong tracker | Wrong commit footers and branch names |
 | 5 | Dead references to reviewer tools and a missing skill | Agents stall or improvise |
-| 6 | `AGENTS.md` and `GEMINI.md` carry no repository knowledge | Other agents start blind; 63 KB of noise |
+| 6 | `AGENTS.md` and `GEMINI.md` carry no repository knowledge | Other agents start blind; the 63 KB of ContextStream noise was removed (PLO-653); `GEMINI.md` now points at `docs/ai/`, `AGENTS.md` does not yet |
 | 7 | Three mirrors of rules and skills, each drifted differently | 560 KB to keep in step by hand |
 | 8 | No committed permission allow-list | Every `dotnet` and `gh` call prompts, or the user allows everything |
 | 9 | Skills for other project types are committed here | Larger skill listing; wrong suggestions |
