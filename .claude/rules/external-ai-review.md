@@ -110,7 +110,7 @@ copilot -p "Reply with exactly: READY" --model grok-4.6 --effort low --disable-b
 
 **Never escalate a Grok review to `xhigh` or `max`** — the call fails outright rather than degrading. If a deeper pass than `high` is genuinely wanted, change the *model*, not the effort.
 
-**Match the preflight on "output contains `READY`", not on equality.** Workspace MCP servers (ContextStream in particular) can make the agent narrate a preamble before answering, so an exact-match check produces false negatives.
+**Match the preflight on "output contains `READY`", not on equality.** Workspace MCP servers can make the agent narrate a preamble before answering, so an exact-match check produces false negatives.
 
 | Preflight result | Meaning | Action |
 |---|---|---|

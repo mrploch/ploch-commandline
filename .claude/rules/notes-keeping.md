@@ -80,7 +80,6 @@ A reviewer should be able to read the Decisions section alone and understand *wh
 
 - This rule complements `agent.md` (the agent workflow) — note-updates are part of the post-code workflow, not a replacement for testing/verification.
 - This rule complements `pr-checks-completion-gate.md` — when the four-condition gate is satisfied, that's a milestone trigger here too.
-- Decisions captured here are also fair game for ContextStream `mcp__contextstream__session(action="capture", event_type="decision", ...)` if they have cross-session value, but the file in `notes/` is the canonical, browseable record.
 
 ## When in doubt
 

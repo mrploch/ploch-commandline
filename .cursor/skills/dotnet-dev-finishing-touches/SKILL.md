@@ -47,7 +47,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | `gh` CLI, authenticated (`gh auth status`) | Phases 1, 1.5, 10, 11 | Stop if Phase 10/11 is in scope. For Phase 1/1.5 the skill can continue without PR context but must flag the gap in the report. |
 | `git` CLI, working tree clean of unrelated changes | All phases | Stop and ask the user to commit/stash unrelated work. |
 | `Agent` tool (for Phase 1.5 sub-agent) | Phase 1.5 only | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report. |
-| `TaskCreate` / `TaskUpdate` / `TaskList` tools | Phase 2.5 master TODO list | Fall back to `mcp__contextstream__memory(action="create_todo")` if ContextStream is active, otherwise an in-memory list tracked in the main transcript. Never proceed without *some* tracked list. |
+| `TaskCreate` / `TaskUpdate` / `TaskList` tools | Phase 2.5 master TODO list | Fall back to an in-memory list tracked in the main transcript. Never proceed without *some* tracked list. |
 | `mcp__codex-cli__codex` | Codex Validation Gate | Retry once via `ToolSearch`; if still missing, **pause and ask the user** whether to proceed without the gate (and record the decision in the final report). Never silently skip. |
 | `superpowers:verification-before-completion` skill | Phase 12 | If unavailable, invoke the verification checklist inline (re-run build, re-run tests, re-check CI, re-enumerate PR threads) — do not skip the verification itself. |
 
@@ -291,7 +291,7 @@ Build the complete picture of all changes on the branch.
 
 **When:** After Phase 1.5 (CI pre-check) and Phase 2 (modified files) — before any fixes are applied. The list is expanded again whenever a later phase surfaces new items (additional warnings after a rebuild, new PR comments after a push).
 
-**Mechanism:** Use the `TaskCreate` tool (or ContextStream `memory(create_todo)` if ContextStream is active) so the items are visible to the user and survive sub-agent dispatch. One TODO per actionable item.
+**Mechanism:** Use the `TaskCreate` tool so the items are visible to the user and survive sub-agent dispatch. One TODO per actionable item.
 
 **Required TODO sources — all three must be harvested, not just local issues:**
 
@@ -1101,4 +1101,3 @@ If you catch yourself about to do any of these, stop and reconsider:
 **Uses these tools for sub-agent / TODO orchestration:**
 - `Agent` (with `subagent_type="general-purpose"`) — the Phase 1.5 CI pre-check sub-agent.
 - `TaskCreate` / `TaskUpdate` / `TaskList` — master TODO list in Phase 2.5 and ongoing throughout the pass.
-- `mcp__contextstream__memory(action="create_todo")` — optional alternative to `TaskCreate` when ContextStream is active.
