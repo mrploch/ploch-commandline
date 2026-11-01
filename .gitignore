@@ -418,3 +418,7 @@ qodana.sarif.json
 
 # Agent-written summary reports (see .claude/rules/summaries.md)
 /temp/
+
+# Codex project state written by local tools: config.toml with machine-local MCP servers
+# (it can hold credentials) and SonarQube's generated hooks with absolute local paths.
+.codex/
