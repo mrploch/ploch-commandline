@@ -96,6 +96,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     /// </summary>
     /// <param name="value">The interpolated string to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>The line-terminating form of <see cref="MarkupInterpolated" />; the same rendering applies.</remarks>
     /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     public IOutput MarkupLineInterpolated(FormattableString value)
     {

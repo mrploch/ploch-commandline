@@ -115,6 +115,51 @@ public class InterpolatedMarkupTests
         markup.Should().Be("n = <42>");
     }
 
+    /// <summary>
+    ///     The custom formatter must be handed the caller's own provider, not the scope the helper gives
+    ///     <c>string.Format</c>: a formatter that consults its provider for culture data, or compares it by identity,
+    ///     would otherwise see a foreign object. Culture-based assertions cannot tell the two apart because the scope
+    ///     delegates culture requests, so this one checks identity.
+    /// </summary>
+    [Fact]
+    public void Render_should_hand_the_callers_provider_and_specifier_to_the_custom_formatter()
+    {
+        var provider = new RecordingProvider(text: "x");
+
+        InterpolatedMarkup.Render($"{1:N2}", provider);
+
+        provider.Providers.Should().ContainSingle().Which.Should().BeSameAs(provider);
+        provider.Specifiers.Should().ContainSingle().Which.Should().Be("N2");
+    }
+
+    [Fact]
+    public void Render_should_hand_the_callers_provider_and_specifier_to_the_value_when_the_custom_formatter_declines()
+    {
+        var provider = new RecordingProvider(text: null);
+        var value = new RecordingFormattable();
+
+        InterpolatedMarkup.Render($"{value:N2}", provider);
+
+        value.Provider.Should().BeSameAs(provider);
+        value.Format.Should().Be("N2");
+    }
+
+    [Fact]
+    public void Render_should_return_empty_for_an_empty_interpolated_string()
+    {
+        var markup = InterpolatedMarkup.Render($"", CultureInfo.InvariantCulture);
+
+        markup.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Render_should_apply_alignment_and_format_specifier_together()
+    {
+        var markup = InterpolatedMarkup.Render($"{1234.5,10:N2}|", CultureInfo.InvariantCulture);
+
+        markup.Should().Be("  1,234.50|");
+    }
+
     [Fact]
     public void Render_should_hand_a_string_argument_to_the_custom_formatter_before_escaping_it()
     {
@@ -264,6 +309,22 @@ public class InterpolatedMarkupTests
         markup.Should().Be("[[x]]1", "a nested interpolated string is one hole: its template is data here, not markup");
     }
 
+    /// <summary>Records the format specifier and provider its IFormattable rendering was asked with.</summary>
+    private sealed class RecordingFormattable : IFormattable
+    {
+        public string? Format { get; private set; }
+
+        public IFormatProvider? Provider { get; private set; }
+
+        public string ToString(string? format, IFormatProvider? formatProvider)
+        {
+            Format = format;
+            Provider = formatProvider;
+
+            return "value";
+        }
+    }
+
     /// <summary>A value whose text is fixed, standing in for any non-string hole such as a value object.</summary>
     private sealed class LiteralText(string text)
     {
@@ -301,6 +362,10 @@ public class InterpolatedMarkupTests
 
         public List<object?> Arguments { get; } = [];
 
+        public List<string?> Specifiers { get; } = [];
+
+        public List<IFormatProvider?> Providers { get; } = [];
+
         public int CustomFormatterLookups { get; private set; }
 
         public object? GetFormat(Type? formatType)
@@ -318,6 +383,8 @@ public class InterpolatedMarkupTests
         public string Format(string? format, object? arg, IFormatProvider? formatProvider)
         {
             Arguments.Add(arg);
+            Specifiers.Add(format);
+            Providers.Add(formatProvider);
 
             // The interface is annotated non-nullable, but string.Format treats a null answer as "not handled" and
             // falls through, so a test provider has to be able to return one.

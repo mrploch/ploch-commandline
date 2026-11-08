@@ -17,11 +17,12 @@ namespace Ploch.CommandLine.Spectre.Output;
 ///     <see cref="AnsiConsoleMarkupOutput" /> so the two paths cannot drift apart.
 ///     <para>
 ///         Formatting stays with <see cref="string.Format(IFormatProvider, string, object[])" />, which parses the
-///         composite template (escaped braces, alignment) and formats each hole through <see cref="IFormattable" />.
-///         Every argument is wrapped in an <see cref="IFormattable" /> that renders the original value the way
-///         <c>string.Format</c> would with the caller's provider - that provider's own custom formatter first, then
-///         <see cref="IFormattable" /> with the format specifier, then <c>ToString()</c> - and escapes the result,
-///         so a custom formatter still receives the original value rather than a pre-rendered string. Alignment pads
+///         composite template (escaped braces, alignment). Every argument is wrapped in an <see cref="IFormattable" />
+///         of this class's own, which is what <c>string.Format</c> calls for the hole; the wrapper then renders the
+///         original value the way <c>string.Format</c> would with the caller's provider - that provider's own custom
+///         formatter first, then the value's <see cref="IFormattable" /> with the format specifier, then
+///         <c>ToString()</c> - and escapes the result, so a custom formatter still receives the original value
+///         rather than a pre-rendered string. Alignment pads
 ///         the escaped text, as Spectre does for a string hole, so a value containing brackets is padded one column
 ///         short per bracket.
 ///     </para>
