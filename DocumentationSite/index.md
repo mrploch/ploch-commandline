@@ -206,8 +206,8 @@ type: the default writer writes a `string` verbatim, and a message no writer acc
 plain text.
 Registered `IMessageFormatter`s apply where a writer consults them and in `WriteBold` /
 `WriteError`. Markup is parsed by `Markup`, `MarkupLine` and the `…Interpolated` members, by a
-`FormattableString` passed to `Write` or `WriteLine` (interpolated markup with its string holes
-escaped; convert a non-string value to a string before interpolating it), and around the text of
+`FormattableString` passed to `Write` or `WriteLine` (interpolated markup with every hole escaped,
+whatever its type), and around the text of
 `WriteBold` / `WriteError`; a plain `string` is not parsed by the
 default writer (a custom writer registered for `string` decides for itself).
 

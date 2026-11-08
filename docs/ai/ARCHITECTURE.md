@@ -196,9 +196,10 @@ what it needs — are untouched.
 
 **Output and markup.** `IOutput.Write` renders an `IRenderable` through the console and hands every
 other message to the registered writers; `StringMessageWriter` writes a `string` verbatim and
-`FormattableStringMessageWriter` renders a `FormattableString` as interpolated markup with its holes
-escaped and left to `string.Format` (not pre-rendered by the formatters). `Markup` and `MarkupLine`
-are the explicit opt-in to parsing. `WriteBold` and `WriteError` escape content before wrapping it in
+`FormattableStringMessageWriter` renders a `FormattableString` as interpolated markup with every hole
+escaped whatever its type (the internal `InterpolatedMarkup` helper, shared with `MarkupInterpolated`,
+replaces Spectre's string-only escaping) and left to `string.Format` (not pre-rendered by the
+formatters). `Markup` and `MarkupLine` are the explicit opt-in to parsing. `WriteBold` and `WriteError` escape content before wrapping it in
 a tag and rendering it as markup, and do not use the writers. Handler selection is "most derived
 type wins; of two handlers for the same type the later registration wins; unrelated types keep the
 first registration". Because the bundle registers before caller `ConfigureServices` delegates, a

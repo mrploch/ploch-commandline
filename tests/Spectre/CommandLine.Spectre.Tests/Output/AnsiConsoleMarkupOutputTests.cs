@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Text;
 using Ploch.CommandLine.Spectre.Output;
 using Ploch.CommandLine.Spectre.Tests.Testing;
 using Spectre.Console;
@@ -581,6 +582,46 @@ public class AnsiConsoleMarkupOutputTests
         console.Output.Should().Be("[literal]" + Environment.NewLine);
     }
 
+    /// <summary>
+    ///     Spectre.Console escapes only <see cref="string" /> holes. A value of any other type whose text carried a
+    ///     bracket was parsed as markup and threw, so <c>MarkupInterpolated($"[bold]{holder}[/]")</c> failed for a
+    ///     value object rendering as <c>[Admin]</c> (PLO-847). The template must still be parsed around it.
+    /// </summary>
+    [Fact]
+    public void MarkupInterpolated_should_escape_a_non_string_hole_and_still_parse_the_template()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+        var holder = new LiteralText("[Admin]");
+
+        output.MarkupInterpolated($"[bold]{holder}[/]");
+
+        console.Output.Should().Be("[Admin]");
+    }
+
+    [Fact]
+    public void MarkupLineInterpolated_should_escape_a_non_string_hole_and_terminate_the_line()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+        var builder = new StringBuilder("[1]");
+
+        output.MarkupLineInterpolated($"item {builder}");
+
+        console.Output.Should().Be("item [1]" + Environment.NewLine);
+    }
+
+    [Fact]
+    public void Write_should_escape_brackets_produced_by_a_format_specifier_in_an_interpolated_string()
+    {
+        using var console = new RecordingConsole();
+        var output = CreateOutput(console);
+
+        output.Write<FormattableString>($"{42:[0]}", CultureInfo.InvariantCulture);
+
+        console.Output.Should().Be("[42]");
+    }
+
     [Fact]
     public void WriteBold_and_WriteBoldLine_should_ask_the_processor_for_the_bold_markup_tag()
     {
@@ -862,6 +903,12 @@ public class AnsiConsoleMarkupOutputTests
         new(console.Console,
             new MessageFormatterProcessor([new StringMessageFormatter(), new ConvertibleMessageFormatter()],
                                           [new StringMessageWriter(console.Console), new FormattableStringMessageWriter(console.Console)]));
+
+    /// <summary>A value whose text is fixed, standing in for any non-string hole such as a value object.</summary>
+    private sealed class LiteralText(string text)
+    {
+        public override string ToString() => text;
+    }
 
     /// <summary>An IFormattable whose ToString deliberately returns null, which the framework permits.</summary>
     private sealed class NullReturningFormattable : IFormattable

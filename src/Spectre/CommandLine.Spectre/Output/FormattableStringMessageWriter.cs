@@ -1,13 +1,11 @@
-﻿using System.Globalization;
-using Spectre.Console;
+﻿using Spectre.Console;
 
 namespace Ploch.CommandLine.Spectre.Output;
 
 /// <summary>
 ///     Renders a <see cref="FormattableString" /> as interpolated markup: the template is parsed as Spectre markup,
-///     the <see cref="string" /> values in the holes are escaped rather than parsed (a value of another type is
-///     formatted and its text parsed as markup, as Spectre.Console does), and the holes are formatted with the
-///     caller's format provider.
+///     every hole is escaped rather than parsed, whatever the runtime type of its value, and the holes are formatted
+///     with the caller's format provider.
 /// </summary>
 /// <param name="output">The console the messages are written to.</param>
 /// <remarks>
@@ -36,8 +34,8 @@ public class FormattableStringMessageWriter(IAnsiConsole output) : TypeMessageWr
         }
 
         // Rendering the interpolated string is where its holes are formatted, so the provider has to be applied
-        // here; MarkupInterpolated escapes the string holes, which is what keeps a '[' in caller data from being parsed
-        // (a non-string hole is formatted and parsed, which is why the summary tells callers to convert such values).
-        output.MarkupInterpolated(formatProvider ?? CultureInfo.CurrentCulture, message);
+        // here. Spectre's own MarkupInterpolated escapes only string holes; InterpolatedMarkup escapes every hole's
+        // text, so a value object or a format specifier that produces a '[' is printed rather than parsed (PLO-847).
+        output.Markup(InterpolatedMarkup.Render(message, formatProvider));
     }
 }

@@ -1,4 +1,5 @@
-﻿using Ploch.Common.ArgumentChecking;
+﻿using System.Globalization;
+using Ploch.Common.ArgumentChecking;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -69,22 +70,29 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     }
 
     /// <summary>
-    ///     Writes a markup-enabled interpolated string to the console.
+    ///     Writes a markup-enabled interpolated string to the console: the template is parsed as markup and every
+    ///     hole is escaped, whatever the runtime type of its value.
     /// </summary>
     /// <param name="value">The interpolated string to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
+    /// <remarks>
+    ///     Rendered through the internal <c>InterpolatedMarkup</c> helper rather than Spectre's
+    ///     <c>MarkupInterpolated</c>, which escapes only <see cref="string" /> holes and parses the text of every
+    ///     other value as markup (PLO-847).
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="value" /> is <see langword="null" />.</exception>
     public IOutput MarkupInterpolated(FormattableString value)
     {
         value.NotNull();
 
-        console.MarkupInterpolated(value);
+        console.Markup(InterpolatedMarkup.Render(value, CultureInfo.CurrentCulture));
 
         return this;
     }
 
     /// <summary>
-    ///     Writes a markup-enabled interpolated string followed by a line terminator to the console.
+    ///     Writes a markup-enabled interpolated string followed by a line terminator to the console: the template is
+    ///     parsed as markup and every hole is escaped, whatever the runtime type of its value.
     /// </summary>
     /// <param name="value">The interpolated string to write.</param>
     /// <returns>The current output instance for method chaining.</returns>
@@ -93,7 +101,7 @@ public class AnsiConsoleMarkupOutput(IAnsiConsole console, IMessageFormatterProc
     {
         value.NotNull();
 
-        console.MarkupLineInterpolated(value);
+        console.MarkupLine(InterpolatedMarkup.Render(value, CultureInfo.CurrentCulture));
 
         return this;
     }
