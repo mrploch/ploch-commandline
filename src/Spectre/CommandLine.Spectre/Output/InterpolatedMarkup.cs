@@ -59,18 +59,28 @@ internal static class InterpolatedMarkup
         public object? GetFormat(Type? formatType) => formatType == typeof(ICustomFormatter) ? this : provider.GetFormat(formatType);
 
         /// <inheritdoc />
-        public string Format(string? format, object? arg, IFormatProvider? formatProvider) => Markup.Escape(RenderHole(format, arg));
+        /// <remarks>
+        ///     Implemented explicitly: the signature is the interface's, and the provider it passes is this wrapper
+        ///     (string.Format hands back the provider it was given), so it is deliberately not used - the holes are
+        ///     rendered with the caller's provider instead.
+        /// </remarks>
+        string ICustomFormatter.Format(string? format, object? arg, IFormatProvider? formatProvider) => Markup.Escape(RenderHole(format, arg) ?? string.Empty);
 
         /// <summary>
         ///     Renders a hole with the same precedence <c>string.Format</c> applies: the caller's custom formatter
         ///     when it returns text, otherwise the value's <see cref="IFormattable" /> rendering, otherwise its
         ///     <c>ToString()</c>. The caller's provider, never this wrapper, is what the value sees, so a hole is
-        ///     escaped exactly once; every branch is coalesced because <c>Markup.Escape</c> rejects a null.
+        ///     escaped exactly once.
         /// </summary>
         /// <param name="format">The hole's format specifier, or <see langword="null" /> when it has none.</param>
         /// <param name="arg">The hole's value.</param>
-        /// <returns>The hole's text before escaping, never <see langword="null" />.</returns>
-        private string RenderHole(string? format, object? arg)
+        /// <returns>
+        ///     The hole's text before escaping, or <see langword="null" /> when the value rendered as none: a null
+        ///     value, or an <see cref="IFormattable" /> or <c>ToString()</c> that returned null, which the framework
+        ///     permits even though the annotations say otherwise. The caller coalesces it, because
+        ///     <c>Markup.Escape</c> rejects a null.
+        /// </returns>
+        private string? RenderHole(string? format, object? arg)
         {
             var custom = _customFormatter?.Format(format, arg, provider);
             if (custom is not null)
@@ -78,12 +88,7 @@ internal static class InterpolatedMarkup
                 return custom;
             }
 
-            if (arg is IFormattable formattable)
-            {
-                return formattable.ToString(format, provider) ?? string.Empty;
-            }
-
-            return arg?.ToString() ?? string.Empty;
+            return arg is IFormattable formattable ? formattable.ToString(format, provider) : arg?.ToString();
         }
     }
 }

@@ -16,7 +16,9 @@ public class InterpolatedMarkupTests
     [Fact]
     public void Render_should_escape_a_string_hole()
     {
-        var markup = InterpolatedMarkup.Render($"value: {"[red]"}", CultureInfo.InvariantCulture);
+        var value = "[red]";
+
+        var markup = InterpolatedMarkup.Render($"value: {value}", CultureInfo.InvariantCulture);
 
         markup.Should().Be("value: [[red]]");
     }
@@ -56,7 +58,9 @@ public class InterpolatedMarkupTests
     [Fact]
     public void Render_should_leave_the_template_unescaped()
     {
-        var markup = InterpolatedMarkup.Render($"[bold]{"x"}[/]", CultureInfo.InvariantCulture);
+        var value = "x";
+
+        var markup = InterpolatedMarkup.Render($"[bold]{value}[/]", CultureInfo.InvariantCulture);
 
         markup.Should().Be("[bold]x[/]", "the literal parts are the caller's markup");
     }
@@ -77,14 +81,26 @@ public class InterpolatedMarkupTests
         markup.Should().Be("1.234,50");
     }
 
+    /// <summary>
+    ///     Pinned to a culture whose number format differs from the invariant one, so a regression to invariant
+    ///     formatting cannot pass by coincidence on an en-US or invariant test runner. <c>CurrentCulture</c> is
+    ///     per-thread, so setting it here does not leak into tests running in parallel.
+    /// </summary>
     [Fact]
     public void Render_should_use_the_current_culture_when_no_provider_is_supplied()
     {
-        var expected = string.Format(CultureInfo.CurrentCulture, "{0:N2}", 1234.5);
+        var original = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+        try
+        {
+            var markup = InterpolatedMarkup.Render($"{1234.5:N2}", formatProvider: null);
 
-        var markup = InterpolatedMarkup.Render($"{1234.5:N2}", formatProvider: null);
-
-        markup.Should().Be(expected);
+            markup.Should().Be("1.234,50");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     /// <summary>
@@ -103,8 +119,9 @@ public class InterpolatedMarkupTests
     public void Render_should_hand_a_string_argument_to_the_custom_formatter_before_escaping_it()
     {
         var provider = new RecordingProvider(text: null);
+        var value = "[red]";
 
-        InterpolatedMarkup.Render($"{"[red]"}", provider);
+        InterpolatedMarkup.Render($"{value}", provider);
 
         provider.Arguments.Should().ContainSingle().Which.Should().Be("[red]", "the formatter sees the caller's value, not the escaped text");
     }
@@ -230,7 +247,9 @@ public class InterpolatedMarkupTests
     [Fact]
     public void Render_should_keep_braces_inside_a_hole_verbatim()
     {
-        var markup = InterpolatedMarkup.Render($"data: {"{x}"}", CultureInfo.InvariantCulture);
+        var value = "{x}";
+
+        var markup = InterpolatedMarkup.Render($"data: {value}", CultureInfo.InvariantCulture);
 
         markup.Should().Be("data: {x}", "a brace in a value is data, not a format token");
     }
