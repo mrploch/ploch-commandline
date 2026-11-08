@@ -344,7 +344,7 @@ public class InterpolatedMarkupTests
     {
         public string ToString(string? format, IFormatProvider? formatProvider) => null!;
 
-        public override string? ToString() => ToString(format: null, formatProvider: null);
+        public override string ToString() => ToString(format: null, formatProvider: null);
     }
 
     /// <summary>A provider whose custom formatter wraps every integer in angle brackets and leaves everything else to the invariant culture.</summary>
