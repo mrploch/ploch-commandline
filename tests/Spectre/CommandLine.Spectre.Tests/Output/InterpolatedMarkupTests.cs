@@ -323,6 +323,8 @@ public class InterpolatedMarkupTests
 
             return "value";
         }
+
+        public override string ToString() => ToString(format: null, formatProvider: null);
     }
 
     /// <summary>A value whose text is fixed, standing in for any non-string hole such as a value object.</summary>
@@ -341,6 +343,8 @@ public class InterpolatedMarkupTests
     private sealed class NullReturningFormattable : IFormattable
     {
         public string ToString(string? format, IFormatProvider? formatProvider) => null!;
+
+        public override string? ToString() => ToString(format: null, formatProvider: null);
     }
 
     /// <summary>A provider whose custom formatter wraps every integer in angle brackets and leaves everything else to the invariant culture.</summary>
