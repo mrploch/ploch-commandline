@@ -100,8 +100,11 @@ export GIT_LITERAL_PATHSPECS=1   # a staged name containing * or ? is a path, no
 U=$(git ls-files -u) || { echo 'INDEX UNREADABLE (sweep not run)'; exit; }
 [ -z "$U" ] || { echo 'UNMERGED ENTRIES (resolve the conflict first; sweep not run)'; exit; }
 if git rev-parse -q --verify 'HEAD^{commit}' >/dev/null; then HAS_HEAD=yes   # HEAD names a readable commit
-elif REF=$(git symbolic-ref -q HEAD) && ! git show-ref -q --verify "$REF"; then HAS_HEAD=no   # unborn branch: no commit yet
-else echo 'HEAD UNREADABLE (sweep not run)'; exit; fi
+else
+  REF=$(git symbolic-ref -q HEAD); git show-ref -q --verify "$REF"; rc=$?   # show-ref: 1 = no such ref, 128 = error
+  if [ -n "$REF" ] && [ "$rc" = 1 ]; then HAS_HEAD=no                      # unborn branch: no commit yet
+  else echo 'HEAD UNREADABLE (sweep not run)'; exit; fi
+fi
 scan() {  # $1 = object id, $2 = label. Silent only when the blob was read and did not match.
   git cat-file blob "$1" 2>/dev/null | LC_ALL=C grep -aqEi "$PATTERN"
   st=("${PIPESTATUS[@]}")                          # grep: 0 = match, 1 = no match, 2 = error
@@ -156,9 +159,9 @@ fi
 #   git -C "$ROOT" diff --cached --no-relative --no-ext-diff --no-textconv --submodule=short -- "$FILE"
 ```
 
-Any hit stops the commit, and so does **every** line the sweep prints — `POSSIBLE SECRET`, `CREDENTIAL FILE TYPE`, `UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `HEAD UNREADABLE`, `NOT IN A GIT WORK TREE`, `LISTING STAGED FILES FAILED`, `SCAN LOOP FAILED`, `SWEEP ABORTED`: an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. If the hit is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
+Any hit stops the commit, and so does **every** line the sweep prints — `POSSIBLE SECRET`, `CREDENTIAL FILE TYPE`, `UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `HEAD UNREADABLE`, `NOT IN A GIT WORK TREE`, `LISTING STAGED FILES FAILED`, `SCAN LOOP FAILED`, `SWEEP ABORTED`: an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. A hit labelled **`(committed version)`** is different: the value is already in history and the staged change probably removes it. **Never unstage that file** (that would put the credential back in the commit); follow [When a credential has already been committed](#when-a-credential-has-already-been-committed), and never print that file's diff. Once the old value is revoked at the issuer, the commit that removes it may go ahead. For a hit on the staged version that is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
 
-**Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. The same applies to every other diff an agent prints, such as a branch or staged diff read for review: run a quiet check first, and print nothing if it reports anything. Run it in the same shell as `PATTERN` above (each `Bash` call is a new shell, so paste both together):
+**Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. The same applies to every other diff an agent prints, such as a branch or staged diff read for review: run a quiet check first, and print nothing if it reports anything. Run it in the same shell as `PATTERN` above, with `BASE_BRANCH` set to the base **ref** (for example `BASE_BRANCH=origin/main` after `git fetch`); each `Bash` call is a new shell, so paste all three together:
 
 ```bash
 ( set +e +x -f   # no errexit (each status is read below), no trace output, no globbing
@@ -195,6 +198,12 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
 2. **Determine exposure** before deciding how far to go:
    ```bash
    gh repo view --json visibility --jq .visibility        # public = assume compromised, full stop
+   git branch -r --contains <sha>                         # did it ever leave the machine?
+   ```
+
+   Which commits hold the value — **run this yourself, in your own terminal, pasted on its own** (not through `!` in Claude Code, which gives `read` no keyboard input; and not in one paste with other commands, whose next line would be read as the value). Type the value at the silent prompt:
+
+   ```bash
    ( set +e +a +x +v; unset LEAKED   # +a/unset: never exported; +x/+v: no trace prints the value;
      # the value lives only in this subshell and is gone when it ends, even on Ctrl-C
      IFS= read -rs LEAKED || { echo 'NO INPUT (search not run)'; exit 1; }
@@ -220,9 +229,8 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
      [ "${st[0]}" = 0 ] || echo 'LISTING OBJECTS FAILED (search incomplete)'
      [ "${st[1]}" = 0 ] || echo "SEARCH LOOP FAILED (status ${st[1]}, search incomplete)"
    )   # prints object and commit hashes only, never content; any "incomplete" line voids a clean result
-   git branch -r --contains <sha>                         # did it ever leave the machine?
    ```
-   `read -rs` takes the value without echoing it, so it reaches neither the shell history nor a session transcript. It stays in a subshell variable (never exported, so no child process's environment carries it) and reaches `grep` through a process substitution (`-f <(printf …)`, a pipe; `printf` is a shell builtin), never as a command argument: any local user can read a process's arguments with `ps`. Do not replace this with `git log -S"$LEAKED"`, which puts the value in Git's argument list. The search reads every blob, including binary ones such as a SQLite log, so it takes a while on a large repository; run it yourself (`! …` in Claude Code), because an agent must not type the value. These are **current-state** checks: `visibility` reports today's visibility and `branch -r` lists only the remote refs this clone knows now. Neither proves that the repository was never public or that the commit was never pushed and later deleted. When that history cannot be verified, treat the credential as compromised.
+   `read -rs` takes the value without echoing it, so it reaches neither the shell history nor a session transcript. It stays in a subshell variable (never exported, so no child process's environment carries it) and reaches `grep` through a process substitution (`-f <(printf …)`, a pipe; `printf` is a shell builtin), never as a command argument: any local user can read a process's arguments with `ps`. Do not replace this with `git log -S"$LEAKED"`, which puts the value in Git's argument list. The search reads every blob, including binary ones such as a SQLite log, so it takes a while on a large repository; run it yourself as described above, because an agent must not type the value. These are **current-state** checks: `visibility` reports today's visibility and `branch -r` lists only the remote refs this clone knows now. Neither proves that the repository was never public or that the commit was never pushed and later deleted. When that history cannot be verified, treat the credential as compromised.
 
    Not pushed and private is recoverable. Pushed, or public at any point, means assume it is compromised regardless of how quickly it was removed.
 3. **Remove it from the working tree** and parameterise, as above.

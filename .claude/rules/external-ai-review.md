@@ -48,6 +48,7 @@ copilot -p "Read $PKG_FILE in full: it is the complete review context, ending wi
   --model grok-4.6 \
   --effort high \
   --available-tools view grep glob \
+  --no-custom-instructions \
   --allow-tool 'read' \
   --deny-tool 'write' --deny-tool 'memory' --deny-tool 'shell' --deny-tool 'url' \
   --disable-builtin-mcps \
@@ -72,7 +73,7 @@ copilot -p "Read $PKG_FILE in full: it is the complete review context, ending wi
 | `--no-ask-user` | Disables the `ask_user` tool so the agent works autonomously instead of stalling on a clarifying question no one can answer. |
 | `-s, --silent` | Emits only the agent response, no session statistics — required for clean parsing. |
 | `--no-color` / `--log-level none` | Strips ANSI escapes and log chatter from the captured output. |
-| `-C <package dir>` + `--add-dir "$REPO_ROOT"` | **Hook isolation.** `--available-tools` limits the model, not the CLI: hooks still run. Copilot loads repository-level hooks and settings from the working repository, including `.claude/settings.json`, so the reviewer starts in the package directory and reads the repository only through `--add-dir`. User-level hooks (`~/.copilot/hooks/`, `~/.copilot/settings.json`) are the user's own trusted configuration and still run; to turn them off too, the user sets `"disableAllHooks": true` in `~/.copilot/settings.json`. Findings cite repository paths as absolute paths. |
+| `-C <package dir>` + `--add-dir "$REPO_ROOT"` | **Hook isolation.** `--available-tools` limits the model, not the CLI: hooks still run. Copilot loads repository-level hooks and settings from the working repository, including `.claude/settings.json`, so the reviewer starts in the package directory and reads the repository only through `--add-dir`. User-level hooks (`~/.copilot/hooks/`, `~/.copilot/settings.json`) are the user's own trusted configuration and still run; to turn them off too, the user sets `"disableAllHooks": true` in `~/.copilot/settings.json`. `--add-dir` also loads the repository's `.github/skills` and `.github/agents`, but the reviewer cannot run them: the `skill` and `task` tools are not in `--available-tools`. `--no-custom-instructions` keeps the repository's `AGENTS.md`, `CLAUDE.md` and Copilot instruction files out of the reviewer's prompt. Findings cite repository paths as absolute paths. |
 
 ### Structured output
 
@@ -89,19 +90,23 @@ The tool restrictions should make a write impossible; this check proves it rathe
 # itself (no shasum/sha1sum dependency; Git Bash lacks shasum). pipefail: any failing part fails the snapshot.
 snap() ( set -o pipefail
   TOP=$(git rev-parse --show-toplevel) && [ -n "$TOP" ] && cd -- "$TOP" || exit 1   # whole tree, not the current folder
-  regular() { while IFS= read -r -d '' f; do [ -f "$f" ] && [ ! -L "$f" ] && printf '%s\n' "$f"; done; return 0; }
-  links()   { while IFS= read -r -d '' f; do [ -L "$f" ] && printf 'link %s -> %s\n' "$f" "$(readlink "$f")"; done; return 0; }
+  regular() { while IFS= read -r -d '' f; do [ -f "$f" ] && [ ! -L "$f" ] && printf '%s\0' "$f"; done; return 0; }
+  links()   { while IFS= read -r -d '' f; do [ -L "$f" ] || continue
+                t=$(readlink "$f") || return 1; printf 'link %s -> %s\n' "$f" "$t"; done; return 0; }
+  execs()   { while IFS= read -r -d '' f; do [ -f "$f" ] && [ -x "$f" ] && printf 'exec %s\n' "$f"; done; return 0; }
   { git rev-parse HEAD \
     && git ls-files -s -z \
     && git diff --raw -z --no-renames --abbrev=40 \
     && git ls-files -o --exclude-standard -z \
-    && { git ls-files -z && git ls-files -o --exclude-standard -z; } | regular | git hash-object --no-filters --stdin-paths \
-    && { git ls-files -z && git ls-files -o --exclude-standard -z; } | links; } | git hash-object --stdin
+    && { git ls-files -z && git ls-files -o --exclude-standard -z; } | regular | xargs -0 git hash-object --no-filters -- \
+    && { git ls-files -z && git ls-files -o --exclude-standard -z; } | links \
+    && git ls-files -o --exclude-standard -z | execs; } | git hash-object --stdin
 )
 # ls-files -s: the index (modes, staged blobs). diff --raw: working-tree changes against the index,
 # including deletions and mode changes such as chmod +x. hash-object --no-filters: raw bytes of every
 # existing regular file, tracked or not, so a line-ending change is visible. links: symlink targets,
-# dangling ones included. A deleted file, a submodule or a dangling link is listed, never read.
+# dangling ones included (a failed readlink fails the snapshot). execs: untracked files' executable bit, which
+# no other part records. Names travel NUL-delimited, so a newline in a name cannot hide a file.
 BEFORE=$(snap) && [ -n "$BEFORE" ] || echo "SNAPSHOT FAILED: the review cannot be verified, so stop"
 # ... panel runs ...
 AFTER=$(snap) && [ -n "$AFTER" ] && [ "$AFTER" = "$BEFORE" ] || echo "REVIEWER CHANGED THE TREE (or the snapshot failed)"
@@ -116,9 +121,11 @@ If the snapshots differ, **stop and show the user `git status`**. Do not revert 
 Copilot CLI fails *loudly but late*: an expired session surfaces as `Error: Failed to load models … 421 "Misdirected Request"` on every invocation, including the review itself. Detect it cheaply first:
 
 ```bash
-cd "$(mktemp -d)" && copilot -p "Reply with exactly: READY" --model grok-4.6 --effort low --disable-builtin-mcps \
-  --available-tools view --deny-tool 'write' --deny-tool 'shell' --deny-tool 'memory' --no-ask-user -s --log-level none
+( cd "$(mktemp -d)" && copilot -p "Reply with exactly: READY" --model grok-4.6 --effort low --disable-builtin-mcps \
+  --available-tools view --deny-tool 'write' --deny-tool 'shell' --deny-tool 'memory' --no-custom-instructions --no-ask-user -s --log-level none )
 ```
+
+The subshell keeps the caller's working directory: a bare `cd` would move every later command out of the repository.
 
 **Supported effort levels (verified on Copilot CLI 1.0.80, 2026-08-19):** Grok 4.6 accepts **only `low`, `medium`, `high`**. The CLI's `--effort` choice list is generic across all models, but each model supports a subset and rejects the rest at request time:
 

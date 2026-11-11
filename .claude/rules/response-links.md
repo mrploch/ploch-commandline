@@ -11,7 +11,7 @@ metadata:
 
 **Every reference to something that has a URL is rendered as a clickable markdown link.** Never a bare number, never a bare identifier, never a naked URL.
 
-This applies **everywhere in the response** — prose, bullet lists, tables, headings, the closing block from [`response-closing.md`](./response-closing.md), and commit/PR bodies where markdown is supported.
+This applies **everywhere in the response** — prose, bullet lists, tables, headings, the closing block from [`response-closing.md`](./response-closing.md), and commit/PR bodies where markdown is supported — except the magic-word references (`Closes PLO-46`, `Refs: PLO-46`) and fields a PR template fixes, which stay bare (see [Details that matter](#details-that-matter)).
 
 | Reference | Wrong | Right |
 |---|---|---|

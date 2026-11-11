@@ -5,7 +5,7 @@ metadata:
 
 # Closing Every Response — Status + Next Steps (Mandatory)
 
-**Scope:** every session and every substantive response in the mrploch workspace root (`<workspace>`, the `workspaceRoot` in `environment.json`; for example `C:\DevNet\my\mrploch` on Windows or `~/DevNet/mrploch` on macOS) **and every folder and repository beneath it**, wherever that root lives on the machine. This is a user preference, stated explicitly on 2026-08-26.
+**Scope:** every session and every substantive response in the mrploch workspace root (`<workspace>`, the `workspaceRoot` in `environment.json`; for example `C:\DevNet\my\mrploch` on Windows or `~/devnet/my/mrploch` on macOS) **and every folder and repository beneath it**, wherever that root lives on the machine. This is a user preference, stated explicitly on 2026-08-26.
 
 ## The Rule
 

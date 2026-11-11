@@ -146,7 +146,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
 
 2. **Find the Linear twin, starting from the sync link.** Team Ploch mirrors new issues into `mrploch/ploch-ai-tools` whatever their project (see [`issue-tracking.md`](../../rules/issue-tracking.md)), so the input repository is not necessarily the repository of the work.
 
-   1. Read the GitHub issue's Linear link first — its synced-issue attachment or comment (`gh issue view "$NUMBER" --repo "$OWNER/$REPO" --json title,body,comments`, read-only, with the validated values). If it names a `PLO-<n>`, that is the issue; fetch it to confirm its GitHub attachment is this URL.
+   1. Read the GitHub issue's Linear link first — its synced-issue attachment or comment (`gh issue view "$NUMBER" --repo "$OWNER/$REPO" --json state,title,body,comments`, read-only, with the validated values). If it names a `PLO-<n>`, that is the issue; fetch it to confirm its GitHub attachment is this URL.
    2. Otherwise search **team Ploch**, not just one project, for the GitHub issue's full URL, then for its title:
 
       ```
@@ -156,7 +156,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
       Confirm any match through its GitHub attachment.
    3. Record the GitHub `number` as `github-twin` only when `repo` turns out to be the repository of the work (Step 0c.3); a mirror in another repository is not a twin for the PR body.
 
-3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in `links` and in a description that **starts** with the line `Created by implement-issue from $URL`), record the GitHub `number` as `github-twin` **only when `repo` is the repository of the work** (Step 0c.3) — a `ploch-ai-tools` mirror of another repository's issue is not a twin — then continue with the new `PLO-<n>`.
+3. **If no Linear issue exists** and the GitHub issue is **open**, create one in Linear (if it is closed, stop and ask the user whether there is anything left to implement) from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in `links` and in a description that **starts** with the line `Created by implement-issue from $URL`), record the GitHub `number` as `github-twin` **only when `repo` is the repository of the work** (Step 0c.3) — a `ploch-ai-tools` mirror of another repository's issue is not a twin — then continue with the new `PLO-<n>`.
 
    The search-then-create sequence is not atomic, so two concurrent runs can both create an issue. Make it convergent, and only ever touch the issue **this run created**:
 
@@ -293,7 +293,7 @@ Before writing any code, build comprehensive understanding. This phase is critic
 
 ### Phase 3: Plan Implementation
 
-1. **Create a detailed plan** using **TodoWrite** with sub-tasks covering:
+1. **Create a detailed plan** using **TaskCreate / TaskUpdate** with sub-tasks covering:
 
    - Implementation tasks (code changes, new files, modified files).
    - Test creation (unit tests, integration tests if needed, bug-reproducing test if it's a bug fix).
@@ -486,12 +486,12 @@ dotnet test <solution-file>
 
 Before committing, review your own changes thoroughly:
 
-1. Run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) first, then `git diff --no-ext-diff --no-textconv --submodule=short` (with `--staged` if already staged) and **read every changed line**.
+1. Run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) first, with `BASE_BRANCH="origin/$BASE"` (Phase 1's base branch) in the same shell, then `git diff --no-ext-diff --no-textconv --submodule=short` (with `--staged` if already staged) and **read every changed line**.
 2. Check for:
    - Adherence to project patterns and conventions.
    - Unused code, dead imports, unreachable branches.
    - Missing error handling at system boundaries.
-   - Naming consistency (British English, camelCase methods, verb-first method names).
+   - Naming consistency (British English, PascalCase types and members, verb-first method names; see `rules/naming.md`).
    - No PII in test data.
    - No new warnings.
    - XML documentation on all new public APIs (for public libraries).
@@ -573,7 +573,7 @@ All three reviews are **mandatory** for every non-trivial change — three provi
    cat .github/pull_request_template.md 2>/dev/null || cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null
    ```
 
-4. **Create PR** with a detailed description following `rules/pr-descriptions.md`:
+4. **Create PR** with a detailed description following `rules/pr-descriptions.md`. When step 3 found a pull request template, the body follows **its** sections; the heredoc below is the fallback structure for a repository without one:
 
    ```bash
    gh pr create --title "<type>(<scope>): <subject>" --body "$(cat <<'EOF'
@@ -655,7 +655,7 @@ All three reviews are **mandatory** for every non-trivial change — three provi
    b. **Diagnose the root cause** — read the actual error output. Do not guess.
    c. If the failure is not obvious, research the error (web search, docs, sibling repos for how they handle it).
    d. Fix the issue in code.
-   e. **Loop back to Phase 6** (Build → Test → Self-Review → Commit → Push).
+   e. **Loop back to Phase 6** (Build → Test → Self-Review → External AI Review → Commit → Push).
    f. After pushing the fix, monitor checks again. Repeat until **all green**.
 
 3. **Do not:**
@@ -790,7 +790,7 @@ After the completion gate passes and **before** reporting, run the **`/dotnet-de
 
 - **With `--no-push`** the run reaches this phase straight after Phase 10 (Phases 11–14 are skipped): run the pass in `--no-push` mode, then go to the local report in Phase 15.
 
-- This is a standing user requirement — **do not skip it**, even when the branch looks clean. The pass independently re-verifies XML docs, markdown-doc sync, test coverage, build warnings, the grand review, CI checks, and PR threads with its own gates.
+- This is a standing user requirement — **do not skip it**, even when the branch looks clean. The pass independently re-verifies XML docs, markdown-doc sync, test coverage, build warnings, the grand review, and — when the run pushed — CI checks and PR threads with its own gates.
 - When the implement-issue phases were thorough, the pass typically confirms a clean state without making changes — that confirmation is the point.
 - If the pass **does** make changes, its own fix loop applies. In a normal run that is build → test → commit → push → CI → comments, and Phase 14 is re-verified on the new HEAD before Phase 15. **Under `--no-push`** it is build → test → local commit only: never push, never open a PR, and skip Phase 14.
 - The finishing-touches completion report satisfies this phase; reference it (or summarise it) in the Phase 15 report.
@@ -855,6 +855,7 @@ When CI fails or PR comments require code changes, the fix loop is:
 Fix code → Phase 6 (Build — zero warnings locally)
          → Phase 7 (Test — all pass)
          → Phase 8 (Self-Review)
+         → Phase 9 (External AI Review, unless the fix is a one-line prose typo)
          → Phase 10 (Commit — new commit, not amend)
          → Push (only after local build is clean!)
          → Phase 12 (Monitor CI)
@@ -877,7 +878,7 @@ When an issue requires changes in multiple repositories:
    - Start with the lowest-level repo (e.g. `ploch-common` before `ploch-data` before `ploch-lists`).
    - Create a branch in each affected repo following the same naming convention, using the same Linear identifier (`plo-<n>`).
 4. **Test across repos** — build and test each repo, ensuring cross-repo `ProjectReference` paths work locally.
-5. **Create PRs in each repo**, linking them in the PR descriptions ("Depends on mrploch/ploch-common#XX").
+5. **Create PRs in each repo**, linking them in the PR descriptions ("Depends on mrploch/ploch-common#XX"). They share one Linear issue, so every PR except the one that completes the work uses `Refs PLO-<n>`; only the last PR to merge carries `Closes PLO-<n>`, otherwise the first merge would close an issue that is still in progress elsewhere.
 6. **Monitor CI and address comments in all repos.**
 7. **Report the merge order** — upstream repos first, so downstream repos can switch to the published NuGet packages. Merging is the user's decision (a merge to `main` publishes packages): never merge unless the user has explicitly authorised it for this run.
 
