@@ -9,7 +9,7 @@ description: Implement a Linear issue end-to-end — fetch the Linear issue (res
 
 Orchestrate autonomous, end-to-end implementation of a Linear issue — from fetching the issue through research, planning, coding, testing, PR creation, CI monitoring, and PR comment resolution until the PR is clean and complete.
 
-**Linear is the issue tracker** — see [`issue-tracking.md`](../../rules/issue-tracking.md). The Linear issue (`PLO-<n>`) is the issue of record for every phase: branch naming (`<type>/plo-<n>-<slug>`), commit footers (`Refs: PLO-<n>`), PR linking (`Closes PLO-<n>`) and follow-ups. A GitHub issue number or URL is accepted as input only to be resolved to its Linear issue; a synced GitHub twin is referenced secondarily (`Closes #<n>` in the PR body). Pull requests, CI and PR threads stay on GitHub.
+**Linear is the issue tracker** — see [`issue-tracking.md`](../../rules/issue-tracking.md). The Linear issue (`PLO-<n>`) is the issue of record for every phase: branch naming (`<type>/plo-<n>-<slug>`), commit footers (`Refs: PLO-<n>`), PR linking (`Closes PLO-<n>`) and follow-ups. A GitHub issue number or URL is accepted as input only to be resolved to its Linear issue; a synced GitHub twin **in the same repository** is referenced secondarily (`Closes #<n>` in the PR body). Pull requests, CI and PR threads stay on GitHub.
 
 **Core principles:**
 
@@ -28,7 +28,7 @@ Orchestrate autonomous, end-to-end implementation of a Linear issue — from fet
   3. Every PR review thread is either resolved or has us as the latest contributor with an active reply.
   4. Re-polling produces no new threads, comments, or check runs.
   
-  **Stale checks are still failures.** "Codacy is stale, expected to go green" is **not** an acceptable completion claim. Wait for the rescan or push a follow-up to retrigger.
+  **Stale checks are still failures.** "Codacy is stale, expected to go green" is **not** an acceptable completion claim. Wait for the rescan, or re-run the job (`gh run rerun`); ask the user before pushing an empty commit just to retrigger a bot.
 
 **Announce at start:** "I'm using the implement-issue skill to implement PLO-\<n\>."
 
@@ -70,7 +70,7 @@ digraph implement_issue {
     ask [label="Ask user"];
     branch [label="4. Create Branch"];
     implement [label="5. Implement\n(Code + Tests + Docs)"];
-    build [label="6. Build & Static Analysis\n(Zero new warnings)"];
+    build [label="6. Build & Static Analysis\n(Zero warnings)"];
     test [label="7. Test\n(All pass, coverage gates)"];
     review [label="8. Self-Review\n(git diff, patterns, docs)"];
     codex [label="9. External AI Review\n(canonical three-reviewer panel)"];
@@ -151,7 +151,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
       Confirm any match through its GitHub attachment.
    3. Record the GitHub `number` as `github-twin` only when `repo` turns out to be the repository of the work (Step 0c.3); a mirror in another repository is not a twin for the PR body.
 
-3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in `links` and in a description that **starts** with the line `Created by implement-issue from <GitHub issue URL>`), keep the GitHub `number` as `github-twin`, then continue with the new `PLO-<n>`.
+3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in `links` and in a description that **starts** with the line `Created by implement-issue from <GitHub issue URL>`), record the GitHub `number` as `github-twin` **only when `repo` is the repository of the work** (Step 0c.3) — a `ploch-ai-tools` mirror of another repository's issue is not a twin — then continue with the new `PLO-<n>`.
 
    The search-then-create sequence is not atomic, so two concurrent runs can both create an issue. Make it convergent, and only ever touch the issue **this run created**:
 
@@ -215,7 +215,7 @@ By the end of Phase 0, `owner` and `repo` are always resolved (Step 0c.3) — th
    # Accept the checkout only if its top level is named <repo-name> and origin is mrploch/<repo-name>
    # (HTTPS or SSH). REPO_DIR then takes Git's own spelling of the path (C:/… in Git Bash).
    TOP=$(git -C "$REPO_DIR" rev-parse --show-toplevel 2>/dev/null) && [ "$(basename "$TOP")" = "<repo-name>" ] \
-     && git -C "$TOP" remote get-url origin | grep -Eq 'github\.com[:/]mrploch/<repo-name>(\.git)?$' \
+     && git -C "$TOP" remote get-url origin | grep -Eq '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)mrploch/<repo-name>(\.git)?$' \
      && REPO_DIR=$TOP || echo "STOP: no verified checkout of mrploch/<repo-name> at $REPO_DIR"
    ```
 
@@ -816,13 +816,12 @@ All <count> conversations addressed.
 <Any important context, trade-offs, or follow-up items>
 ```
 
-Also update the Linear issue. The comment must be **idempotent**, because a retried Phase 15 must not post it twice. Every completion comment starts with `implement-issue completion` — `implement-issue completion:` with a PR, `implement-issue completion (local):` under `--no-push`. Read the comments first (`list_comments(issueId="PLO-<n>")`) and post only when no comment starts with that marker **and** contains the PR URL; an ordinary discussion comment that mentions the URL does not count.
+Also update the Linear issue. The comment must be **idempotent**, because a retried Phase 15 must not post it twice. Every completion comment starts with `implement-issue completion` — `implement-issue completion:` with a PR, `implement-issue completion (local):` under `--no-push`. Read the comments first (`list_comments(issueId="PLO-<n>")`). With a PR, an existing completion comment is one that starts with `implement-issue completion:` **and** contains this PR's URL; under `--no-push`, one that starts with `implement-issue completion (local):` **and** names this branch. An ordinary discussion comment that mentions the URL does not count.
 
 **With a PR** — only once the PR exists and Phase 14's gate has passed:
 
 ```
 mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: implemented in <PR URL>.")   # skip or update per the idempotency rule
-mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")   # only after the PR has merged, and only if not already Done
 ```
 
 **Partial work** (see [Partial work](#partial-work)) — the body names what is left, and the issue is **not** marked Done:
@@ -833,7 +832,7 @@ mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue
 
 The idempotency check still applies, with one refinement for both bodies: when a marked comment for this PR already exists, compare it with what this run would post — the mode (implemented or partially implemented) and the `Covered:` / `Remaining:` lists. Skip only when they match. Otherwise update that comment (`save_comment` with its `id`) so it states the current scope; never post a second one, and never leave a stale `Remaining:` list after the PR covers more.
 
-A merged PR carrying `Closes PLO-<n>` normally moves the issue to Done automatically — confirm the state rather than assuming. Never mark it Done while the PR is open.
+The issue stays open at this point: the PR is not merged, and merging is the user's decision. **After the PR has merged**, a `Closes PLO-<n>` normally moves the issue to Done automatically. Confirm the state; only if it did not move, set it — `mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")`. Never mark it Done while the PR is open, and never for partial work.
 
 **With `--no-push`** — there is no PR, so Phase 14 does not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (if a local completion comment for this branch already exists, update it with the new commit hash rather than posting another). Leave the issue "In Progress".
 
@@ -946,7 +945,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 - About to **mark a Linear issue Done after a `--no-push` run**.
 - About to **run `gh issue create`**, or write `Refs: #<n>` / `Closes #<n>` without the `PLO-<n>` identifier — Linear is the tracker (`rules/issue-tracking.md`).
 - About to **create a Linear issue for a GitHub input without first searching Linear for its twin** (Step 0b.2) — this produces duplicates.
-- About to **mark a Linear issue "Done" while its PR is still open or CI/comments are unresolved** — the Linear status update in Phase 15 happens only after the completion gate passes.
+- About to **mark a Linear issue "Done" while its PR is still open or CI/comments are unresolved** — the issue is set to Done only after the PR has **merged** (Phase 15), never when the gate passes on an open PR.
 
 ---
 

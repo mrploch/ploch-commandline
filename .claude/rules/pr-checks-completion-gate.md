@@ -48,7 +48,7 @@ For each bot whose verdict is "fail" or "action_required" or "no verdict yet bec
 - **Pending / queued / in_progress** → wait. Use a polling cycle (e.g. `ScheduleWakeup` ~270s to stay inside the 5-min cache window). Do not declare completion.
 - **Not started** → wait. Some bots (Codacy, SonarCloud) take 1–5 min to start after a push.
 
-**Stale checks are still failures.** A check that says `fail` because the bot hasn't yet rescanned the latest commit is **still failing** by the gate's definition. Either wait for the rescan (preferred) or push a tiny no-op-ish commit to retrigger (last resort, only after waiting >10 min). Reporting "Codacy is stale, ignore it" is **not allowed**.
+**Stale checks are still failures.** A check that says `fail` because the bot hasn't yet rescanned the latest commit is **still failing** by the gate's definition. Wait for the rescan (preferred), or re-run the job (`gh run rerun <run-id>`) when it is a GitHub Actions run. Pushing an empty commit only to retrigger a bot needs the user's approval first: it adds history and re-runs every paid bot. Reporting "Codacy is stale, ignore it" is **not allowed**.
 
 ## Conversations Must Be Addressed
 
@@ -92,11 +92,12 @@ gh pr checks <PR#> --repo <owner>/<repo>
 gh api repos/<owner>/<repo>/pulls/<PR#> --jq '.head.sha'
 # Cross-check against `git rev-parse HEAD`.
 
-# 3. Codacy / SonarCloud / CodeRabbit / Bito have actually rendered a verdict
-#    (not just absent from the list)?
-gh api repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | {name, conclusion, status}'
-# Expected: each named bot appears with conclusion in {success}.
-# A bot that doesn't appear at all is "not yet run" — wait for it.
+# 3. Codacy / SonarCloud / CodeRabbit / Bito have actually rendered a verdict (not just absent)?
+#    Check runs and commit statuses are separate GitHub surfaces; the PR's status rollup holds both.
+gh pr view <PR#> --repo <owner>/<repo> --json statusCheckRollup --jq '.statusCheckRollup[]
+    | {name: (.name // .context), state: (.conclusion // .state), status: (.status // "COMPLETED")}' \
+  || echo "GATE ERROR: status rollup unavailable, so the gate is NOT satisfied"
+# Expected: each named bot appears with state SUCCESS. A bot that doesn't appear at all is "not yet run" — wait for it.
 
 # 4. Every thread resolved, or (rule condition 3) its LATEST comment is ours? Outdated threads count too.
 #    --paginate walks every page of threads; comments(last:1) is the latest comment, not the first.
@@ -116,9 +117,12 @@ ME=$(gh api user --jq .login) && [ -n "$ME" ] \
 gh api repos/<owner>/<repo>/issues/<PR#>/comments --paginate --jq '.[].id' | tail -5
 # Expected: same as your previous poll. If new IDs appear, address them.
 
-# 6. CI annotations from each bot are clear?
-for run_id in $(gh api repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | .id'); do
-  gh api repos/<owner>/<repo>/check-runs/$run_id/annotations
+# 6. CI annotations from each bot are clear? Both levels paginate; a failed request is an error, not "clear".
+RUNS=$(gh api --paginate "repos/<owner>/<repo>/commits/<sha>/check-runs" --jq '.check_runs[].id') \
+  || { echo "GATE ERROR: check runs unavailable"; RUNS=; }
+for run_id in $RUNS; do
+  gh api --paginate "repos/<owner>/<repo>/check-runs/$run_id/annotations" \
+    || echo "GATE ERROR: annotations for check run $run_id unavailable"
 done
 # Expected: each annotation is either resolved by code change or has a documented exclusion in config.
 ```

@@ -17,7 +17,7 @@ metadata:
 
 "Work on" is deliberately broad. It includes being asked to:
 
-- implement, fix, or complete the issue (`/implement-issue`, `/execute-todo`, or a plain request);
+- implement, fix, or complete the issue (`/implement-issue` or a plain request);
 - look at, investigate, triage, reproduce, or estimate it;
 - review, comment on, re-scope, split, or close it;
 - read it in order to do work elsewhere that the issue describes.

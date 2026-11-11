@@ -31,7 +31,7 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 
 - **Zero unaddressed PR comments** — every unresolved review thread must be triaged and closed out before the skill reports complete. Valid issues are fixed in code; false positives get a reply that cites specific evidence (what the code actually does, which test/spec proves it, why the analyser or reviewer was wrong). A thread is never left silent, and a bot-flagged thread is never closed without a reply. See [Phase 11](#phase-11-address-pr-comments-skip-if---no-push).
 
-- **All-green completion gate — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
+- **All-green completion gate — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit — **when Phase 10 ran**. Under `--no-push` nothing is pushed, so Phase 12's local gate applies instead:
   
   1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
   2. Every static-analysis bot has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s).
@@ -109,8 +109,10 @@ digraph finishing_touches {
     comments_ok [shape=diamond, label="All addressed?\nNo new ones?"];
     report [label="12. Report Completion"];
     skip_push [label="Skip push\nReport locally"];
+    ci_pre [label="1.5 CI Status Pre-Check\n(sub-agent)"];
+    todo [label="2.5 Build Master TODO List"];
 
-    detect -> context -> diff -> nuget_check;
+    detect -> context -> ci_pre -> diff -> todo -> nuget_check;
     nuget_check -> docs [label="yes"];
     nuget_check -> coverage [label="no"];
     docs -> coverage;
@@ -152,6 +154,7 @@ digraph finishing_touches {
     commit -> push_check;
     push_check -> push [label="no"];
     push_check -> skip_push [label="yes"];
+    skip_push -> report [label="local gate"];
     push -> ci_ok;
     ci_ok -> comments [label="yes"];
     ci_ok -> fix_ci [label="no"];
@@ -177,7 +180,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. If a file is edited multiple times during the pass, only one `.bak` is needed (the original state before any finishing-touches changes).
-- If a `.bak` file already exists for that path (e.g. from a previous run), **overwrite it** — it represents a stale backup.
+- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record the exact backup paths this pass created; the report and the cleanup command cover only those.
 - **New files** (e.g. new test classes) do not need a `.bak` — there is no original to back up.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files in a list for the completion report in Phase 12.
@@ -230,7 +233,7 @@ Gather full context about the branch's purpose.
    gh pr view --json number,url,title,body,labels,state 2>/dev/null || echo "NO_PR"
    ```
 
-2. **Identify the Linear issue.** Linear is the tracker (see [`issue-tracking.md`](../../rules/issue-tracking.md)). In order: an issue the caller passed in (for example `/implement-issue` hands over its resolved `PLO-<n>`); `Closes`/`Refs`/`Fixes`/`Resolves PLO-<n>` in the PR body; the `plo-<n>` segment of the branch name; the `Refs: PLO-<n>` commit footer. A bare `#N` is only a synced GitHub twin — resolve it to its Linear issue.
+2. **Identify the Linear issue**, and make sure this session's comment required by [`linear-session-logging.md`](../../rules/linear-session-logging.md) is on it (skip if this session already posted it). Linear is the tracker (see [`issue-tracking.md`](../../rules/issue-tracking.md)). In order: an issue the caller passed in (for example `/implement-issue` hands over its resolved `PLO-<n>`); `Closes`/`Refs`/`Fixes`/`Resolves PLO-<n>` in the PR body; the `plo-<n>` segment of the branch name; the `Refs: PLO-<n>` commit footer. A bare `#N` is only a synced GitHub twin — resolve it to its Linear issue.
 
 3. **If a linked issue is found**, fetch it from Linear:
    
@@ -312,12 +315,11 @@ Build the complete picture of all changes on the branch.
 
 4. **Merge** all lists into a deduplicated set of modified files. Filter to `.cs` files for code analysis phases.
 
-5. **Read the full diffs** for context:
+5. **Read the full diffs** for context. Before printing any diff, run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) ("The same applies to every other diff") over these ranges; if it reports a possible secret, print nothing and inspect the file in the editor. Print diffs with `--no-ext-diff --no-textconv --submodule=short`. Staged changes go through the pre-commit sweep in that rule.
    
    ```bash
-   git diff "$BASE_BRANCH"...HEAD  # committed changes
-   git diff                         # unstaged
-   git diff --staged                # staged
+   git diff "$BASE_BRANCH"...HEAD --no-ext-diff --no-textconv --submodule=short  # committed changes
+   git diff --no-ext-diff --no-textconv --submodule=short                         # unstaged
    ```
 
 ---
@@ -462,14 +464,14 @@ For each modified `.cs` file in a NuGet-producing project:
 1. **Build with normal verbosity** to capture all warnings:
    
    ```bash
-   dotnet build "$SOLUTION_FILE" -v normal 2>&1
+   dotnet build "$SOLUTION_FILE" -v normal -warnaserror- 2>&1   # -warnaserror-: list every warning instead of failing on the first
    ```
 
 2. **Read the entire build output.** Do not skim.
 
 3. **Extract all warnings**, categorising by source analyser (SA, RCS, S, CA, CC, VSTHRD, CS, IDE, EF, NU). Use the prefix reference from `/dotnet-dev-practical` → `analyzer-reference.md`.
 
-4. **Filter to warnings that originate from modified files** (the file set from Phase 2).
+4. **Triage warnings on modified files first** (the file set from Phase 2). A warning anywhere else still blocks: the repository treats warnings as errors, so the final plain `dotnet build` before commit must be clean for the whole solution. Fix it, or ask the user when it is outside this branch's scope; never filter it out.
 
 5. **If zero warnings on modified files**, proceed directly to Phase 8 (Grand Review).
 
@@ -506,7 +508,8 @@ For each warning on a modified file, follow this decision tree:
    
    ```bash
    # Count distinct FILES, not output lines: a multi-targeted build repeats each warning per framework
-   dotnet build "$SOLUTION_FILE" -v normal 2>&1 | grep -E ': warning <WARNING_ID>:' | sed -E 's/\([0-9,]+\): warning .*//' | sort -u | wc -l
+   dotnet build "$SOLUTION_FILE" -v normal -warnaserror- 2>&1 | grep -E ': (warning|error) <WARNING_ID>:' \
+     | sed -E 's/^[[:space:]]*([0-9]+>)?//; s/\([0-9,]+\): (warning|error) .*//' | sort -u | wc -l   # strip MSBuild node prefixes
    ```
 
 2. **If common (3+ files):** propose disabling it globally in `.editorconfig` rather than suppressing inline — and **ask the user first**. A severity change silences the rule for every file, present and future, which is the same bar as an analyser exclusion in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) § When To Pause. State the rule, the files, and why it is a false positive; apply only on approval:
@@ -547,7 +550,7 @@ After each fix or suppression in Phase 6:
 1. **Rebuild the solution:**
    
    ```bash
-   dotnet build "$SOLUTION_FILE" -v normal 2>&1
+   dotnet build "$SOLUTION_FILE" -v normal -warnaserror- 2>&1   # -warnaserror-: list every warning instead of failing on the first
    ```
 
 2. **Verify** the specific warning is resolved.
@@ -668,13 +671,7 @@ Send all three requests in the same tool-call block so they run concurrently. If
 
 #### Step 4 — Verify the reviewers changed nothing, then record
 
-Copilot runs with shell access, and `--deny-tool 'write'` does not cover shell redirections. Confirm the working tree is untouched:
-
-```bash
-git status --porcelain
-```
-
-The output must match its pre-review state. Any difference is an unintended write — revert it and record the incident.
+Run the post-run write check from [`external-ai-review.md`](../../rules/external-ai-review.md) § Post-run write check: snapshot the tree before dispatching the panel and compare afterwards. If anything differs, stop and show the user — never revert automatically.
 
 Store for the Phase 12 report: each reviewer's verdict, finding counts by severity, which findings were fixed vs declined (with reasons), re-review outcomes, and the model each reviewer actually ran (Copilot's in particular, since a fallback to Kimi K3 must be visible).
 
@@ -932,8 +929,10 @@ Pass forward for the completion report:
 
 1. **Build is clean.** `dotnet build "$SOLUTION_FILE"` completes with zero errors and zero warnings on modified files. Re-run immediately before reporting.
 2. **All tests pass locally.** The latest `dotnet test` run is green.
-3. **Every TODO item from Phase 2.5 is `completed`.** No `pending` or `in_progress` items. A CI-check TODO counts as complete only after the same check re-runs green; a PR-comment TODO counts as complete only after the thread is resolved or replied-to with evidence. Under `--no-push` those two kinds cannot be closed locally: mark them `deferred`, list them in the report, and exclude them from this condition in that mode only.
+3. **Every TODO item from Phase 2.5 is `completed`.** No `pending` or `in_progress` items. A CI-check TODO counts as complete only after the same check re-runs green; a PR-comment TODO counts as complete only after the thread is resolved or replied-to with evidence. Under `--no-push`, fix and verify locally whatever such a TODO describes that can be fixed locally; defer only its remote part (the CI re-run, the thread reply and resolution), list those deferred parts in the report, and exclude only them from this condition.
 4. **Grand Review (Phase 8) found no outstanding concerns** the user needs to decide on.
+
+**Additionally when SonarCloud analyses the repository and Phase 10 ran:** the SonarCloud platform is clean for the PR, per step 7 of the gate's Pre-Completion Verification (`mcp__sonarqube-cloud__search_sonar_issues_in_projects`, `search_security_hotspots`, `get_project_quality_gate_status`). A green GitHub check alone does not count.
 
 **Additionally required when Phase 10 ran (`--no-push` OFF):**
 
@@ -1022,16 +1021,17 @@ are available for diff review. Delete them when satisfied.
 **Quick diff command:**
 ```bash
 # Compare all backed-up files against their modified versions
-for bak in $(find . -name "*.bak" -not -path "*/bin/*" -not -path "*/obj/*"); do
-  echo "=== ${bak%.bak} ==="
-  diff "${bak}" "${bak%.bak}" || true
+# This pass's backups only (the paths recorded above), NUL-safe for names with spaces or wildcards
+printf '%s\0' <recorded backup paths> | while IFS= read -r -d '' bak; do
+  orig=${bak%.bak}; orig=${orig%.[0-9]*-[0-9]*}
+  echo "=== $orig ==="; diff "$bak" "$orig" || true
 done
 ```
 
 **Cleanup command:**
 
 ```bash
-find . -name "*.bak" -not -path "*/bin/*" -not -path "*/obj/*" -delete
+printf '%s\0' <recorded backup paths> | xargs -0 rm -f --   # this pass's backups only
 ```
 
 ### Commit

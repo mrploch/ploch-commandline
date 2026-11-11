@@ -422,7 +422,7 @@ qodana.sarif.json
 # Shared Claude Code rules symlinked into the mrploch workspace root break on
 # any other machine, so ignore the directory. Already-tracked real copies stay
 # tracked (gitignore does not untrack); the un-ignored entries below are real
-# files still to be committed.
+# files tracked in this repository.
 .claude/rules/*
 !.claude/rules/issue-tracking.md
 !.claude/rules/linear-session-logging.md

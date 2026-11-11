@@ -35,7 +35,7 @@ This is the web-site adaptation of the workspace's `.NET` finishing-touches skil
 
 - **Zero unaddressed PR comments** — every unresolved review thread must be triaged and closed out before the skill reports complete. Valid issues are fixed in code; false positives get a reply that cites specific evidence. A thread is never left silent, and a bot-flagged thread is never closed without a reply. See [Phase 11](#phase-11-address-pr-comments-skip-if---no-push).
 
-- **All-green completion gate — non-negotiable.** The hard gate is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
+- **All-green completion gate — non-negotiable.** The hard gate is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit — **when Phase 10 ran**. Under `--no-push` nothing is pushed, so Phase 12's local gate applies instead:
 
   1. Every CI check (`validate`, `CodeQL` / both `Analyze` jobs, `Sourcery review`, `CodeRabbit`, `Cloudflare Workers Builds`, and any newly-added check) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
   2. Every static-analysis / review bot present on the PR has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s). If a SonarCloud or Codacy check ever appears on this repo, the full platform-query requirements from the gate rule apply.
@@ -126,6 +126,7 @@ digraph finishing_touches {
     commit -> manual -> push_check;
     push_check -> push [label="no"];
     push_check -> skip_push [label="yes"];
+    skip_push -> report [label="local gate"];
     push -> ci_ok;
     ci_ok -> comments [label="yes"];
     ci_ok -> fix_ci [label="no"];
@@ -149,7 +150,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. One `.bak` per file per pass (the pre-pass state).
-- If a `.bak` already exists from a previous run, **overwrite it** — it is stale.
+- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Record the backup paths this pass created; the report and cleanup cover only those.
 - **New files** do not need a `.bak`.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files for the Phase 12 report. Cleanup is the user's call — do not auto-delete.
@@ -227,7 +228,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 2. **Uncommitted:** `git diff --name-only` (unstaged) + `git diff --staged --name-only`
 3. **Untracked:** `git ls-files --others --exclude-standard`
 4. **Merge** into a deduplicated set. Classify by kind: pages/layouts/components (`.astro`), TypeScript (`.ts`), styles (`.css`), verbatim assets (`public/**`), content sources (`text-contents/**`), docs/config.
-5. **Read the full diffs** (`git diff "$BASE_BRANCH"...HEAD`, plus staged/unstaged) — they are the raw material for Phases 3, 7, and 8.5.
+5. **Read the full diffs** (`git diff "$BASE_BRANCH"...HEAD`, plus unstaged) — they are the raw material for Phases 3, 7, and 8.5. Before printing any diff, run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) ("The same applies to every other diff") over these ranges; if it reports a possible secret, print nothing and inspect the file in the editor. Print diffs with `--no-ext-diff --no-textconv --submodule=short`.
 
 ---
 
@@ -452,7 +453,7 @@ The reviewers must receive the **entire context first**, then the review request
 
 - **Codex:** `mcp__codex-cli__review` (purpose-built review action) or `mcp__codex-cli__codex`, passing the full context package. Request the highest reasoning effort the tool exposes (e.g. `model`/`effort` config set to high) — the brief's "maximum depth" instruction applies regardless.
 - **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), passing the same package. Use the highest-capability model/thinking configuration the tool exposes.
-- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool. Write the context package plus brief to a scratch file and pass only a short pointer prompt plus `--add-dir <scratch dir>` (never `-p "$(cat …)"`, which puts the package on the command line), using the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a file and pass it via shell substitution rather than inlining it in the command line.
+- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool. Write the context package plus brief to a scratch file and pass only a short pointer prompt plus `--add-dir <scratch dir>` (never `-p "$(cat …)"`, which puts the package on the command line), using the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`).
 
 Send all three requests in the same tool-call block so they run concurrently. If the context package exceeds a tool's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the review brief only after the final part — the requirement is *entire context first, then the review*.
 
@@ -465,13 +466,7 @@ Send all three requests in the same tool-call block so they run concurrently. If
 
 #### Step 4 — Verify the reviewers changed nothing, then record
 
-Copilot runs with shell access, and `--deny-tool 'write'` does not cover shell redirections. Confirm the working tree is untouched:
-
-```bash
-git status --porcelain
-```
-
-The output must match its pre-review state. Any difference is an unintended write — revert it and record the incident.
+Run the post-run write check from [`external-ai-review.md`](../../rules/external-ai-review.md) § Post-run write check: snapshot the tree before dispatching the panel and compare afterwards. If anything differs, stop and show the user — never revert automatically.
 
 Store for the Phase 12 report: each reviewer's verdict, finding counts by severity, which findings were fixed vs declined (with reasons), re-review outcomes, and the model each reviewer actually ran (Copilot's model in particular, since a fallback to Kimi K3 must be visible).
 
@@ -587,7 +582,7 @@ Re-run the enumeration + comment fetches. Any new thread/comment (including revi
 2. **Link + JSON-LD checks clean** (local lychee when available; JSON-LD parses).
 3. **All three external AI reviews completed** with final verdicts `APPROVE`/`APPROVE_WITH_NOTES` (or every `REQUEST_CHANGES` must-fix item fixed/declined-with-evidence and re-reviewed).
 4. **Manual browser verification done** for both languages (Phase 9.5), method recorded.
-5. **Every master-TODO item `completed`** — no pending/in-progress items. Under `--no-push`, TODOs from CI checks and PR threads cannot be closed locally: mark them `deferred`, list them in the report, and exclude them from this condition in that mode only.
+5. **Every master-TODO item `completed`** — no pending/in-progress items. Under `--no-push`, fix and verify locally whatever such a TODO describes; defer only its remote part (CI re-run, thread reply and resolution), list the deferred parts in the report, and exclude only them from this condition.
 6. **Grand Review found no outstanding concerns** requiring a user decision.
 
 **Additionally when Phase 10 ran:** 7. Every CI check green on the latest commit (re-query `gh pr checks` immediately before reporting; non-required counts).
@@ -634,7 +629,7 @@ All <count> threads addressed — category breakdown table (VALID_ISSUE→commit
 |----------|--------|
 | ...      | ....bak |
 
-Cleanup: `find . -name "*.bak" -not -path "*/node_modules/*" -not -path "*/dist/*" -delete`
+Cleanup (this pass's backups only): `printf '%s\0' <recorded backup paths> | xargs -0 rm -f --`
 
 ### Commit(s)
 `<hash>` — `<subject>`

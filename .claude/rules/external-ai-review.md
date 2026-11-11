@@ -39,13 +39,15 @@ That leaves xAI and Moonshot. **Grok 4.6** wins: GitHub added it to Copilot CLI 
 ### Canonical command
 
 ```bash
-# The package (context + brief) is in "$PKG_FILE"; the prompt only points at it.
+# The package (context + brief) is in "$PKG_FILE", inside its own directory from `mktemp -d`,
+# never a shared folder such as /tmp: --add-dir grants read access to the whole directory.
 copilot -p "Read $PKG_FILE in full: it is the complete review context, ending with the review brief. Follow that brief exactly. Do not modify any files." \
   --add-dir "$(dirname "$PKG_FILE")" \
   --model grok-4.6 \
   --effort high \
+  --available-tools view grep glob \
   --allow-tool 'read' \
-  --deny-tool 'write' --deny-tool 'memory' \
+  --deny-tool 'write' --deny-tool 'memory' --deny-tool 'shell' --deny-tool 'url' \
   --disable-builtin-mcps \
   --no-ask-user \
   --no-color \
@@ -60,7 +62,8 @@ copilot -p "Read $PKG_FILE in full: it is the complete review context, ending wi
 |------|------------------------|
 | `-p, --prompt` | Non-interactive mode; the CLI runs the prompt and exits. Without it the CLI opens a TUI and the tool call hangs. The prompt is a short pointer to the package file, never the package itself: `$(cat …)` would put hundreds of KB on the command line (about 32 KB on Windows) where `ps` shows it to other users. |
 | no `--allow-all-tools` | **Never pass it** (or `--allow-all`). In `-p` mode, any tool request that would prompt is **denied**, and commands Copilot recognises as read-only (`git diff`, `git log`, `gh pr view`) run without asking (`copilot help permissions`, CLI 1.0.109). Allowing all tools would let a reviewer that reads untrusted issue and PR text run arbitrary shell commands, outward `gh api` calls and every configured MCP server, none of which `git status` can detect afterwards. |
-| `--allow-tool 'read'` / `--deny-tool 'write'` / `--deny-tool 'memory'` | Reading files is the only capability granted. Denial always takes precedence, so no file is written and no memory stored. Everything else (non-read-only shell, MCP tools, URLs) falls to the non-interactive default: denied. |
+| `--available-tools view grep glob` | The model **sees only these three file-reading tools**. This is what makes the reviewer read-only: omitting `--allow-all-tools` alone is not enough, because approvals saved earlier (`~/.copilot/permissions-config.json`) still let previously approved shell commands and MCP calls run, and every configured MCP server (Aspire, binlog, Linear, …) is otherwise loaded. Verified on CLI 1.0.109: with this flag the reviewer lists exactly `view`, `grep`, `glob`. |
+| `--allow-tool 'read'` / `--deny-tool 'write'` `'memory'` `'shell'` `'url'` | Reading is granted; deny rules win over any saved approval, so writes, memory, shell and network stay off even if the tool list changes in a later CLI version. |
 | `--model grok-4.6` | Pins the reviewer's lens. Never leave this to `auto` — auto-selection may land on a model the panel already covers, collapsing the diversity the panel exists for. |
 | `--effort high` | Reasoning budget is a **separate axis from model choice** — a high-capability model at low effort skims. **`high` is Grok 4.6's ceiling**, so there is nothing deeper to escalate to; see Supported effort levels below. |
 | `--disable-builtin-mcps` | Suppresses the built-in `github-mcp-server`, which is slow to start and a frequent source of startup errors. The reviewer receives its context inline and does not need it. |
@@ -73,17 +76,21 @@ copilot -p "Read $PKG_FILE in full: it is the complete review context, ending wi
 
 For programmatic triage, add `--output-format json` (JSONL — one JSON object per line, **not** a single JSON document; parse line-by-line). For a human-readable review that gets triaged by hand, the default `text` with `-s` is sufficient and cheaper to read. Prefer `text` unless the skill genuinely parses fields.
 
-`--share <path>` writes the full session transcript to markdown after a non-interactive run — useful when a reviewer's findings need to be attached to a PR or a report.
+Do not pass `--share <path>` to a panel reviewer: it writes a transcript file, and the contract is that a reviewer writes nothing. Save the captured standard output instead.
 
 ### Post-run write check (mandatory)
 
-Shell commands that are not read-only are denied in `-p` mode, so a write should be impossible; the check proves it rather than trusting it. After every Copilot review, confirm the reviewer changed nothing:
+The tool restrictions should make a write impossible; this check proves it rather than trusting it. `git status --porcelain` alone cannot: a file already ` M` stays ` M` after a further edit. Snapshot the tree before the review and compare after:
 
 ```bash
-git status --porcelain
+snap() { { git rev-parse HEAD; git diff HEAD --binary --no-ext-diff --no-textconv;
+           git ls-files -o --exclude-standard -z | xargs -0 shasum 2>/dev/null; } | shasum; }
+BEFORE=$(snap)            # immediately before dispatching the panel
+# ... panel runs ...
+[ "$(snap)" = "$BEFORE" ] || echo "REVIEWER CHANGED THE TREE"
 ```
 
-The output must be **identical** to what it was before the review. If it is not, treat the difference as an unintended write: revert it, and record the incident in the skill's report. Never commit a file a reviewer touched.
+If the snapshots differ, **stop and show the user `git status`**. Do not revert anything automatically: the working tree may hold the user's own uncommitted work, and only they can tell which change came from the reviewer. Never commit a file a reviewer touched.
 
 ---
 
@@ -93,7 +100,7 @@ Copilot CLI fails *loudly but late*: an expired session surfaces as `Error: Fail
 
 ```bash
 copilot -p "Reply with exactly: READY" --model grok-4.6 --effort low --disable-builtin-mcps \
-  --deny-tool 'write' --no-ask-user -s --log-level none
+  --available-tools view --deny-tool 'write' --deny-tool 'shell' --deny-tool 'memory' --no-ask-user -s --log-level none
 ```
 
 **Supported effort levels (verified on Copilot CLI 1.0.80, 2026-08-19):** Grok 4.6 accepts **only `low`, `medium`, `high`**. The CLI's `--effort` choice list is generic across all models, but each model supports a subset and rejects the rest at request time:
