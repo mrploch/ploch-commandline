@@ -44,7 +44,7 @@ When the attachment is in the wrong repository:
 
 - Keep the existing Linear issue. Transferring it between synced repositories preserves its UUID, project and state. [Linear's GitHub documentation](https://linear.app/docs/github) describes that transfer. Do not recreate the issue to get a new GitHub number.
 - Do not change the team's two-way sync setting. Which repository is the default two-way repository is an owner decision, not something a session changes.
-- Until the attachment is in the repository that holds the code, link the pull request with `Closes PLO-<n>` only. Do not add `Closes #<n>`.
+- Until the attachment is in the repository that holds the code, link the pull request with the Linear reference only — `Closes PLO-<n>` when the PR completes the issue, `Refs PLO-<n>` for partial work. Do not add any `#<n>` reference.
 
 ## Referencing issues in code artefacts
 

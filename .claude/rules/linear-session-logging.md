@@ -59,11 +59,11 @@ In order of preference:
 
 1. **The `[NOTION_AUTO_LOG]` system reminder** injected at session start states it directly: *"This session's Claude Code conversation id is: …"*. This is the same value, and it is the cheapest source. The reminder also names this session's state file, `.claude/.notion-tasks/<session-id>.json`.
 2. **Never the retired shared file `.claude/.notion-current-task.json`.** The hook no longer writes or reads it, so a leftover copy names an older or concurrent session.
-3. **The transcript filename, as a last resort.** The session is usually the **most-recently-modified `.jsonl`** in the project's transcript directory under `~/.claude/projects/`. The directory name is the working folder path with `:`, `\` and `/` replaced by `-`: `C:\DevNet\my\mrploch\ploch-common` becomes `C--DevNet-my-mrploch-ploch-common` on Windows, and `/Users/<you>/DevNet/mrploch/ploch-common` becomes `-Users-<you>-DevNet-mrploch-ploch-common` on macOS. The UUID is the filename without its extension. Another session in the same folder can be newer, so confirm the transcript holds this conversation (for example, grep it for a phrase from the current task) before using it; if you cannot confirm it, post `Session: unknown`.
+3. **The transcript filename, as a last resort.** The session is usually the **most-recently-modified `.jsonl`** in the project's transcript directory under `~/.claude/projects/`. The directory name is the working folder path with **every character other than an ASCII letter or digit** replaced by `-` (so `:`, `\`, `/`, `.` and `_` all become `-`): `C:\DevNet\my\mrploch\ploch-common` becomes `C--DevNet-my-mrploch-ploch-common` on Windows, and `/Users/<you>/DevNet/mrploch/ploch-common` becomes `-Users-<you>-DevNet-mrploch-ploch-common` on macOS. The UUID is the filename without its extension. Another session in the same folder can be newer, so confirm the transcript holds this conversation (for example, grep it for a phrase from the current task) before using it; if you cannot confirm it, post `Session: unknown`.
 
 ```bash
 # Run from the working folder. Git Bash needs `pwd -W` for the native C:/... form; macOS uses plain pwd.
-ls -t "$HOME/.claude/projects/$( (pwd -W 2>/dev/null || pwd) | sed -E 's#[:/\\]#-#g')/"*.jsonl | head -1
+ls -t "$HOME/.claude/projects/$( (pwd -W 2>/dev/null || pwd) | sed -E 's#[^A-Za-z0-9]#-#g')/"*.jsonl | head -1
 ```
 
 ### If the session ID genuinely cannot be determined

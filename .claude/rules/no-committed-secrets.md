@@ -81,11 +81,16 @@ Sweep **first, quietly**, and only then look at the diff. Printing the diff, or 
 
 ```bash
 # 1. Quiet sweep: names files with a hit, never the matched values
-PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(authorization|proxy-authorization)[\"'"'"' ]*[:=][\"'"'"' ]*(bearer|basic|token) +[A-Za-z0-9._~+/=\-]{8,}|bearer +[A-Za-z0-9._~+/\-]{16,}=*|(password|pwd|secret|api[_-]?key|token|accountkey)[\"'"'"' ]*[:=][\"'"'"' ]*[A-Za-z0-9/+_\-]{16,}'
-# NUL-delimited, so a staged name with spaces or glob characters is scanned whole. The staged BLOB
+PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(authorization|proxy-authorization)[\"'"'"' ]*[:=][\"'"'"' ]*(bearer|basic|token) +[A-Za-z0-9._~+/=\-]{8,}|bearer +[A-Za-z0-9._~+/\-]{16,}=*|(password|pwd|secret|api[_-]?key|token|accountkey)[\"'"'"' ]*[:=][\"'"'"' ]*[^[:space:]\"'"'"']{12,}'
+# ACMRT includes type changes (a symlink replaced by a regular file). NUL-delimited, so a staged name with spaces or glob characters is scanned whole. The staged BLOB
 # is scanned (':path'), not the textual diff: git diff reduces a binary file (.sqlite, .db, .pfx) to
 # a "Binary files differ" marker, which would hide a credential inside it (PR #70 review).
-HITS=$(git diff --cached --name-only -z --diff-filter=ACMR | while IFS= read -r -d '' f; do
+HITS=$(git diff --cached --name-only -z --diff-filter=ACMRT | while IFS= read -r -d '' f; do
+  case "$f" in
+    # Binary key stores cannot be pattern-scanned: always stop for a manual decision.
+    # The leading '(' keeps bash 3.2 (macOS) from ending $( ) at the pattern's ')'.
+    (*.pfx|*.p12|*.pem|*.key|*.jks|*.keystore|*.snk) printf 'CREDENTIAL FILE TYPE %s (review manually)\n' "$f"; continue ;;
+  esac
   git show ":$f" | LC_ALL=C grep -aqEi "$PATTERN" && printf 'POSSIBLE SECRET in %s (value not shown)\n' "$f"
 done)
 
@@ -97,7 +102,7 @@ else
 fi
 ```
 
-Any hit stops the commit. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. Then `git reset <file>`, parameterise the value, and re-stage.
+Any hit stops the commit. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know, so still read the staged diff, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. Then `git reset <file>`, parameterise the value, and re-stage.
 
 **Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. This matters doubly for tool-managed directories (`.codex/`, `.claude/`, `.cursor/`, `ai/profile/`) which write credentials without telling you.
 
@@ -113,7 +118,7 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
 2. **Determine exposure** before deciding how far to go:
    ```bash
    gh repo view --json visibility --jq .visibility        # public = assume compromised, full stop
-   read -rs LEAKED && git log --all --oneline -S"$LEAKED"; unset LEAKED   # which commits
+   read -rs LEAKED && git log --all --oneline -m -S"$LEAKED"; unset LEAKED   # which commits; -m also searches merge commits, without printing diffs
    git branch -r --contains <sha>                         # did it ever leave the machine?
    ```
    `read -rs` takes the value without echoing it, so it reaches neither the shell history nor a session transcript; run it yourself (`! …` in Claude Code), because an agent must not type the value. These are **current-state** checks: `visibility` reports today's visibility and `branch -r` lists only the remote refs this clone knows now. Neither proves that the repository was never public or that the commit was never pushed and later deleted. When that history cannot be verified, treat the credential as compromised.

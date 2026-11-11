@@ -324,7 +324,7 @@ Before writing any code, build comprehensive understanding. This phase is critic
    mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="In Progress")
    ```
 
-   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), restore `previous-state` from Step 0c.4 and leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
+   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), re-read the issue first and restore `previous-state` from Step 0c.4 **only if it is still in the In Progress state this run set**. If someone else has moved it since (Done, Canceled, another assignee), leave the state alone. In either case leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
 
 ### Phase 5: Implement
 
@@ -728,7 +728,7 @@ Before reporting completion, **every single one** of these criteria must be met:
 | 5   | **All CI checks green** (including non-required) — every check listed by `gh pr checks <pr-number>` shows `pass`. Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, and any repository-specific custom check **all** count, regardless of "required" status. Stale or pending checks fail this criterion. | `gh pr checks <pr-number>` — every line ends with `pass`; cross-check with `gh api repos/<owner>/<repo>/commits/<sha>/check-runs`                             |
 | 6   | **All PR comments and conversations addressed** — including bot-authored ones (CodeRabbit, Codacy, Bito, SonarCloud). Every thread is either resolved or has us as the latest contributor with an active reply.                                                                                                                  | GraphQL `reviewThreads` query: zero `isResolved=false AND isOutdated=false` threads where the latest commenter is not us                                      |
 | 7   | No new comments since last check                                                                                                                                                                                                                                                                                                 | Re-fetch after waiting; re-poll until two consecutive polls return identical state                                                                            |
-| 8   | All acceptance criteria from the issue met                                                                                                                                                                                                                                                                                       | Re-read issue body, verify each AC                                                                                                                            |
+| 8   | All acceptance criteria from the issue met (for partial work: every criterion in the agreed scope; see Partial work below) | Re-read issue body, verify each AC |
 | 9   | Documentation up to date                                                                                                                                                                                                                                                                                                         | XML docs on public APIs; project markdown docs (README.md, docs/*.md, RELEASE_NOTES.md) reviewed and updated to match code changes                            |
 | 10  | SampleApp works (if ploch-data)                                                                                                                                                                                                                                                                                                  | Manual test                                                                                                                                                   |
 | 11  | Conventional commit with `Refs: PLO-<n>`                                                                                                                                                                                                                                                                                         | Commit log                                                                                                                                                    |
@@ -738,6 +738,15 @@ Before reporting completion, **every single one** of these criteria must be met:
 **If any criterion is not met:** go back and fix it. Do not report completion.
 
 **Never report completion until all of the above are satisfied.** This is non-negotiable. If you find yourself wanting to write "done with caveat", re-read the four conditions in `pr-checks-completion-gate.md` — the caveat is an instruction to keep working.
+
+#### Partial work
+
+A PR may deliberately cover only part of an issue — **only** when the user agreed to split it, or the issue itself defines the PR's slice. Then:
+
+- Agree and write down the PR's scope: list the acceptance criteria it covers and the ones left for later, in the PR body and in a Linear comment.
+- Link with `Refs PLO-<n>` (and `Refs #<github-twin>`), never `Closes`, so the issue stays open after the merge.
+- Criterion 8 above becomes "every acceptance criterion **in the agreed scope** is met"; every other criterion still applies in full.
+- In Phase 15, post the completion comment with the remaining criteria and leave the issue open (not Done), or file the remainder as a follow-up Linear issue and link it.
 
 ### Phase 14.5: Finishing-Touches Pass (Mandatory)
 
@@ -780,18 +789,18 @@ All <count> conversations addressed.
 <Any important context, trade-offs, or follow-up items>
 ```
 
-Also update the Linear issue. The comment must be **idempotent**, because a retried Phase 15 must not post it twice: first read the comments (`list_comments(issueId="PLO-<n>")`) and post only when none already contains the PR URL.
+Also update the Linear issue. The comment must be **idempotent**, because a retried Phase 15 must not post it twice. Every completion comment starts with the marker `implement-issue completion:`. Read the comments first (`list_comments(issueId="PLO-<n>")`) and post only when no comment starts with that marker **and** contains the PR URL; an ordinary discussion comment that mentions the URL does not count.
 
 **With a PR** — only once the PR exists and Phase 14's gate has passed:
 
 ```
-mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="Implemented in <PR URL>.")   # skip if a comment already holds <PR URL>
+mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: implemented in <PR URL>.")   # skip if a marked completion comment already holds <PR URL>
 mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")   # only after the PR has merged, and only if not already Done
 ```
 
 A merged PR carrying `Closes PLO-<n>` normally moves the issue to Done automatically — confirm the state rather than assuming. Never mark it Done while the PR is open.
 
-**With `--no-push`** — there is no PR, so Phase 14 does not apply and the issue is **never** marked Done. Post one comment naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (skip it if a comment for the same commit already exists). Leave the issue "In Progress".
+**With `--no-push`** — there is no PR, so Phase 14 does not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (skip it if a comment for the same commit already exists). Leave the issue "In Progress".
 
 ---
 
