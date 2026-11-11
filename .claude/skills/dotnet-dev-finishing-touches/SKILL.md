@@ -53,6 +53,8 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 /dotnet-dev-finishing-touches --no-push      # Local only — skip push, CI, and PR comments
 ```
 
+When invoked in natural language, use `--no-push` mode if the request is to polish or clean up **before** pushing; push only when the user asks for the full pass or says to push. If it is unclear, ask before Phase 10.
+
 ## Runtime Requirements
 
 Before running any phase, check these prerequisites. If one is missing, **stop and tell the user** — do not silently work around the gap.
@@ -186,7 +188,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. If a file is edited multiple times during the pass, only one `.bak` is needed (the original state before any finishing-touches changes).
-- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record each backup as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> <pairs file>`, the file in the scratch directory); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
+- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record each backup as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> "$PAIRS"`, with `PAIRS` a file in the scratch directory that lives until the report is written); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
 - **New files** (e.g. new test classes) do not need a `.bak` — there is no original to back up.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files in a list for the completion report in Phase 12.
@@ -689,6 +691,8 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 ### Phase 9: Commit
 
+0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch.
+
 **Delegate to the `/commit` skill** for the actual commit creation.
 
 Before invoking `/commit`, ensure:
@@ -800,6 +804,8 @@ After CI passes, process **every** unresolved review thread and issue-level comm
 
 #### Step 1 — Re-enumerate threads (definitive list)
 
+When SonarCloud analyses the repository, also re-query its platform issues and `TO_REVIEW` hotspots for the PR now (step 7 of the gate's Pre-Completion Verification): the push in Phase 10 triggered a new analysis. Each finding is triaged in Step 2 like a thread.
+
 Fetch the current state of every review thread (the Phase 2.5 snapshot is stale after commits + CI):
 
 ```bash
@@ -867,9 +873,9 @@ For each thread in these categories:
 
 3. Plan the fix. Apply the [Safety Gate 1 — Public API impact](#phase-6-classify--address-each-warning) and [Safety Gate 2 — Semantic behaviour change](#phase-6-classify--address-each-warning) checks from Phase 6.
 
-4. **Codex validation (mandatory before commit for non-trivial fixes)** — invoke the [Codex Validation Gate](#codex-validation-gate) with the thread URL, original code, proposed diff, and reasoning. Do **not** commit until the verdict is `APPROVED` or `APPROVED_WITH_NOTES`.
+4. Apply the fix. Rebuild (loop back to Phase 5 → Phase 7 if warnings regress). Run the affected tests. Stage the changed files.
 
-5. Apply the fix. Rebuild (loop back to Phase 5 → Phase 7 if warnings regress). Run the affected tests.
+5. **Codex validation (mandatory before commit for non-trivial fixes)** — invoke the [Codex Validation Gate](#codex-validation-gate) with the thread URL, original code, the **staged** diff, the build and test results, and reasoning. Do **not** commit until the verdict is `APPROVED` or `APPROVED_WITH_NOTES`.
 
 6. Commit (via the `/commit` skill — one commit per logical thread group; batching threads that touch the same file or concern is fine, but the commit message body must list every thread addressed). **Never amend.**
 
@@ -950,6 +956,7 @@ Pass forward for the completion report:
 2. **All tests pass locally.** The latest `dotnet test` run is green.
 3. **Every TODO item from Phase 2.5 is `completed`.** No `pending` or `in_progress` items. A CI-check TODO counts as complete only after the same check re-runs green; a PR-comment TODO counts as complete only after the thread is resolved or replied-to with evidence. Under `--no-push`, fix and verify locally whatever such a TODO describes that can be fixed locally; defer only its remote part (the CI re-run, the thread reply and resolution), list those deferred parts in the report, and exclude only them from this condition.
 4. **Grand Review (Phase 8) found no outstanding concerns** the user needs to decide on.
+5. **The external AI panel (Phase 8.5) ran:** all three verdicts are `APPROVE` / `APPROVE_WITH_NOTES` (or every `must-fix` is fixed or declined with evidence and re-reviewed), and the post-panel snapshot check showed no change.
 
 **Additionally when SonarCloud analyses the repository and Phase 10 ran** (harvest its platform issues and hotspots into the master TODO in Phase 2.5 and triage them in Phase 11 like threads; status changes on the platform need the user's confirmation): the SonarCloud platform is clean for the PR, per step 7 of the gate's Pre-Completion Verification (`mcp__sonarqube-cloud__search_sonar_issues_in_projects`, `search_security_hotspots`, `get_project_quality_gate_status`). A green GitHub check alone does not count.
 
@@ -1042,13 +1049,13 @@ are available for diff review. Delete them when satisfied.
 # This pass's recorded NUL-delimited pairs only, so no original is guessed from a name
 while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
   echo "=== $orig ==="; diff -- "$bak" "$orig" || true
-done < <pairs file>
+done < "$PAIRS"
 ```
 
 **Cleanup command:**
 
 ```bash
-while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < <pairs file>   # this pass's backups only
+while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < "$PAIRS"   # this pass's backups only
 ```
 
 ### Commit
@@ -1072,7 +1079,7 @@ while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.ba
 - Renaming an unused local variable to `_`.
 - Removing a demonstrably unused `using` directive.
 - Formatting-only changes (whitespace, trailing commas, EOL).
-- `.editorconfig` severity changes the skill has decided on per existing rules.
+- `.editorconfig` severity changes the user has already approved (Phase 6 step 2).
 - Pure documentation edits to markdown files.
 
 **What counts as non-trivial (Codex review required):**
@@ -1141,12 +1148,12 @@ When CI fails or PR comments require code changes:
 
 ```
 
-Fix code → Codex Validation Gate (non-trivial fixes, before the commit)
-         → Phase 5 (Build — zero warnings in the whole solution)
+Fix code → Phase 5 (Build — zero warnings in the whole solution)
          → Phase 4 tests (dotnet test — all pass)
          → Phase 7 (Rebuild & Verify)
          → Phase 8 (Grand Review)
          → Phase 8.5 re-review (only when the fix materially changes the branch)
+         → stage the fix → Codex Validation Gate on the staged diff (non-trivial fixes)
          → Phase 9 (staged sweep, then commit — new commit, not amend)
          → Push (only after local build is clean!)
          → Phase 10 (Monitor CI)

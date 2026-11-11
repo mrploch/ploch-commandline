@@ -57,6 +57,8 @@ This is the web-site adaptation of the workspace's `.NET` finishing-touches skil
 /dev-finishing-touches --no-push      # Local only — skip push, CI, and PR comments (external AI review still runs)
 ```
 
+When invoked in natural language, use `--no-push` mode if the request is to polish or clean up **before** pushing; push only when the user asks for the full pass or says to push. If it is unclear, ask before Phase 10.
+
 ## Runtime Requirements
 
 Before running any phase, check these prerequisites. If one is missing, **stop and tell the user** — do not silently work around the gap.
@@ -155,7 +157,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. One `.bak` per file per pass (the pre-pass state).
-- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Record each backup as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> <pairs file>`, the file in the scratch directory); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
+- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Record each backup as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> "$PAIRS"`, with `PAIRS` a file in the scratch directory that lives until the report is written); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
 - **New files** do not need a `.bak`.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files for the Phase 12 report. Cleanup is the user's call — do not auto-delete.
@@ -480,6 +482,8 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 ### Phase 9: Commit
 
+0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch.
+
 **Delegate to the `/commit` skill** for the mechanics. Before invoking:
 
 1. **Stage specific files** — never `git add -A` / `git add .`. **Exclude all `.bak` files** and verify the staged index:
@@ -644,7 +648,7 @@ All <count> threads addressed — category breakdown table (VALID_ISSUE→commit
 |----------|--------|
 | ...      | ....bak |
 
-Cleanup (this pass's backups only): `while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < <pairs file>`
+Cleanup (this pass's backups only): `while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < "$PAIRS"`
 
 ### Commit(s)
 `<hash>` — `<subject>`

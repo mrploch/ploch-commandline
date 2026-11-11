@@ -19,7 +19,7 @@ A credential is any value that grants access to something. In this workspace tha
 
 | Kind | Shape seen here |
 |---|---|
-| GitHub PAT (classic) | `ghp_` + 36 chars |
+| GitHub PAT (classic) and other GitHub tokens | `ghp_` + 36 chars; also `gho_` (OAuth, as used by the GitHub and Copilot CLIs), `ghu_`, `ghs_`, `ghr_` |
 | GitHub PAT (fine-grained) | `github_pat_` + … |
 | ContextStream API key | `cbiq_` + … |
 | SonarQube / SonarCloud token | 40 hex chars |
@@ -81,7 +81,7 @@ Sweep **first, quietly**, and only then look at the diff. Printing the diff, or 
 
 ```bash
 # 1. Quiet sweep: names files with a hit, never the matched values
-PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(authorization|proxy-authorization)[[:blank:]"'"'"']*[:=][[:blank:]"'"'"']*(bearer|basic|token) +[A-Za-z0-9._~+/=-]{8,}|bearer +[A-Za-z0-9._~+/-]{16,}=*|(password|pwd|secret|api[_-]?key|token|accountkey)[[:blank:]"'"'"']*[:=][[:blank:]"'"'"']*[^[:space:]"'"'"']{12,}|cleartextpassword["'"'"'[:blank:]]+value=["'"'"']?[^[:space:]"'"'"'/>]{8,}'
+PATTERN='gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(authorization|proxy-authorization)[[:blank:]"'"'"']*[:=][[:blank:]"'"'"']*(bearer|basic|token) +[A-Za-z0-9._~+/=-]{8,}|bearer +[A-Za-z0-9._~+/-]{16,}=*|(password|pwd|secret|api[_-]?key|token|accountkey)[[:blank:]"'"'"']*[:=][[:blank:]"'"'"']*[^[:space:]"'"'"']{12,}|cleartextpassword["'"'"'[:blank:]]+value=["'"'"']?[^[:space:]"'"'"'/>]{8,}'
 # No backslashes inside the bracket expressions: in ERE a '\' there is a literal character, which
 # would split a value such as a domain password at its backslash.
 # Both sides of every staged path are scanned: the index entry (what will be committed) and the
@@ -94,7 +94,7 @@ PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|
 # subdirectory would silently skip staged files outside it. Every failure prints a line, so an
 # empty result always means "scanned and clean", never "could not scan".
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || ROOT=
-HITS=$( set +e -f   # each status is checked explicitly (errexit would skip the checks); -f: no globbing of path words
+HITS=$( set +e +x -f   # +x: no trace output; each status is checked explicitly (errexit would skip the checks); -f: no globbing of path words
 export GIT_LITERAL_PATHSPECS=1   # a staged name containing * or ? is a path, not a pattern
 { [ -n "$ROOT" ] && cd "$ROOT"; } || { echo 'NOT IN A GIT WORK TREE (sweep not run)'; exit; }
 U=$(git ls-files -u) || { echo 'INDEX UNREADABLE (sweep not run)'; exit; }
@@ -153,7 +153,7 @@ $HITS"   # a killed or failed sweep never reads as clean
 if [ -n "$HITS" ]; then
   printf '%s\n' "$HITS"; echo "Commit stopped: inspect the files above in the editor."; false
 else
-  git -C "$ROOT" diff --cached --no-relative --stat
+  git -C "$ROOT" diff --cached --no-relative --no-ext-diff --no-textconv --submodule=short --stat
 fi
 # To read one file's staged change: --no-ext-diff --no-textconv stop a diff driver or textconv filter
 # (sqlite3 .dump, sops, gpg) decoding what the sweep saw raw; --submodule=short stops a submodule's

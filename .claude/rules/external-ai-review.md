@@ -43,8 +43,14 @@ That leaves xAI and Moonshot. **Grok 4.6** wins: GitHub added it to Copilot CLI 
 # never a shared folder such as /tmp. The CLI starts IN that directory (-C), not in the repository,
 # so no repository-level hooks or settings load (Copilot also reads hooks from .claude/settings.json);
 # the repository is reachable read-only through --add-dir.
+# --add-dir gets a TRACKED-FILES-ONLY copy, never the real checkout, which also holds ignored files
+# such as .mcp.json or .env. Uncommitted tracked changes are applied to the copy.
+TREE="$(dirname "$PKG_FILE")/tree"
+mkdir -- "$TREE" && git -C "$REPO_ROOT" archive --format=tar HEAD | tar -x -C "$TREE" \
+  && git -C "$REPO_ROOT" diff HEAD --binary --no-ext-diff --no-textconv | ( cd -- "$TREE" && git apply --binary --allow-empty ) \
+  || echo "STOP: review tree not prepared"
 copilot -p "Read $PKG_FILE in full: it is the complete review context, ending with the review brief. Follow that brief exactly. Do not modify any files." \
-  --add-dir "$REPO_ROOT" \
+  --add-dir "$TREE" \
   --model grok-4.6 \
   --effort high \
   --available-tools view grep glob \
@@ -73,7 +79,7 @@ copilot -p "Read $PKG_FILE in full: it is the complete review context, ending wi
 | `--no-ask-user` | Disables the `ask_user` tool so the agent works autonomously instead of stalling on a clarifying question no one can answer. |
 | `-s, --silent` | Emits only the agent response, no session statistics — required for clean parsing. |
 | `--no-color` / `--log-level none` | Strips ANSI escapes and log chatter from the captured output. |
-| `-C <package dir>` + `--add-dir "$REPO_ROOT"` | **Hook isolation.** `--available-tools` limits the model, not the CLI: hooks still run. Copilot loads repository-level hooks and settings from the working repository, including `.claude/settings.json`, so the reviewer starts in the package directory and reads the repository only through `--add-dir`. User-level hooks (`~/.copilot/hooks/`, `~/.copilot/settings.json`) are the user's own trusted configuration and still run; to turn them off too, the user sets `"disableAllHooks": true` in `~/.copilot/settings.json`. `--add-dir` also loads the repository's `.github/skills` and `.github/agents`, but the reviewer cannot run them: the `skill` and `task` tools are not in `--available-tools`. `--no-custom-instructions` keeps the repository's `AGENTS.md`, `CLAUDE.md` and Copilot instruction files out of the reviewer's prompt. Findings cite repository paths as absolute paths. |
+| `-C <package dir>` + `--add-dir "$TREE"` | **Hook isolation.** `--available-tools` limits the model, not the CLI: hooks still run. Copilot loads repository-level hooks and settings from the working repository, including `.claude/settings.json`, so the reviewer starts in the package directory and reads a tracked-files-only copy of the repository through `--add-dir` — never the checkout itself, whose ignored files (`.mcp.json`, `.env`, local settings) can hold credentials. User-level hooks (`~/.copilot/hooks/`, `~/.copilot/settings.json`) are the user's own trusted configuration and still run; to turn them off too, the user sets `"disableAllHooks": true` in `~/.copilot/settings.json`. `--add-dir` also loads the repository's `.github/skills` and `.github/agents`, but the reviewer cannot run them: the `skill` and `task` tools are not in `--available-tools`. `--no-custom-instructions` keeps the repository's `AGENTS.md`, `CLAUDE.md` and Copilot instruction files out of the reviewer's prompt. Findings cite repository paths as absolute paths. |
 
 ### Structured output
 
@@ -92,7 +98,7 @@ snap() ( set -o pipefail
   TOP=$(git rev-parse --show-toplevel) && [ -n "$TOP" ] && cd -- "$TOP" || exit 1   # whole tree, not the current folder
   regular() { while IFS= read -r -d '' f; do [ -f "$f" ] && [ ! -L "$f" ] && printf '%s\0' "$f"; done; return 0; }
   links()   { while IFS= read -r -d '' f; do [ -L "$f" ] || continue
-                t=$(readlink -- "$f" && printf x) || return 1   # the x keeps a trailing newline in the target
+                t=$(readlink "./$f" && printf x) || return 1   # the x keeps a trailing newline in the target
                 printf 'link\0%s\0%s\0' "$f" "${t%x}"; done; return 0; }
   execs()   { while IFS= read -r -d '' f; do [ -f "$f" ] && [ -x "$f" ] && printf 'exec %s\n' "$f"; done; return 0; }
   { { git rev-parse -q --verify 'HEAD^{commit}' || git symbolic-ref -q HEAD; } \
@@ -161,7 +167,14 @@ Re-run that identity probe after any Copilot CLI upgrade or account change. The 
 
 ## Before Anything Leaves the Machine
 
-The package goes to three external providers, so it gets the same treatment as a printed diff: before writing `$PKG_FILE`, the quiet check and the staged sweep from [`no-committed-secrets.md`](./no-committed-secrets.md) must report nothing for every change in scope, and no credential file type may be included. Any finding stops the panel until it is resolved. Remove the package directory when the panel finishes.
+The package goes to three external providers, so it gets the same treatment as a printed diff: before writing `$PKG_FILE`, the quiet check and the staged sweep from [`no-committed-secrets.md`](./no-committed-secrets.md) must report nothing for every change in scope, and no credential file type may be included. Then scan the finished package itself, which also holds full file contents and untracked files the diff checks never see:
+
+```bash
+LC_ALL=C grep -qaEi "$PATTERN" "$PKG_FILE"
+case $? in (1) ;; (0) echo "STOP: possible secret in the review package (not printed)" ;; (*) echo "STOP: package scan failed" ;; esac
+```
+
+Any finding stops the panel until it is resolved. Remove the package directory (and its `tree` copy) when the panel finishes.
 
 ## Untrusted Content and Reviewer Isolation
 

@@ -86,7 +86,7 @@ Immediately before writing any completion message, execute this sequence and ver
 ```bash
 # 1. All checks pass on the latest commit?
 gh pr checks <PR#> --repo <owner>/<repo>
-# Expected: every line ends with "pass". No "fail", "pending", "queued", "in_progress".
+# Expected: every check is in state "pass" (the second column). None is "fail", "pending", "skipping" or "cancel".
 
 # 2. Latest commit on the PR head is what we expect?
 gh api repos/<owner>/<repo>/pulls/<PR#> --jq '.head.sha'
