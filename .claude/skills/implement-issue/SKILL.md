@@ -139,15 +139,19 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
    - `owner` must be `mrploch` — the workspace only checks out `mrploch` repositories. For any other owner, stop and ask the user rather than silently implementing in `mrploch/<repo>`.
    - Pass the values to `gh` as separate, double-quoted arguments (`gh issue view "$NUMBER" --repo "$OWNER/$REPO"`), never by pasting the raw input into a command line.
 
-2. **Find the Linear twin** in the repository's Linear project:
+2. **Find the Linear twin, starting from the sync link.** Team Ploch mirrors new issues into `mrploch/ploch-ai-tools` whatever their project (see [`issue-tracking.md`](../../rules/issue-tracking.md)), so the input repository is not necessarily the repository of the work.
 
-   ```
-   mcp__plugin_linear_linear__list_issues(project="<repo>", query="<GitHub issue title or number>")
-   ```
+   1. Read the GitHub issue's Linear link first — its synced-issue attachment or comment (`gh issue view "$NUMBER" --repo "$OWNER/$REPO" --json title,body,comments`, read-only, with the validated values). If it names a `PLO-<n>`, that is the issue; fetch it to confirm its GitHub attachment is this URL.
+   2. Otherwise search **team Ploch**, not just one project, for the GitHub issue's full URL, then for its title:
 
-   Confirm the match via the Linear issue's GitHub attachment (the synced-issue link) or, failing that, the GitHub issue's Linear attachment/comment (`gh issue view "$NUMBER" --repo "$OWNER/$REPO" --json title,body,comments` — read-only, with the validated values). Record the GitHub `number` as `github-twin` for the PR body.
+      ```
+      mcp__plugin_linear_linear__list_issues(team="Ploch", query="<GitHub issue URL>")
+      ```
 
-3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"`, and the GitHub issue's full URL in the description *and* in `links`), keep the GitHub `number` as `github-twin`, then continue with the new `PLO-<n>`.
+      Confirm any match through its GitHub attachment.
+   3. Record the GitHub `number` as `github-twin` only when `repo` turns out to be the repository of the work (Step 0c.3); a mirror in another repository is not a twin for the PR body.
+
+3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in the description *and* in `links`), keep the GitHub `number` as `github-twin`, then continue with the new `PLO-<n>`.
 
    The search-then-create sequence is not atomic, so two concurrent runs can both create an issue. Make it convergent: immediately after `save_issue`, search the project again for the GitHub issue's full URL. If more than one Linear issue carries it, keep the **oldest**, mark each newer one as its duplicate (`save_issue(id=<newer>, duplicateOf=<oldest>)`), and continue with the oldest.
 
@@ -166,7 +170,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
 
 2. **If the issue's state is terminal** (Done, Canceled, Duplicate, or equivalent) or it already has a linked merged PR that fully addresses it, stop and inform the user. Treat any state whose `type` is `completed` or `canceled` as terminal.
 
-3. **Resolve the target GitHub repository** — when Step 0b ran, use its validated `owner`/`repo`. Otherwise the Linear project name *is* the repository name (`ploch-data` → `mrploch/ploch-data`). If the issue has no project, check its linked PRs/branches (GitHub attachments); if still ambiguous, ask the user. Do not guess.
+3. **Resolve the target GitHub repository from the Linear issue's project** — the Linear project name *is* the repository name (`ploch-data` → `mrploch/ploch-data`). This holds for GitHub input too: Step 0b's `owner`/`repo` only locate the input issue, which may be a `ploch-ai-tools` mirror. When the project and Step 0b's `repo` differ, the project wins, and the input issue is not a `github-twin`. If the issue has no project, check its linked PRs/branches (GitHub attachments); if still ambiguous, ask the user. Do not guess.
 
 4. **Record the issue's current state** (`previous-state`). Do not change it yet — the move to "In Progress" happens in Phase 4, once the branch exists and work is actually under way.
 

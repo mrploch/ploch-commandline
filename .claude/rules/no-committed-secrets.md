@@ -85,12 +85,16 @@ PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|
 # NUL-delimited, so a staged name with spaces or glob characters is scanned whole. The staged BLOB
 # is scanned (':path'), not the textual diff: git diff reduces a binary file (.sqlite, .db, .pfx) to
 # a "Binary files differ" marker, which would hide a credential inside it (PR #70 review).
-git diff --cached --name-only -z --diff-filter=ACMR | while IFS= read -r -d '' f; do
-  git show ":$f" | LC_ALL=C grep -aqEi "$PATTERN" && echo "POSSIBLE SECRET in $f (value not shown)"
-done
+HITS=$(git diff --cached --name-only -z --diff-filter=ACMR | while IFS= read -r -d '' f; do
+  git show ":$f" | LC_ALL=C grep -aqEi "$PATTERN" && printf 'POSSIBLE SECRET in %s (value not shown)\n' "$f"
+done)
 
-# 2. Only when step 1 printed nothing: review what is about to be committed
-git diff --cached
+# 2. The diff is printed only after a clean sweep; any hit stops here without showing content
+if [ -n "$HITS" ]; then
+  printf '%s\n' "$HITS"; echo "Commit stopped: inspect the files above in the editor."
+else
+  git diff --cached
+fi
 ```
 
 Any hit stops the commit. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. Then `git reset <file>`, parameterise the value, and re-stage.

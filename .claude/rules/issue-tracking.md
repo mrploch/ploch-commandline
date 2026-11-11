@@ -56,7 +56,7 @@ Linear's GitHub integration links branches, PRs and commits automatically when t
 | **Commit footer** | `Refs: PLO-<n>` | Conventional-commit footer carrying Linear's non-closing magic word `refs`. |
 | **PR body** | `Closes PLO-<n>` (or `Refs PLO-<n>` for partial work) | Closing magic word. Linear moves the issue to Done when the PR merges. |
 | **PR title** | Conventional-commit style. The ID is optional because the branch and body already link it. | — |
-| **Synced GitHub twin exists in the same repository** | **Also** add `Closes #<n>` in the PR body | Closes the mirror explicitly rather than relying only on the sync. Skip this for a twin in another repository (see above). |
+| **Synced GitHub twin exists in the same repository** | Mirror the Linear reference: **also** add `Closes #<n>` alongside `Closes PLO-<n>`, or `Refs #<n>` alongside `Refs PLO-<n>` for partial work | Closes the mirror explicitly on completion, and only links it for partial work, so an unfinished issue stays open on both sides. Skip this for a twin in another repository (see above). |
 
 Linear's closing words: `close(s/d)`, `fix(es/ed)`, `resolve(s/d)`, `complete(s/d)`, `implement(s/ed)`. Its non-closing words: `ref(s)`, `references`, `part of`, `contributes to`, `toward(s)`. Use `skip PLO-<n>` / `ignore PLO-<n>` in a PR body to stop an unwanted automatic link.
 
