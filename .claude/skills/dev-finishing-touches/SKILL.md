@@ -42,7 +42,7 @@ This is the web-site adaptation of the workspace's `.NET` finishing-touches skil
   3. Every PR review thread is either resolved or has us as the latest contributor with an active reply. Bot-authored threads (Copilot, Codex connector, Sourcery, CodeRabbit, codereviewbot) follow the same rules as human-authored.
   4. Re-polling produces no new threads, comments, or check runs.
 
-  **Stale checks are still failures.** "Expected to go green" is **not** an acceptable completion claim. Wait for the rescan or push a follow-up to retrigger.
+  **Stale checks are still failures.** "Expected to go green" is **not** an acceptable completion claim. Wait for the rescan, or re-run the job (`gh run rerun <run-id>`); ask the user before pushing an empty commit just to retrigger a bot.
 
 **Announce at start:** "I'm using the dev-finishing-touches skill to perform a quality pass on the current branch."
 
@@ -150,7 +150,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. One `.bak` per file per pass (the pre-pass state).
-- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Record the backup paths this pass created; the report and cleanup cover only those.
+- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Record each backup as an `original<TAB>backup` line in a pairs file in the scratch directory; the report and cleanup use only those recorded pairs.
 - **New files** do not need a `.bak`.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files for the Phase 12 report. Cleanup is the user's call — do not auto-delete.
@@ -629,7 +629,7 @@ All <count> threads addressed — category breakdown table (VALID_ISSUE→commit
 |----------|--------|
 | ...      | ....bak |
 
-Cleanup (this pass's backups only): `printf '%s\0' <recorded backup paths> | xargs -0 rm -f --`
+Cleanup (this pass's backups only): `cut -f2 "$PAIRS_FILE" | while IFS= read -r bak; do rm -f -- "$bak"; done`
 
 ### Commit(s)
 `<hash>` — `<subject>`
@@ -742,7 +742,7 @@ Each iteration is a **new commit**. After all fixes, update the PR description t
 | 4. Build/Check | 0 errors / 0 warnings / 0 hints; links + JSON-LD valid | Command output |
 | 5–6. Findings | Each finding classified, addressed, verified | Resolution documented per finding |
 | 7. Grand Review | Holistic review + docs sync done | No outstanding concerns |
-| 8.5 AI Review | Codex, Gemini AND Copilot reviewed with full context at high effort; verdicts recorded; `git status --porcelain` unchanged after the Copilot run | Verdicts + findings table |
+| 8.5 AI Review | Codex, Gemini AND Copilot reviewed with full context at high effort; verdicts recorded; the snapshot check from `external-ai-review.md` shows no change after the panel | Verdicts + findings table |
 | 9. Commit | Conventional format with `Refs` footer, no `.bak` staged | Commit message + staged-index check |
 | 9.5 Manual Verify | Both languages browser-verified | Pages + method recorded |
 | 10. CI | All checks green (incl. non-required) | `gh pr checks` output |

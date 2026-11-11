@@ -83,11 +83,18 @@ Do not pass `--share <path>` to a panel reviewer: it writes a transcript file, a
 The tool restrictions should make a write impossible; this check proves it rather than trusting it. `git status --porcelain` alone cannot: a file already ` M` stays ` M` after a further edit. Snapshot the tree before the review and compare after:
 
 ```bash
-snap() { { git rev-parse HEAD; git diff HEAD --binary --no-ext-diff --no-textconv;
-           git ls-files -o --exclude-standard -z | xargs -0 shasum 2>/dev/null; } | shasum; }
-BEFORE=$(snap)            # immediately before dispatching the panel
+# HEAD, the index, the working tree, and the name and content of every untracked file, hashed by Git
+# itself (no shasum/sha1sum dependency; Git Bash lacks shasum). pipefail: any failing part fails the snapshot.
+snap() ( set -o pipefail
+  { git rev-parse HEAD \
+    && git diff --cached --binary --no-ext-diff --no-textconv \
+    && git diff --binary --no-ext-diff --no-textconv \
+    && git ls-files -o --exclude-standard -z \
+    && git ls-files -o --exclude-standard -z | xargs -0 git hash-object -- ; } | git hash-object --stdin
+)
+BEFORE=$(snap) && [ -n "$BEFORE" ] || echo "SNAPSHOT FAILED: the review cannot be verified, so stop"
 # ... panel runs ...
-[ "$(snap)" = "$BEFORE" ] || echo "REVIEWER CHANGED THE TREE"
+AFTER=$(snap) && [ -n "$AFTER" ] && [ "$AFTER" = "$BEFORE" ] || echo "REVIEWER CHANGED THE TREE (or the snapshot failed)"
 ```
 
 If the snapshots differ, **stop and show the user `git status`**. Do not revert anything automatically: the working tree may hold the user's own uncommitted work, and only they can tell which change came from the reviewer. Never commit a file a reviewer touched.
@@ -179,7 +186,7 @@ A reviewer that was skipped, substituted, or downgraded is **always** named in t
 - About to **run fewer than three reviewers** without the user's explicit sign-off.
 - About to **let `--model` default to `auto`** — this silently collapses the panel's provider diversity.
 - About to **omit `--effort`** — the default reasoning budget is not a thorough review.
-- About to **run Copilot with `--allow-all-tools` / `--allow-all`**, or to skip the post-run `git status --porcelain` check.
+- About to **run Copilot with `--allow-all-tools` / `--allow-all`**, or to skip the post-run snapshot check.
 - About to **commit a file a reviewer modified**.
 - About to **silently drop a `must-fix`** because it is inconvenient, or because "it's only a bot".
 - About to **report the review as passed while the preflight is failing** — a 421 is a broken reviewer, not a passing one.

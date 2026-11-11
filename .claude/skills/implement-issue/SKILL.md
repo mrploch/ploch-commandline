@@ -21,7 +21,7 @@ Orchestrate autonomous, end-to-end implementation of a Linear issue — from fet
 
 - **All comments addressed** — every single PR comment and conversation must be addressed. No exceptions. Bot-authored threads (CodeRabbit, Codacy, Bito, SonarCloud) follow the same triage rules as human reviewers. SonarCloud / SonarQube Cloud additionally reports issues that exist **only in the SonarCloud platform** (not as GitHub comments) — these are fetched via the `sonarqube-cloud` MCP server and resolved with the same seven-category triage.
 
-- **All checks pass — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
+- **All checks pass — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit — **when the run pushes**. Under `--no-push` nothing is pushed and no PR exists, so the local report in Phase 15 applies instead:
   
   1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped` (unless the check is intentionally and explicitly conditional, the conditional path was taken, and you can prove it — the gate's exact wording applies). Required vs not-required is irrelevant.
   2. Every static-analysis bot has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s).
@@ -215,7 +215,11 @@ By the end of Phase 0, `owner` and `repo` are always resolved (Step 0c.3) — th
    # Accept the checkout only if its top level is named <repo-name> and origin is mrploch/<repo-name>
    # (HTTPS or SSH). REPO_DIR then takes Git's own spelling of the path (C:/… in Git Bash).
    TOP=$(git -C "$REPO_DIR" rev-parse --show-toplevel 2>/dev/null) && [ "$(basename "$TOP")" = "<repo-name>" ] \
-     && git -C "$TOP" remote get-url origin | grep -Eq '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)mrploch/<repo-name>(\.git)?$' \
+     && ORIGIN=$(git -C "$TOP" remote get-url origin) \
+     && case "${ORIGIN%.git}" in   # literal match: a repository name's '.' must not act as a regex wildcard
+          (https://github.com/mrploch/<repo-name>|git@github.com:mrploch/<repo-name>|ssh://git@github.com/mrploch/<repo-name>) true ;;
+          (*) false ;;
+        esac \
      && REPO_DIR=$TOP || echo "STOP: no verified checkout of mrploch/<repo-name> at $REPO_DIR"
    ```
 
@@ -499,7 +503,7 @@ All three reviews are **mandatory** for every non-trivial change — three provi
 
 1. **Preflight each reviewer** as the rule describes, and follow its fallback ladder for any reviewer that is unavailable. Never silently drop one.
 2. **Dispatch the three reviews** with the rule's exact invocation for each.
-3. **After the Copilot shell-out**, verify `git status --porcelain` is unchanged, as the rule requires.
+3. **Around the panel**, run the snapshot check from [`external-ai-review.md`](../../rules/external-ai-review.md) § Post-run write check: snapshot before dispatching, compare afterwards, and stop on any difference or snapshot failure.
 
 4. **Review all feedback** — evaluate each suggestion from all three reviewers on merit. Deduplicate overlapping findings, crediting each reviewer that raised them; a finding raised independently by two model families is higher-confidence.
 
@@ -625,7 +629,7 @@ All three reviews are **mandatory** for every non-trivial change — three provi
 
 **Authoritative reference:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The four-condition gate defined there is the bar this phase must pass.
 
-**Bots that must reach a `success` verdict before this phase exits** (when present on the PR): `build`, `Test Results`, `Analyze (csharp)` (CodeQL), `Codacy Static Code Analysis`, `SonarCloud Code Analysis` / `SonarQube Cloud`, `CodeRabbit`, `Bito AI Code Review Agent`, any coverage bot (Codecov / Coveralls / Codacy Coverage), and any repository-specific custom check. A bot that has not yet appeared in `gh pr checks` is **not** absent — it is **pending its first run**, and you wait for it. A bot that says `fail` because it hasn't yet rescanned the latest commit is **still failing** by the gate's definition — wait for the rescan or push a no-op-ish commit to retrigger; do not declare completion with a "stale check" caveat.
+**Bots that must reach a `success` verdict before this phase exits** (when present on the PR): `build`, `Test Results`, `Analyze (csharp)` (CodeQL), `Codacy Static Code Analysis`, `SonarCloud Code Analysis` / `SonarQube Cloud`, `CodeRabbit`, `Bito AI Code Review Agent`, any coverage bot (Codecov / Coveralls / Codacy Coverage), and any repository-specific custom check. A bot that has not yet appeared in `gh pr checks` is **not** absent — it is **pending its first run**, and you wait for it. A bot that says `fail` because it hasn't yet rescanned the latest commit is **still failing** by the gate's definition — wait for the rescan or re-run the job (`gh run rerun <run-id>`) — an empty commit just to retrigger a bot needs the user's approval; do not declare completion with a "stale check" caveat.
 
 1. **Wait for ALL checks** to complete — **including non-required checks:**
 

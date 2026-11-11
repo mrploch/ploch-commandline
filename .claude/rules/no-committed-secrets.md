@@ -134,7 +134,9 @@ git diff --cached --no-relative --no-renames --name-only -z --diff-filter=ACDMT 
   E=$(git ls-tree --full-tree HEAD -- "$f") || { printf 'UNREADABLE %s (committed entry, not scanned)\n' "$f"; continue; }
   side "$E" "$f (committed version)"
 done
-[ "${PIPESTATUS[0]}" = 0 ] || echo 'LISTING STAGED FILES FAILED (sweep incomplete)'
+st=("${PIPESTATUS[@]}")   # both sides of the pipe: the listing and the scanning loop
+[ "${st[0]}" = 0 ] || echo 'LISTING STAGED FILES FAILED (sweep incomplete)'
+[ "${st[1]}" = 0 ] || echo "SCAN LOOP FAILED (status ${st[1]}, sweep incomplete)"
 ) || HITS="SWEEP ABORTED (status $?, not completed)
 $HITS"   # a killed or failed sweep never reads as clean
 
@@ -149,7 +151,7 @@ fi
 # To read one file's staged change: --no-ext-diff --no-textconv stop a diff driver or textconv filter
 # (sqlite3 .dump, sops, gpg) decoding what the sweep saw raw; --submodule=short stops a submodule's
 # own, unscanned changes being expanded.
-#   git -C "$ROOT" diff --cached --no-relative --no-ext-diff --no-textconv --submodule=short -- "$FILE\"
+#   git -C "$ROOT" diff --cached --no-relative --no-ext-diff --no-textconv --submodule=short -- "$FILE"
 ```
 
 Any hit stops the commit, and so does every line the sweep prints (`UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `LISTING STAGED FILES FAILED`): an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. If the hit is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
@@ -158,10 +160,17 @@ Any hit stops the commit, and so does every line the sweep prints (`UNREADABLE`,
 
 ```bash
 for RANGE in "$BASE_BRANCH...HEAD" ""; do   # committed branch changes, then unstaged changes
-  git diff $RANGE --no-ext-diff --no-textconv --submodule=short | LC_ALL=C grep -qaEi "$PATTERN" \
-    && echo "POSSIBLE SECRET in git diff $RANGE (not printed)"
+  git diff $RANGE --no-ext-diff --no-textconv --submodule=short | LC_ALL=C grep -qaEi "$PATTERN"
+  st=("${PIPESTATUS[@]}")                       # grep: 0 = match, 1 = no match, 2 = error
+  case "${st[1]}" in
+    (0) echo "POSSIBLE SECRET in git diff $RANGE (not printed)" ;;
+    (1) [ "${st[0]}" = 0 ] || echo "DIFF FAILED for git diff $RANGE (not checked)" ;;
+    (*) echo "SCAN ERROR on git diff $RANGE (not checked)" ;;
+  esac
 done
 ```
+
+Print those diffs only when this loop printed nothing.
 
 This matters doubly for tool-managed directories (`.codex/`, `.claude/`, `.cursor/`, `ai/profile/`) which write credentials without telling you.
 
@@ -177,7 +186,8 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
 2. **Determine exposure** before deciding how far to go:
    ```bash
    gh repo view --json visibility --jq .visibility        # public = assume compromised, full stop
-   ( set +e   # the value lives only in this subshell: not exported, gone when it ends, even on Ctrl-C
+   ( set +e +a; unset LEAKED   # +a and unset: never exported, even if a LEAKED variable already was;
+     # the value lives only in this subshell and is gone when it ends, even on Ctrl-C
      IFS= read -rs LEAKED || exit 1; LEAKED=${LEAKED%$'\r'}; [ -n "$LEAKED" ] || exit 1   # CRLF paste
      cd "$(git rev-parse --show-toplevel)" || exit 1
      # Every object in the repository, reachable or not, binary files included. Each blob holding the
@@ -194,7 +204,9 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
          (*) echo "SCAN ERROR on blob $id (search incomplete)" ;;
        esac
      done
-     [ "${PIPESTATUS[0]}" = 0 ] || echo 'LISTING OBJECTS FAILED (search incomplete)'
+     st=("${PIPESTATUS[@]}")
+     [ "${st[0]}" = 0 ] || echo 'LISTING OBJECTS FAILED (search incomplete)'
+     [ "${st[1]}" = 0 ] || echo "SEARCH LOOP FAILED (status ${st[1]}, search incomplete)"
    )   # prints object and commit hashes only, never content; any "incomplete" line voids a clean result
    git branch -r --contains <sha>                         # did it ever leave the machine?
    ```

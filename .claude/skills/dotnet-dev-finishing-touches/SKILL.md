@@ -38,7 +38,7 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
   3. Every PR review thread is either resolved or has us as the latest contributor with an active reply. Bot-authored threads (CodeRabbit, Codacy comments, Bito) follow the same rules as human-authored.
   4. Re-polling produces no new threads, comments, or check runs.
   
-  **Stale checks are still failures.** "Codacy is stale, expected to go green" is **not** an acceptable completion claim. Wait for the rescan or push a follow-up to retrigger.
+  **Stale checks are still failures.** "Codacy is stale, expected to go green" is **not** an acceptable completion claim. Wait for the rescan, or re-run the job (`gh run rerun <run-id>`); ask the user before pushing an empty commit just to retrigger a bot.
 
 **Announce at start:** "I'm using the dotnet-dev-finishing-touches skill to perform a quality pass on the current branch."
 
@@ -180,7 +180,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. If a file is edited multiple times during the pass, only one `.bak` is needed (the original state before any finishing-touches changes).
-- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record the exact backup paths this pass created; the report and the cleanup command cover only those.
+- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record each backup this pass created as an `original<TAB>backup` line in a pairs file in the scratch directory; the report, the diff and the cleanup use only those recorded pairs, never names reconstructed from a pattern.
 - **New files** (e.g. new test classes) do not need a `.bak` — there is no original to back up.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files in a list for the completion report in Phase 12.
@@ -913,7 +913,7 @@ Pass forward for the completion report:
 
 **REQUIRED:** Use `superpowers:verification-before-completion` before reporting.
 
-**Authoritative gate:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) — the four conditions defined there are the bar. **Reproduce the verification sequence ("The Pre-Completion Verification") from that rule and confirm every output before writing a completion report.** If any of the four conditions is false on the latest pushed commit, the skill is **not done**: continue the loop, schedule a polling wakeup if waiting on a bot, do not switch to a "completion with caveats" framing.
+**Authoritative gate:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) — the four conditions defined there are the bar. **When Phase 10 ran, reproduce the verification sequence ("The Pre-Completion Verification") from that rule and confirm every output before writing a completion report.** Under `--no-push` only the local conditions below apply. If any of the four conditions is false on the latest pushed commit, the skill is **not done**: continue the loop, schedule a polling wakeup if waiting on a bot, do not switch to a "completion with caveats" framing.
 
 **Forbidden completion framings** (these were the historical failure modes that motivated this rule):
 
@@ -1020,18 +1020,16 @@ are available for diff review. Delete them when satisfied.
 
 **Quick diff command:**
 ```bash
-# Compare all backed-up files against their modified versions
-# This pass's backups only (the paths recorded above), NUL-safe for names with spaces or wildcards
-printf '%s\0' <recorded backup paths> | while IFS= read -r -d '' bak; do
-  orig=${bak%.bak}; orig=${orig%.[0-9]*-[0-9]*}
-  echo "=== $orig ==="; diff "$bak" "$orig" || true
-done
+# This pass's recorded pairs only ("original<TAB>backup" per line), so no original is guessed from a name
+while IFS=$'\t' read -r orig bak; do
+  echo "=== $orig ==="; diff -- "$bak" "$orig" || true
+done < "$PAIRS_FILE"
 ```
 
 **Cleanup command:**
 
 ```bash
-printf '%s\0' <recorded backup paths> | xargs -0 rm -f --   # this pass's backups only
+cut -f2 "$PAIRS_FILE" | while IFS= read -r bak; do rm -f -- "$bak"; done   # this pass's backups only
 ```
 
 ### Commit
@@ -1192,7 +1190,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 - About to **silently skip the Codex gate because the MCP is unavailable** — retry or explicitly ask the user; never pretend the gate passed.
 - About to **skip Phase 8.5** or run fewer than **all three** external reviewers without the user's explicit sign-off.
 - About to let Copilot's `--model` fall back to `auto`, or to omit `--effort high` — both silently downgrade the review.
-- About to **run Copilot with `--allow-all-tools` / `--allow-all`, or without the read-only rules**, or to skip the post-review `git status --porcelain` check.
+- About to **run Copilot with `--allow-all-tools` / `--allow-all`, or without the read-only rules**, or to skip the post-review snapshot check.
 - About to **silently drop an external reviewer's `must-fix`** — every one is fixed or declined with recorded evidence.
 - About to **reply to a PR comment with a generic "false positive" message** — every false-positive reply must cite specific evidence (file/line, test, spec, invariant) per [Step 3 — Reply quality rules](#step-3--reply-quality-rules-especially-for-false_positive).
 - About to **resolve a PR review thread without posting a reply first** — a resolved thread without an explicit response does not count as addressed; the only exception is a thread we authored ourselves with no other participants.
@@ -1217,7 +1215,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 | 6. Warnings | Each warning classified and addressed | Resolution documented per warning |
 | 7. Verify | Warning resolved after each fix | Rebuild output confirms |
 | 8. Grand Review | All changes reviewed holistically | No outstanding concerns |
-| 8.5 External AI Review | Codex, Gemini AND Copilot reviewed with full context at high effort; verdicts recorded; `git status --porcelain` unchanged after the Copilot run | Verdicts + findings table |
+| 8.5 External AI Review | Codex, Gemini AND Copilot reviewed with full context at high effort; verdicts recorded; the snapshot check from `external-ai-review.md` shows no change after the panel | Verdicts + findings table |
 | 9. Commit | Conventional format with `Refs` footer | Commit message |
 | 10. CI | All checks green (including non-required) | `gh pr checks` output |
 | 11. PR Comments | Every thread triaged, fixed-or-replied, and (for bots + clear-cut cases) resolved | Zero `isResolved=false` threads whose latest comment is not ours; category breakdown recorded |

@@ -113,9 +113,13 @@ ME=$(gh api user --jq .login) && [ -n "$ME" ] \
   || echo "GATE ERROR: the thread query failed, so the gate is NOT satisfied"
 # Expected: 0. A thread left open with our reply as the latest comment is listed as "Awaiting reviewer" in the report.
 
-# 5. No new PR-level comments since our last poll?
-gh api repos/<owner>/<repo>/issues/<PR#>/comments --paginate --jq '.[].id' | tail -5
-# Expected: same as your previous poll. If new IDs appear, address them.
+# 5. No new or EDITED comments or reviews since our last poll? Bots often update one summary comment in
+#    place, so compare a fingerprint of every comment's id and last-update time, not the latest ids.
+{ gh api --paginate "repos/<owner>/<repo>/issues/<PR#>/comments" --jq '.[] | "issue \(.id) \(.updated_at)"' \
+  && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/comments" --jq '.[] | "review-comment \(.id) \(.updated_at)"' \
+  && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/reviews" --jq '.[] | "review \(.id) \(.state) \(.submitted_at)"'; } \
+  | sort | git hash-object --stdin || echo "GATE ERROR: comments unavailable"
+# Expected: the same fingerprint as your previous poll. If it changed, find and address what is new or edited.
 
 # 6. CI annotations from each bot are clear? Both levels paginate; a failed request is an error, not "clear".
 RUNS=$(gh api --paginate "repos/<owner>/<repo>/commits/<sha>/check-runs" --jq '.check_runs[].id') \
