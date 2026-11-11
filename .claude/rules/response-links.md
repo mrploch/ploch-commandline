@@ -5,7 +5,7 @@ metadata:
 
 # Linkable References Are Always Clickable Links (Mandatory)
 
-**Scope:** every response in the mrploch workspace root (`C:\DevNet\my\mrploch` on Windows, `~/DevNet/mrploch` on macOS) **and every folder and repository beneath it**. This is a user preference, stated on 2026-09-12 after it had been asked for before and applied inconsistently.
+**Scope:** every response in the mrploch workspace root (for example `C:\DevNet\my\mrploch` on Windows or `~/devnet/my/mrploch` on macOS) **and every folder and repository beneath it**. This is a user preference, stated on 2026-09-12 after it had been asked for before and applied inconsistently.
 
 ## The Rule
 

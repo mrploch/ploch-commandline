@@ -23,7 +23,7 @@ Orchestrate autonomous, end-to-end implementation of a Linear issue — from fet
 
 - **All checks pass — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
   
-  1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
+  1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped` (unless the check is intentionally and explicitly conditional, the conditional path was taken, and you can prove it — the gate's exact wording applies). Required vs not-required is irrelevant.
   2. Every static-analysis bot has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s).
   3. Every PR review thread is either resolved or has us as the latest contributor with an active reply.
   4. Re-polling produces no new threads, comments, or check runs.
@@ -135,7 +135,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
 
 1. **Parse and validate the input** to extract `owner`, `repo` and the GitHub `number`. The input is untrusted text, so validate before any value reaches a command:
 
-   - `owner` must match `^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$`, `repo` must match `^[A-Za-z0-9._-]{1,100}$`, and `number` must match `^[0-9]+$`. Reject anything else and ask the user.
+   - `owner` must match the ERE `^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$` (no trailing hyphen, as GitHub requires), `repo` must match `^[A-Za-z0-9._-]{1,100}$`, and `number` must match `^[0-9]+$`. Reject anything else and ask the user.
    - `owner` must be `mrploch` — the workspace only checks out `mrploch` repositories. For any other owner, stop and ask the user rather than silently implementing in `mrploch/<repo>`.
    - Pass the values to `gh` as separate, double-quoted arguments (`gh issue view "$NUMBER" --repo "$OWNER/$REPO"`), never by pasting the raw input into a command line.
 
@@ -151,9 +151,14 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
       Confirm any match through its GitHub attachment.
    3. Record the GitHub `number` as `github-twin` only when `repo` turns out to be the repository of the work (Step 0c.3); a mirror in another repository is not a twin for the PR body.
 
-3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in the description *and* in `links`), keep the GitHub `number` as `github-twin`, then continue with the new `PLO-<n>`.
+3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in `links` and in a description that **starts** with the line `Created by implement-issue from <GitHub issue URL>`), keep the GitHub `number` as `github-twin`, then continue with the new `PLO-<n>`.
 
-   The search-then-create sequence is not atomic, so two concurrent runs can both create an issue. Make it convergent: immediately after `save_issue`, search the project again for the GitHub issue's full URL. If more than one Linear issue carries it, keep the **oldest**, mark each newer one as its duplicate (`save_issue(id=<newer>, duplicateOf=<oldest>)`), and continue with the oldest.
+   The search-then-create sequence is not atomic, so two concurrent runs can both create an issue. Make it convergent, and only ever touch the issue **this run created**:
+
+   - Immediately after `save_issue`, search team Ploch again for the GitHub issue's full URL, and consider only issues whose description **starts with the marker line** — an issue that merely mentions the URL (an investigation, a follow-up) is never touched.
+   - If this run's issue is the oldest marked one, continue with it. Leave any newer marked issue alone: the run that created it reconciles itself.
+   - If an older marked issue exists, another run got there first. Re-read this run's own issue; if it is still exactly as created, mark it `save_issue(id=<ours>, state="Duplicate", duplicateOf=<older>)`, then **stop and tell the user** that `<older>` already tracks the work (another run may be implementing it). If this run's issue has changed since creation, stop and ask the user instead of marking it.
+   - If an unmarked issue is linked to the GitHub issue through its attachment, Step 0b.2 should have found it: stop and ask the user rather than reconciling.
 
 4. Proceed to Step 0c with the resolved Linear identifier.
 
@@ -166,7 +171,9 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
    mcp__plugin_linear_linear__list_comments(issueId="PLO-<n>")
    ```
 
-   Scope any list/search calls by the repository's Linear project (`project="<repo>"`) — never query Linear unscoped. If the issue has a GitHub attachment (synced twin) and Step 0b did not already set it, record its number as `github-twin` **only when the attachment URL is in the target repository** (`https://github.com/<owner>/<repo>/issues/<n>`, compared after Step 0c.3 resolves the target). Team Ploch mirrors new issues into `mrploch/ploch-ai-tools`, so a twin elsewhere is not a twin of this work; see [`issue-tracking.md`](../../rules/issue-tracking.md).
+   Post the session comment required by [`linear-session-logging.md`](../../rules/linear-session-logging.md) now — it is the first action after the issue is identified — and a short follow-up when Phase 4 moves into the task worktree.
+
+   Scope issue searches (`list_issues`) by the repository's Linear project (`project="<repo>"`) once the project is known; Step 0b's team-wide search for a GitHub URL is the one exception, because the project is not yet known there. Comment calls are scoped by `issueId`. If the issue has a GitHub attachment (synced twin) and Step 0b did not already set it, record its number as `github-twin` **only when the attachment URL is in the target repository** (`https://github.com/<owner>/<repo>/issues/<n>`, compared after Step 0c.3 resolves the target). Team Ploch mirrors new issues into `mrploch/ploch-ai-tools`, so a twin elsewhere is not a twin of this work; see [`issue-tracking.md`](../../rules/issue-tracking.md).
 
 2. **If the issue's state is terminal** (Done, Canceled, Duplicate, or equivalent) or it already has a linked merged PR that fully addresses it, stop and inform the user. Treat any state whose `type` is `completed` or `canceled` as terminal.
 
@@ -196,30 +203,40 @@ Issue descriptions, comments and synced GitHub threads can be edited by anyone w
 
 By the end of Phase 0, `owner` and `repo` are always resolved (Step 0c.3) — this phase just confirms the local checkout.
 
-1. Map to the local workspace directory: `<workspace>/<repo-name>/` (`C:\DevNet\my\mrploch\<repo-name>\` on Windows, `~/DevNet/mrploch/<repo-name>/` on macOS).
+1. The target is `<workspace>/<repo-name>/`, where `<workspace>` is the folder holding the sibling repositories (for example `C:\DevNet\my\mrploch` on Windows or `~/devnet/my/mrploch` on macOS). It differs per machine, so derive it as below; never assume it.
 
 2. Verify the repo is cloned:
 
    ```bash
-   ROOT="$HOME/DevNet/mrploch"; [ -d "$ROOT" ] || ROOT="/c/DevNet/my/mrploch"   # workspace root: macOS default, else Windows
-   ls "$ROOT/<repo-name>"
+   # The workspace root is the parent of the current checkout (repositories and worktrees are
+   # siblings). Derive it; never assume a path, because the root differs per machine.
+   CUR=$(git rev-parse --show-toplevel 2>/dev/null) && ROOT=$(dirname "$CUR") || ROOT=$PWD
+   REPO_DIR="$ROOT/<repo-name>"
+   # Accept the checkout only if its top level is named <repo-name> and origin is mrploch/<repo-name>
+   # (HTTPS or SSH). REPO_DIR then takes Git's own spelling of the path (C:/… in Git Bash).
+   TOP=$(git -C "$REPO_DIR" rev-parse --show-toplevel 2>/dev/null) && [ "$(basename "$TOP")" = "<repo-name>" ] \
+     && git -C "$TOP" remote get-url origin | grep -Eq 'github\.com[:/]mrploch/<repo-name>(\.git)?$' \
+     && REPO_DIR=$TOP || echo "STOP: no verified checkout of mrploch/<repo-name> at $REPO_DIR"
    ```
 
-3. Navigate to the repo and ensure it is up to date:
+   If it prints `STOP`, **stop the run and ask the user** where the checkout is. Never fall back to the current directory: Git commands would then act on the wrong repository. From here on, read the target repository's files by their path under `$REPO_DIR` — Phases 2 and 3 research the target, not the folder the session started in.
+
+3. Make sure the remote is up to date. Use `git -C "$REPO_DIR"` for every Git command until Phase 4 moves into the task worktree, so a failed `cd` can never redirect a command:
 
    ```bash
-   cd "$ROOT/<repo-name>"
-   git fetch origin
-   git status
+   git -C "$REPO_DIR" fetch origin
+   git -C "$REPO_DIR" status
    ```
 
 4. Identify the base branch (`main` or `master`):
 
    ```bash
-   git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'
+   BASE=$(git -C "$REPO_DIR" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
+   [ -n "$BASE" ] || BASE=$(git -C "$REPO_DIR" branch -r | sed -nE 's@^[[:space:]]*origin/(main|master)$@\1@p' | head -1)
+   [ -n "$BASE" ] || echo "STOP: base branch of <repo-name> not found"
    ```
 
-   If that fails, check `git branch -r` for `origin/main` or `origin/master`. `ploch-common` uses `master`; newer repos use `main`.
+   This reads the **target** repository (`ploch-common` uses `master`; newer repos use `main`). On `STOP`, ask the user.
 
 ### Phase 2: Research & Gather Context
 
@@ -294,10 +311,10 @@ Before writing any code, build comprehensive understanding. This phase is critic
 
 ### Phase 4: Create Branch
 
-1. Ensure you are on the base branch and it is up to date:
+1. Fetch the latest base branch. Do **not** check it out in the shared checkout: every task gets its own worktree (see `rules/worktrees.md`), and other work in that checkout must stay untouched.
 
    ```bash
-   git checkout <base-branch> && git pull origin <base-branch>
+   git -C "$REPO_DIR" fetch origin <base-branch>
    ```
 
 2. Determine the change type from the issue analysis (Phase 0). Mapping:
@@ -310,11 +327,19 @@ Before writing any code, build comprehensive understanding. This phase is critic
    - Performance improvement → `perf`
    - Tests only → `test`
 
-3. Create the branch following the naming convention (see `rules/branch-naming.md`):
+3. Create the task worktree and its branch from the fetched base, following the naming convention (see `rules/branch-naming.md`), and run every later phase inside it:
 
    ```bash
-   git checkout -b <change-type>/plo-<n>-<brief-description>
+   BRANCH=<change-type>/plo-<n>-<brief-description>
+   WT="$REPO_DIR-wt-<n>"   # sibling worktree, e.g. ../ploch-commandline-wt-847
+   git -C "$REPO_DIR" worktree add -b "$BRANCH" "$WT" "origin/$BASE" \
+     && cd "$WT" \
+     && [ "$(git rev-parse --abbrev-ref HEAD)" = "$BRANCH" ] \
+     && [ "$(basename "$(git rev-parse --show-toplevel)")" = "$(basename "$WT")" ] \
+     || { echo "STOP: the task worktree was not created"; false; }
    ```
+
+   On `STOP`, **stop the run**. Never continue in an existing directory: if `$WT` already exists (from an earlier run), ask the user whether to reuse or remove it.
 
    Example: `feature/plo-72-dbcontext-creation-lifecycle-plugins`, `fix/plo-187-duplicate-entity-concurrent-upsert`. Lowercase `plo-<n>` — Linear matches the ID case-insensitively and links the branch and its PR to the issue (see `rules/issue-tracking.md`).
 
@@ -324,7 +349,9 @@ Before writing any code, build comprehensive understanding. This phase is critic
    mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="In Progress")
    ```
 
-   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), re-read the issue first and restore `previous-state` from Step 0c.4 **only if it is still in the In Progress state this run set**. If someone else has moved it since (Done, Canceled, another assignee), leave the state alone. In either case leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
+   Re-read the issue just before this write: if its state or assignee changed since Step 0c.4 (planning can take a while), stop and ask the user instead. After the write, record the returned state and assignee as this run's **ownership record**.
+
+   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), re-read the issue first and restore `previous-state` from Step 0c.4 **only if its state and assignee still match the ownership record**. (`updatedAt` cannot be used: this run's own comments, such as the session-logging comment, change it.) If either differs, or the record is missing, leave the state alone and say so in the comment; when in doubt, do not restore. In either case leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
 
 ### Phase 5: Implement
 
@@ -482,7 +509,7 @@ All three reviews are **mandatory** for every non-trivial change — three provi
 
 7. **Record which model each reviewer ran**, so any fallback or substitution is visible in the completion report.
 
-**Skip this phase** only for truly trivial changes (single-line typo fix, config-only change).
+**Skip this phase** only for a single-line typo fix in prose. Configuration changes (build props, `.editorconfig`, workflows, agent rules and skills) are never trivial: they change behaviour and are reviewed like code.
 
 ### Phase 10: Commit
 
@@ -563,29 +590,29 @@ All three reviews are **mandatory** for every non-trivial change — three provi
    
    ## Related
    
-   Closes PLO-<n>
-   Closes #<github-twin>
+   <Closes|Refs> PLO-<n>
+   <Closes|Refs> #<github-twin>
    EOF
    )" && gh pr edit --add-assignee @me
    ```
 
-   Include the `Closes #<github-twin>` line **only** when Phase 0 recorded a GitHub twin **in this PR's repository**; otherwise omit it. GitHub resolves a bare `#<n>` against the PR's own repository, so a twin from another repository (for example `ploch-ai-tools`) would close an unrelated local issue. For partial work use `Refs PLO-<n>` and `Refs #<github-twin>` instead.
+   Use `Closes` on both lines when this PR completes the issue, and `Refs` for agreed partial work (see [Partial work](#partial-work)). Include the `#<github-twin>` line **only** when Phase 0 recorded a GitHub twin **in this PR's repository**; otherwise omit it. GitHub resolves a bare `#<n>` against the PR's own repository, so a twin from another repository (for example `ploch-ai-tools`) would close an unrelated local issue.
 
 4b. **Request a GitHub Copilot review (mandatory):** immediately after creating the PR, request Copilot as a reviewer via the GitHub MCP tool:
 
-```
-mcp__github__request_copilot_review(owner="<owner>", repo="<repo>", pullNumber=<pr-number>)
-```
+   ```
+   mcp__github__request_copilot_review(owner="<owner>", repo="<repo>", pullNumber=<pr-number>)
+   ```
 
    Fallback if the MCP tool is unavailable:
 
-```bash
-gh api repos/<owner>/<repo>/pulls/<pr-number>/requested_reviewers -f "reviewers[]=copilot-pull-request-reviewer[bot]"
-```
+   ```bash
+   gh api repos/<owner>/<repo>/pulls/<pr-number>/requested_reviewers -f "reviewers[]=copilot-pull-request-reviewer[bot]"
+   ```
 
    Copilot's review comments are then addressed in Phase 13 like any other reviewer's.
 
-1. **If updating an existing PR** (e.g. after fix loop):
+5. **If updating an existing PR** (e.g. after fix loop):
 
    ```bash
    gh pr edit <pr-number> --body "$(cat <<'EOF'
@@ -652,14 +679,14 @@ SonarCloud rarely posts one PR thread per finding — it posts a single summary 
 2. **Confirm the PR id** — SonarCloud keys a PR by its GitHub PR number; verify with `mcp__sonarqube-cloud__list_pull_requests(projectKey="<key>")`.
 3. **Fetch every open finding for the PR** (page through all results; use `mcp__sonarqube-cloud__show_rule(key="<rule-key>")` for unfamiliar rules):
    - `mcp__sonarqube-cloud__search_sonar_issues_in_projects(projectKeys=["<key>"], pullRequest="<pr-number>", issueStatuses=["OPEN","CONFIRMED"])`
-   - `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<pr-number>", status=["TO_REVIEW"])`
+   - `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<pr-number>", status="TO_REVIEW")`
    - `mcp__sonarqube-cloud__get_project_quality_gate_status(projectKey="<key>", pullRequest="<pr-number>")`
 4. **Triage and resolve each finding** with the same seven-category model:
    - `VALID_ISSUE` / `SUGGESTION_ACCEPTED` → fix in code → loop back to **Phase 6** → the next scan auto-marks it `FIXED`.
-   - `FALSE_POSITIVE` → `mcp__sonarqube-cloud__change_sonar_issue_status(key="<issue-key>", status=["falsepositive"])` — **pause and confirm with the user first** (silencing a finding has the same bar as adding an exclusion).
-   - `SUGGESTION_DECLINED` / won't-fix → `mcp__sonarqube-cloud__change_sonar_issue_status(key="<issue-key>", status=["accept"])` — **pause and confirm first.**
-   - Security hotspot, real risk → fix in code, then `mcp__sonarqube-cloud__change_security_hotspot_status(hotspotKey="<key>", status=["REVIEWED"], resolution=["FIXED"], comment="<what changed>")`.
-   - Security hotspot, reviewed safe → `mcp__sonarqube-cloud__change_security_hotspot_status(hotspotKey="<key>", status=["REVIEWED"], resolution=["SAFE"], comment="<evidence>")` — **pause and confirm first.**
+   - `FALSE_POSITIVE` → `mcp__sonarqube-cloud__change_sonar_issue_status(key="<issue-key>", status="falsepositive")` — **pause and confirm with the user first** (silencing a finding has the same bar as adding an exclusion).
+   - `SUGGESTION_DECLINED` / won't-fix → `mcp__sonarqube-cloud__change_sonar_issue_status(key="<issue-key>", status="accept")` — **pause and confirm first.**
+   - Security hotspot, real risk → fix in code, then `mcp__sonarqube-cloud__change_security_hotspot_status(hotspotKey="<key>", status="REVIEWED", resolution="FIXED", comment="<what changed>")`.
+   - Security hotspot, reviewed safe → `mcp__sonarqube-cloud__change_security_hotspot_status(hotspotKey="<key>", status="REVIEWED", resolution="SAFE", comment="<evidence>")` — **pause and confirm first.**
 5. **Replying to SonarCloud's summary PR comment is not enough** — the comment is addressed only when every platform finding behind it is fixed or carries a confirmed status change. If code changes were made, loop back to **Phase 12** and re-fetch.
 
 #### GitHub PR comments, review threads & conversations
@@ -726,7 +753,7 @@ Before reporting completion, **every single one** of these criteria must be met:
 | 3   | Test coverage ≥80% on new code                                                                                                                                                                                                                                                                                                   | Coverage report or estimate                                                                                                                                   |
 | 4   | Code formatted per .editorconfig                                                                                                                                                                                                                                                                                                 | `EnforceCodeStyleInBuild` — no style errors                                                                                                                   |
 | 5   | **All CI checks green** (including non-required) — every check listed by `gh pr checks <pr-number>` shows `pass`. Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, and any repository-specific custom check **all** count, regardless of "required" status. Stale or pending checks fail this criterion. | `gh pr checks <pr-number>` — every line ends with `pass`; cross-check with `gh api repos/<owner>/<repo>/commits/<sha>/check-runs`                             |
-| 6   | **All PR comments and conversations addressed** — including bot-authored ones (CodeRabbit, Codacy, Bito, SonarCloud). Every thread is either resolved or has us as the latest contributor with an active reply.                                                                                                                  | GraphQL `reviewThreads` query: zero `isResolved=false AND isOutdated=false` threads where the latest commenter is not us                                      |
+| 6   | **All PR comments and conversations addressed** — including bot-authored ones (CodeRabbit, Codacy, Bito, SonarCloud). Every thread is either resolved or has us as the latest contributor with an active reply.                                                                                                                  | GraphQL `reviewThreads` query: zero `isResolved=false` threads (outdated ones included, every page enumerated as in the gate's step 4) where the latest commenter is not us                                      |
 | 7   | No new comments since last check                                                                                                                                                                                                                                                                                                 | Re-fetch after waiting; re-poll until two consecutive polls return identical state                                                                            |
 | 8   | All acceptance criteria from the issue met (for partial work: every criterion in the agreed scope; see Partial work below) | Re-read issue body, verify each AC |
 | 9   | Documentation up to date                                                                                                                                                                                                                                                                                                         | XML docs on public APIs; project markdown docs (README.md, docs/*.md, RELEASE_NOTES.md) reviewed and updated to match code changes                            |
@@ -783,24 +810,32 @@ All checks passing: <link to PR checks or output>
 All <count> conversations addressed.
 
 ### PR
-<PR URL>
+[PR #<pr-number>](<PR URL>)
 
 ### Notes
 <Any important context, trade-offs, or follow-up items>
 ```
 
-Also update the Linear issue. The comment must be **idempotent**, because a retried Phase 15 must not post it twice. Every completion comment starts with the marker `implement-issue completion:`. Read the comments first (`list_comments(issueId="PLO-<n>")`) and post only when no comment starts with that marker **and** contains the PR URL; an ordinary discussion comment that mentions the URL does not count.
+Also update the Linear issue. The comment must be **idempotent**, because a retried Phase 15 must not post it twice. Every completion comment starts with `implement-issue completion` — `implement-issue completion:` with a PR, `implement-issue completion (local):` under `--no-push`. Read the comments first (`list_comments(issueId="PLO-<n>")`) and post only when no comment starts with that marker **and** contains the PR URL; an ordinary discussion comment that mentions the URL does not count.
 
 **With a PR** — only once the PR exists and Phase 14's gate has passed:
 
 ```
-mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: implemented in <PR URL>.")   # skip if a marked completion comment already holds <PR URL>
+mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: implemented in <PR URL>.")   # skip or update per the idempotency rule
 mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")   # only after the PR has merged, and only if not already Done
 ```
 
+**Partial work** (see [Partial work](#partial-work)) — the body names what is left, and the issue is **not** marked Done:
+
+```
+mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: partially implemented in <PR URL>.\n\nCovered: <criteria>\nRemaining: <criteria, or the follow-up PLO-<m> link>")
+```
+
+The idempotency check still applies, with one refinement for both bodies: when a marked comment for this PR already exists, compare it with what this run would post — the mode (implemented or partially implemented) and the `Covered:` / `Remaining:` lists. Skip only when they match. Otherwise update that comment (`save_comment` with its `id`) so it states the current scope; never post a second one, and never leave a stale `Remaining:` list after the PR covers more.
+
 A merged PR carrying `Closes PLO-<n>` normally moves the issue to Done automatically — confirm the state rather than assuming. Never mark it Done while the PR is open.
 
-**With `--no-push`** — there is no PR, so Phase 14 does not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (skip it if a comment for the same commit already exists). Leave the issue "In Progress".
+**With `--no-push`** — there is no PR, so Phase 14 does not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (if a local completion comment for this branch already exists, update it with the new commit hash rather than posting another). Leave the issue "In Progress".
 
 ---
 
@@ -836,7 +871,7 @@ When an issue requires changes in multiple repositories:
 4. **Test across repos** — build and test each repo, ensuring cross-repo `ProjectReference` paths work locally.
 5. **Create PRs in each repo**, linking them in the PR descriptions ("Depends on mrploch/ploch-common#XX").
 6. **Monitor CI and address comments in all repos.**
-7. **Merge in dependency order** — upstream repos first so downstream repos can switch to the published NuGet packages.
+7. **Report the merge order** — upstream repos first, so downstream repos can switch to the published NuGet packages. Merging is the user's decision (a merge to `main` publishes packages): never merge unless the user has explicitly authorised it for this run.
 
 ---
 
@@ -868,7 +903,7 @@ When an issue requires changes in multiple repositories:
 
 ## Non-Blocking Issues
 
-When you encounter something worth tracking that is outside the current issue's scope, **create a Linear issue** for it (team Ploch, the repository's Linear project; search with `list_issues` first to avoid duplicates — the `/create-issue` skill does this end to end) — do not accumulate items in a `TODO-important.md` file. Create an issue when you encounter:
+When you encounter something worth tracking that is outside the current issue's scope, **create a Linear issue** for it (team Ploch, the repository's Linear project; search with `list_issues` first to avoid duplicates, then `save_issue` as [`issue-tracking.md`](../../rules/issue-tracking.md) describes) — do not accumulate items in a `TODO-important.md` file. Create an issue when you encounter:
 
 - Questions that can be answered later.
 - Suggestions for improvements outside the current issue scope.
@@ -968,7 +1003,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 - **pr** — For creating/updating pull requests (Phase 11)
 - **review-pr-comments** — For structured PR comment review (Phase 13)
 - **general:integrations** — Linear tool selection and mandatory project-scope filtering (Phase 0, Phase 15)
-- **create-issue** — Creating follow-up / out-of-scope issues in Linear
+- [`linear-session-logging.md`](../../rules/linear-session-logging.md) (rule) — the session comment on the Linear issue (Phase 0, and Phase 4 on entering the worktree)
 
 **Uses these MCP tools:**
 
@@ -979,5 +1014,5 @@ If you catch yourself about to do any of these, stop and reconsider:
 - `mcp__plugin_context7_context7__resolve-library-id` / `query-docs` — Library documentation
 - `mcp__plugin_10x-swe_deepwiki__ask_question` — Understanding external repositories
 - `mcp__sonarqube-cloud__*` — Fetch and resolve SonarCloud platform issues, security hotspots, and quality-gate status for the PR (Phase 13): `search_my_sonarqube_projects`, `list_pull_requests`, `search_sonar_issues_in_projects`, `search_security_hotspots`, `get_project_quality_gate_status`, `show_rule`, `change_sonar_issue_status`, `change_security_hotspot_status`
-- `mcp__plugin_linear_linear__*` — the issue tracker (Phase 0, Phase 2, follow-ups, Phase 15): `list_issues`, `get_issue`, `list_comments`, `list_issue_statuses`, `list_issue_labels`, `save_comment`, `save_issue`. Scope every list/search by `project="<repo>"`.
+- `mcp__plugin_linear_linear__*` — the issue tracker (Phase 0, Phase 2, follow-ups, Phase 15): `list_issues`, `get_issue`, `list_comments`, `list_issue_statuses`, `list_issue_labels`, `save_comment`, `save_issue`. Scope issue searches by `project="<repo>"` once the project is known (Step 0b's team-wide URL search is the exception); comment calls are scoped by `issueId`.
 - GitHub CLI (`gh`) — PR management, CI monitoring, PR comment handling. Not for issue tracking (`gh issue view` is used read-only only to resolve a legacy GitHub input to its Linear twin).

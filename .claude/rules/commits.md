@@ -67,10 +67,10 @@ Every commit **must** include a `Refs: PLO-<n>` footer linking to a **Linear** i
 
 1. **Check the branch name.** Branches are `<type>/plo-<n>-<slug>` (see [`branch-naming.md`](./branch-naming.md)), so the ID is usually already there.
 2. **Check the open PR** for the current branch (`gh pr view`). If its body carries `Closes PLO-<n>` / `Refs PLO-<n>`, use that.
-3. **Search Linear** (`list_issues` in the repository's Linear project, with a `query`) for an existing issue that matches the change. If there is a clear candidate, use it. If there is an open PR without an issue link, add `Refs PLO-<n>` to its body.
+3. **Search Linear** (`list_issues` in the repository's Linear project, with a `query`) for an existing issue that matches the change. If there is a clear candidate, confirm it with the user before using it: a search match is a guess. Do not edit an open PR's body while committing; if the PR lacks the issue link, say so, and add it when the PR is next updated (with `/pr` or at push time).
 4. **Ask the user** if no matching issue is found. The user may want a new Linear issue created for the change. Do not guess or omit the `Refs` footer. Always ask rather than commit without an issue reference.
 
-**Legacy branches:** older work tracked by a GitHub issue number still has a Linear issue, because the GitHub issues were migrated. Resolve the number to its `PLO-<n>` and use that in the footer. Add `Refs: #<n>` alongside it only when a synced GitHub twin exists.
+**Legacy branches:** older work tracked by a GitHub issue number still has a Linear issue, because the GitHub issues were migrated. Resolve the number to its `PLO-<n>` and use that in the footer. Add `Refs: #<n>` alongside it only when a synced GitHub twin exists **in the same repository** (see [`issue-tracking.md`](./issue-tracking.md)).
 
 ## Examples
 

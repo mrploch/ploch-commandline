@@ -33,7 +33,7 @@ repository is checked out inside the workspace.
 | ~~`.cursorrules`~~ | 0 | deleted | Cursor | Removed (PLO-653) |
 | ~~`.contextstream/config.json`~~ | 0 | deleted | ContextStream | Removed (PLO-653) |
 | ~~`.cursor/mcp.json`~~ | 0 | deleted | Cursor | Removed (PLO-653) |
-| `.claude/rules/` | 27 | 154 KB | Claude Code, all of it, every session | Reduce; see section 3 |
+| `.claude/rules/` | 32 | 154 KB at 27 files; not re-measured | Claude Code, all of it, every session | Reduce; see section 3. PLO-903 added `issue-tracking`, `linear-session-logging`, `no-committed-secrets`, `response-closing` and `response-links` |
 | `.claude/skills/` | 9 | 228 KB | Claude Code, on demand | Keep 4 of 6 skills |
 | `.claude/mrploch-dev/` | 2 | 35 KB | Nothing; unregistered plugin | Remove |
 | `.agents/` | 12 | 183 KB | Codex, Antigravity | Regenerate from one source or remove |
@@ -47,7 +47,7 @@ and no committed MCP server list for Claude Code.
 
 ## 3. Rules
 
-All 27 files in `.claude/rules/` load unconditionally — about 38,600 tokens per session. None has
+All 27 files that `.claude/rules/` held when this was measured loaded unconditionally — about 38,600 tokens per session (earlier snapshot; PLO-903 brought the count to 32 and this was not re-measured). None has
 path scoping.
 
 | Relevance here | Rules | Size |
@@ -110,7 +110,7 @@ of context before the first prompt, about 96,000 of them rules.
 | 1 | The rule set loads twice: repository copy and workspace copy | About 46,000 tokens per session |
 | 2 | Eight rule pairs differ between the copies, and both versions load | Contradictory instructions on reviewers, follow-up issues and tracking |
 | 3 | Rules for projects this repository does not have | About 10,600 tokens per loaded copy |
-| 4 | Committed rules name the wrong tracker | Wrong commit footers and branch names |
+| 4 | ~~Committed rules name the wrong tracker~~ Resolved by PLO-903: the rules now follow `issue-tracking.md` (Linear) | Was: wrong commit footers and branch names |
 | 5 | Dead references to reviewer tools and a missing skill | Agents stall or improvise |
 | 6 | `AGENTS.md` and `GEMINI.md` carry no repository knowledge | Other agents start blind; the 63 KB of ContextStream noise was removed (PLO-653); `GEMINI.md` now points at `docs/ai/`, `AGENTS.md` does not yet |
 | 7 | Three mirrors of rules and skills, each drifted differently | 560 KB to keep in step by hand |

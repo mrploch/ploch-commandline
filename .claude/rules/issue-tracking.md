@@ -5,7 +5,7 @@ metadata:
 
 # Issue Tracking — Linear Is the Primary Tracker (Mandatory)
 
-**Scope:** every repository and folder under the mrploch workspace root (`C:\DevNet\my\mrploch` on Windows, `~/DevNet/mrploch` on macOS). User preference stated on 2026-09-19: *"I want Linear to be the primary source of issues … All of the issues should be Linear."*
+**Scope:** every repository and folder under the mrploch workspace root (for example `C:\DevNet\my\mrploch` on Windows or `~/devnet/my/mrploch` on macOS). User preference stated on 2026-09-19: *"I want Linear to be the primary source of issues … All of the issues should be Linear."*
 
 **Authority:** this file is the single source of truth for **where issues live and how they are referenced**. Every other rule and skill that mentions an issue — branch naming, commit footers, PR bodies, follow-ups, traceability, response links — defers to it. Where an older rule or skill still says "GitHub issue", read it as "Linear issue" and apply the conventions below.
 
@@ -69,7 +69,7 @@ Linear's closing words: `close(s/d)`, `fix(es/ed)`, `resolve(s/d)`, `complete(s/
 
 ## Tooling
 
-- **Use:** the Linear MCP tools (`mcp__plugin_general_linear__*`: `list_issues`, `get_issue`, `save_issue`, `save_comment`, `list_projects`, `list_milestones`, `list_issue_labels`).
+- **Use:** the Linear MCP tools (`mcp__plugin_linear_linear__*`: `list_issues`, `get_issue`, `save_issue`, `save_comment`, `list_projects`, `list_milestones`, `list_issue_labels`).
 - **Do not use for issue tracking:** `gh issue create/edit/close/comment` and the GitHub MCP `issue_write` / `add_issue_comment`. Exception: acting on an existing synced GitHub twin when Linear cannot do it, for example replying to a GitHub-only commenter.
 - **Unchanged:** `gh pr …`, `gh run …`, `gh api …` for pull requests, CI and code. Pull requests stay on GitHub.
 

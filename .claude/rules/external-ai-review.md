@@ -39,16 +39,13 @@ That leaves xAI and Moonshot. **Grok 4.6** wins: GitHub added it to Copilot CLI 
 ### Canonical command
 
 ```bash
-copilot -p "$BRIEF" \
+# The package (context + brief) is in "$PKG_FILE"; the prompt only points at it.
+copilot -p "Read $PKG_FILE in full: it is the complete review context, ending with the review brief. Follow that brief exactly. Do not modify any files." \
+  --add-dir "$(dirname "$PKG_FILE")" \
   --model grok-4.6 \
   --effort high \
-  --allow-all-tools \
-  --deny-tool 'write' \
-  --deny-tool 'shell(git commit)' --deny-tool 'shell(git push)' \
-  --deny-tool 'shell(git add)'    --deny-tool 'shell(git reset)' \
-  --deny-tool 'shell(git checkout)' --deny-tool 'shell(git restore)' \
-  --deny-tool 'shell(gh pr create)' --deny-tool 'shell(gh pr merge)' \
-  --deny-tool 'shell(gh pr comment)' --deny-tool 'shell(gh pr review)' \
+  --allow-tool 'read' \
+  --deny-tool 'write' --deny-tool 'memory' \
   --disable-builtin-mcps \
   --no-ask-user \
   --no-color \
@@ -61,9 +58,9 @@ copilot -p "$BRIEF" \
 
 | Flag | Reason it is mandatory |
 |------|------------------------|
-| `-p, --prompt` | Non-interactive mode; the CLI runs the prompt and exits. Without it the CLI opens a TUI and the tool call hangs. |
-| `--allow-all-tools` | **Required by the CLI for non-interactive mode.** Without it Copilot blocks on an approval prompt that nothing can answer. |
-| `--deny-tool …` | **Denial always takes precedence over `--allow-all-tools`** — this is the documented precedence rule and it is what makes a read-only reviewer possible despite the blanket allow. `write` covers all file create/modify tools; the `shell(...)` patterns block the mutating `git`/`gh` subcommands while leaving `git diff`, `git log`, `gh pr view` available for the reviewer to gather its own evidence. |
+| `-p, --prompt` | Non-interactive mode; the CLI runs the prompt and exits. Without it the CLI opens a TUI and the tool call hangs. The prompt is a short pointer to the package file, never the package itself: `$(cat …)` would put hundreds of KB on the command line (about 32 KB on Windows) where `ps` shows it to other users. |
+| no `--allow-all-tools` | **Never pass it** (or `--allow-all`). In `-p` mode, any tool request that would prompt is **denied**, and commands Copilot recognises as read-only (`git diff`, `git log`, `gh pr view`) run without asking (`copilot help permissions`, CLI 1.0.109). Allowing all tools would let a reviewer that reads untrusted issue and PR text run arbitrary shell commands, outward `gh api` calls and every configured MCP server, none of which `git status` can detect afterwards. |
+| `--allow-tool 'read'` / `--deny-tool 'write'` / `--deny-tool 'memory'` | Reading files is the only capability granted. Denial always takes precedence, so no file is written and no memory stored. Everything else (non-read-only shell, MCP tools, URLs) falls to the non-interactive default: denied. |
 | `--model grok-4.6` | Pins the reviewer's lens. Never leave this to `auto` — auto-selection may land on a model the panel already covers, collapsing the diversity the panel exists for. |
 | `--effort high` | Reasoning budget is a **separate axis from model choice** — a high-capability model at low effort skims. **`high` is Grok 4.6's ceiling**, so there is nothing deeper to escalate to; see Supported effort levels below. |
 | `--disable-builtin-mcps` | Suppresses the built-in `github-mcp-server`, which is slow to start and a frequent source of startup errors. The reviewer receives its context inline and does not need it. |
@@ -80,7 +77,7 @@ For programmatic triage, add `--output-format json` (JSONL — one JSON object p
 
 ### Post-run write check (mandatory)
 
-`--deny-tool 'write'` does **not** cover shell redirections (`echo … > file`), which `--allow-all-tools` permits. After every Copilot review, confirm the reviewer changed nothing:
+Shell commands that are not read-only are denied in `-p` mode, so a write should be impossible; the check proves it rather than trusting it. After every Copilot review, confirm the reviewer changed nothing:
 
 ```bash
 git status --porcelain
@@ -96,7 +93,7 @@ Copilot CLI fails *loudly but late*: an expired session surfaces as `Error: Fail
 
 ```bash
 copilot -p "Reply with exactly: READY" --model grok-4.6 --effort low --disable-builtin-mcps \
-  --allow-all-tools --deny-tool 'write' --no-ask-user -s --log-level none
+  --deny-tool 'write' --no-ask-user -s --log-level none
 ```
 
 **Supported effort levels (verified on Copilot CLI 1.0.80, 2026-08-19):** Grok 4.6 accepts **only `low`, `medium`, `high`**. The CLI's `--effort` choice list is generic across all models, but each model supports a subset and rejects the rest at request time:
@@ -175,7 +172,7 @@ A reviewer that was skipped, substituted, or downgraded is **always** named in t
 - About to **run fewer than three reviewers** without the user's explicit sign-off.
 - About to **let `--model` default to `auto`** — this silently collapses the panel's provider diversity.
 - About to **omit `--effort`** — the default reasoning budget is not a thorough review.
-- About to **run Copilot without the `--deny-tool` set**, or to skip the post-run `git status --porcelain` check.
+- About to **run Copilot with `--allow-all-tools` / `--allow-all`**, or to skip the post-run `git status --porcelain` check.
 - About to **commit a file a reviewer modified**.
 - About to **silently drop a `must-fix`** because it is inconvenient, or because "it's only a bot".
 - About to **report the review as passed while the preflight is failing** — a 421 is a broken reviewer, not a passing one.

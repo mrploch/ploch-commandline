@@ -5,7 +5,7 @@ metadata:
 
 # Linear Issues Record Their Sessions (Mandatory)
 
-**Scope:** every session running under the mrploch workspace root (`C:\DevNet\my\mrploch` on Windows, `~/DevNet/mrploch` on macOS) **and every folder and repository beneath it**, plus any session that touches a Linear issue from anywhere else on this machine. This is a user preference, stated on 2026-09-20.
+**Scope:** every session running under the mrploch workspace root (for example `C:\DevNet\my\mrploch` on Windows or `~/devnet/my/mrploch` on macOS) **and every folder and repository beneath it**, plus any session that touches a Linear issue from anywhere else on this machine. This is a user preference, stated on 2026-09-20.
 
 **Authority:** this file is the single source of truth for **recording which Claude Code session worked on a Linear issue**. It applies to the [`implement-issue`](../skills/implement-issue/SKILL.md) skill, but is **not limited to it** — it applies equally to ad-hoc work, investigation and one-off questions that touch an issue. Where a skill describes its own issue workflow, this rule is an additional, non-optional step in it.
 

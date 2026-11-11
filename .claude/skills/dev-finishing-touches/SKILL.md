@@ -35,7 +35,7 @@ This is the web-site adaptation of the workspace's `.NET` finishing-touches skil
 
 - **Zero unaddressed PR comments** — every unresolved review thread must be triaged and closed out before the skill reports complete. Valid issues are fixed in code; false positives get a reply that cites specific evidence. A thread is never left silent, and a bot-flagged thread is never closed without a reply. See [Phase 11](#phase-11-address-pr-comments-skip-if---no-push).
 
-- **All-green completion gate — non-negotiable.** The hard gate is defined in **`.claude/rules/pr-checks-completion-gate.md`** (repo copy; identical workspace-level rule exists). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
+- **All-green completion gate — non-negotiable.** The hard gate is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
 
   1. Every CI check (`validate`, `CodeQL` / both `Analyze` jobs, `Sourcery review`, `CodeRabbit`, `Cloudflare Workers Builds`, and any newly-added check) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
   2. Every static-analysis / review bot present on the PR has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s). If a SonarCloud or Codacy check ever appears on this repo, the full platform-query requirements from the gate rule apply.
@@ -248,14 +248,16 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 3. **PR review threads, conversations, and reviews** — fetched here (not only in Phase 11), via GraphQL `reviewThreads` (REST does not expose resolution state):
 
    ```bash
-   gh api graphql -f query='
-   query($owner:String!,$repo:String!,$pr:Int!){
+   gh api graphql --paginate -f query='
+   query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
      repository(owner:$owner,name:$repo){
        pullRequest(number:$pr){
-         reviewThreads(first:100){
+         reviewThreads(first:100,after:$endCursor){
+           pageInfo{ hasNextPage endCursor }
            nodes{
              id isResolved isOutdated
-             comments(first:20){ nodes{ databaseId author{login} body path line diffHunk url } }
+             root: comments(first:1){ nodes{ databaseId author{login} body path line diffHunk url } }
+             latest: comments(last:1){ nodes{ author{login} createdAt } }
            }
          }
        }
@@ -266,7 +268,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
    gh api repos/<owner>/<repo>/pulls/<pr-number>/reviews --paginate
    ```
 
-   One TODO per unresolved, non-outdated thread + one per actionable issue-level comment. Bot threads (Copilot, Codex connector, Sourcery, CodeRabbit) are included and triaged exactly like human threads. Record each thread's GraphQL `id` and root `databaseId` in the TODO body.
+   One TODO per unresolved thread (outdated ones included — the gate still requires a reply or resolution) + one per actionable issue-level comment. Bot threads (Copilot, Codex connector, Sourcery, CodeRabbit) are included and triaged exactly like human threads. Record each thread's GraphQL `id` and root `databaseId` in the TODO body.
 
 4. **External AI review findings** — from Phase 8.5. One TODO per Codex, Gemini and Copilot finding rated must-fix or should-fix (deduplicate findings more than one reviewer raises; note every attribution on the merged TODO — agreement across independent model families raises confidence and should be recorded).
 
@@ -450,7 +452,7 @@ The reviewers must receive the **entire context first**, then the review request
 
 - **Codex:** `mcp__codex-cli__review` (purpose-built review action) or `mcp__codex-cli__codex`, passing the full context package. Request the highest reasoning effort the tool exposes (e.g. `model`/`effort` config set to high) — the brief's "maximum depth" instruction applies regardless.
 - **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), passing the same package. Use the highest-capability model/thinking configuration the tool exposes.
-- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool. Write the context package plus brief to a scratch file and pass it as the prompt, using the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a file and pass it via shell substitution rather than inlining it in the command line.
+- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool. Write the context package plus brief to a scratch file and pass only a short pointer prompt plus `--add-dir <scratch dir>` (never `-p "$(cat …)"`, which puts the package on the command line), using the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a file and pass it via shell substitution rather than inlining it in the command line.
 
 Send all three requests in the same tool-call block so they run concurrently. If the context package exceeds a tool's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the review brief only after the final part — the requirement is *entire context first, then the review*.
 
@@ -492,10 +494,10 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 4. This skill composes the **full** message including the mandatory `Refs: PLO-<n>` footer (the `/commit` skill does not enforce it). Post-commit, verify:
 
    ```bash
-   git log -1 --format=%B | grep -iE '^Refs:\s*PLO-[0-9]+' >/dev/null || { echo "FAIL: missing 'Refs: PLO-<n>' footer"; }
+   git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+' >/dev/null || { echo "FAIL: missing 'Refs: PLO-<n>' footer"; false; }
    ```
 
-   If missing, **do not push** — `git reset --soft HEAD~1` and re-commit correctly (never amend unless the user asks).
+   If missing, **do not push**. Recreate the commit only when this pass created it (its hash matches the one recorded right after `git commit`) and it is on no remote (`git fetch`, then `git branch -r --contains HEAD` prints nothing): `git reset --soft HEAD~1` and commit again. Otherwise stop and ask the user. Never amend unless the user asks, and never add a second commit instead — the original would still lack the footer.
 
 ---
 
@@ -537,7 +539,7 @@ Note: Apache-only behaviour (`.htaccess` redirects, the EN auto-redirect) does *
 
 #### Step 1 — Re-enumerate threads
 
-Re-run the Phase 2.5 GraphQL query (the earlier snapshot is stale after commits + CI). Keep threads where `isResolved=false` AND `isOutdated=false`. Also refresh issue-level comments and reviews.
+Re-run the Phase 2.5 GraphQL query (the earlier snapshot is stale after commits + CI). Keep every thread where `isResolved=false`, outdated ones included. Also refresh issue-level comments and reviews.
 
 #### Step 2 — Triage every thread into exactly one category
 
@@ -549,7 +551,7 @@ Re-run the Phase 2.5 GraphQL query (the earlier snapshot is stale after commits 
 | `ALREADY_FIXED`       | Reply citing the specific commit hash (`git log -S`) → resolve thread                                                          |
 | `SUGGESTION_DECLINED` | Reply with the principled reason (trade-off, out-of-scope + follow-up issue link) → resolve thread                             |
 | `QUESTION`            | Reply with the answer → resolve thread                                                                                         |
-| `OUT_OF_SCOPE`        | Open a follow-up GitHub issue first → reply linking it → resolve thread. Always file the issue; never defer verbally           |
+| `OUT_OF_SCOPE`        | Open a follow-up **Linear** issue first (per `rules/issue-tracking.md`; never `gh issue create`) → reply linking it → resolve thread. Always file the issue; never defer verbally           |
 
 **A thread is never closed without a reply** (sole exception: our own thread with no other participants, made obsolete by our own commit).
 
@@ -585,7 +587,7 @@ Re-run the enumeration + comment fetches. Any new thread/comment (including revi
 2. **Link + JSON-LD checks clean** (local lychee when available; JSON-LD parses).
 3. **All three external AI reviews completed** with final verdicts `APPROVE`/`APPROVE_WITH_NOTES` (or every `REQUEST_CHANGES` must-fix item fixed/declined-with-evidence and re-reviewed).
 4. **Manual browser verification done** for both languages (Phase 9.5), method recorded.
-5. **Every master-TODO item `completed`** — no pending/in-progress items.
+5. **Every master-TODO item `completed`** — no pending/in-progress items. Under `--no-push`, TODOs from CI checks and PR threads cannot be closed locally: mark them `deferred`, list them in the report, and exclude them from this condition in that mode only.
 6. **Grand Review found no outstanding concerns** requiring a user decision.
 
 **Additionally when Phase 10 ran:** 7. Every CI check green on the latest commit (re-query `gh pr checks` immediately before reporting; non-required counts).
@@ -600,7 +602,7 @@ Re-run the enumeration + comment fetches. Any new thread/comment (including revi
 ## Finishing Touches Complete
 
 ### Branch
-`<branch-name>` on `ploch-ai-site` — PR #<n> (<url>)
+`<branch-name>` on `ploch-ai-site` — [PR #<n>](<url>)
 
 ### Changes Applied
 - **Content/SEO integrity:** <PL/EN parity fixes, hreflang/meta/JSON-LD corrections>
@@ -688,7 +690,7 @@ Each iteration is a **new commit**. After all fixes, update the PR description t
 1. **A fix changes visible content or site behaviour** beyond the branch's stated intent (copy rewording, redirect changes, hreflang target changes, page removal).
 2. **PL/EN parity requires a content decision** — e.g. new PL copy with no obvious EN rendering, or a translation judgement call.
 3. **A change touches deploy-sensitive files** (`.htaccess`, `_headers`, workflows, `wrangler.jsonc`) beyond the branch's scope.
-4. **No GitHub issue can be found** for the `Refs` footer — follow `rules/commits.md` lookup order and ask if none found.
+4. **No Linear issue can be found** for the `Refs: PLO-<n>` footer — follow `rules/commits.md` lookup order and ask if none found.
 5. **Codex or Gemini MCP is unavailable** after a retry — ask whether to proceed with a reduced review.
 6. **An external reviewer's `REQUEST_CHANGES` must-fix** conflicts with the user's explicit prior direction — surface the conflict, don't pick silently.
 

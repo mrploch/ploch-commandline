@@ -36,7 +36,7 @@ The following are the bots routinely seen in this workspace's PRs. The list is i
 
 - **Project key:** `.sonarlint/connectedMode.json` → `projectKey`; else `sonar.projectKey` in `sonar-project.properties` or `.github/workflows/*.yml`; else `mcp__sonarqube-cloud__search_my_sonarqube_projects(q="<repo>")`.
 - **Issues:** `mcp__sonarqube-cloud__search_sonar_issues_in_projects(projectKeys=["<key>"], pullRequest="<PR#>", issueStatuses=["OPEN","CONFIRMED"])`.
-- **Security hotspots:** `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<PR#>", status=["TO_REVIEW"])`.
+- **Security hotspots:** `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<PR#>", status="TO_REVIEW")`.
 - **Quality gate:** `mcp__sonarqube-cloud__get_project_quality_gate_status(projectKey="<key>", pullRequest="<PR#>")`.
 
 Each returned issue and hotspot is triaged with the **same seven-category model** as a review thread (see [Conversations Must Be Addressed](#conversations-must-be-addressed)). Resolve `VALID_ISSUE`/`SUGGESTION_ACCEPTED` by fixing the code (the next scan auto-marks them `FIXED`). A `FALSE_POSITIVE`, an accepted/won't-fix issue, or a hotspot reviewed as safe is a status change on the platform (`change_sonar_issue_status` / `change_security_hotspot_status`) — and, like adding an analyser exclusion, requires user confirmation first.
@@ -98,13 +98,19 @@ gh api repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | {name
 # Expected: each named bot appears with conclusion in {success}.
 # A bot that doesn't appear at all is "not yet run" — wait for it.
 
-# 4. Zero unresolved & non-outdated review threads?
-gh api graphql -f query='query($o:String!,$r:String!,$pr:Int!){repository(owner:$o,name:$r){pullRequest(number:$pr){reviewThreads(first:100){nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body}}}}}}}' \
-  -F o=<owner> -F r=<repo> -F pr=<PR#> \
-  | jq '.data.repository.pullRequest.reviewThreads.nodes
-        | map(select(.isResolved==false and .isOutdated==false))
-        | length'
-# Expected: 0.
+# 4. Every thread resolved, or (rule condition 3) its LATEST comment is ours? Outdated threads count too.
+#    --paginate walks every page of threads; comments(last:1) is the latest comment, not the first.
+#    Every request is checked: a failed or malformed response is a gate ERROR, never a count of 0.
+ME=$(gh api user --jq .login) && [ -n "$ME" ] \
+  && PAGES=$(gh api graphql --paginate -f query='query($o:String!,$r:String!,$pr:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$pr){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{id isResolved comments(last:1){nodes{author{login}}}}}}}}' \
+       -F o=<owner> -F r=<repo> -F pr=<PR#>) \
+  && printf '%s' "$PAGES" | jq -se --arg me "$ME" '
+       if length == 0 or any(.[]; has("errors") or (.data.repository.pullRequest.reviewThreads.nodes | type) != "array")
+       then error("malformed or failed response")
+       else [.[].data.repository.pullRequest.reviewThreads.nodes[]
+             | select(.isResolved == false and .comments.nodes[0].author.login != $me)] | length end' \
+  || echo "GATE ERROR: the thread query failed, so the gate is NOT satisfied"
+# Expected: 0. A thread left open with our reply as the latest comment is listed as "Awaiting reviewer" in the report.
 
 # 5. No new PR-level comments since our last poll?
 gh api repos/<owner>/<repo>/issues/<PR#>/comments --paginate --jq '.[].id' | tail -5
@@ -120,7 +126,7 @@ done
 **Step 7 — SonarCloud platform is clean (MCP, not shell).** The bash steps above only see GitHub-surfaced data. Separately confirm via the `sonarqube-cloud` MCP server that the PR has zero open findings:
 
 - `mcp__sonarqube-cloud__search_sonar_issues_in_projects(projectKeys=["<key>"], pullRequest="<PR#>", issueStatuses=["OPEN","CONFIRMED"])` → expected: empty.
-- `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<PR#>", status=["TO_REVIEW"])` → expected: empty.
+- `mcp__sonarqube-cloud__search_security_hotspots(projectKey="<key>", pullRequest="<PR#>", status="TO_REVIEW")` → expected: empty.
 - `mcp__sonarqube-cloud__get_project_quality_gate_status(projectKey="<key>", pullRequest="<PR#>")` → expected: `OK`.
 
 Any non-empty result means the gate fails and the task continues — regardless of what the GitHub `SonarQube Cloud` check says.

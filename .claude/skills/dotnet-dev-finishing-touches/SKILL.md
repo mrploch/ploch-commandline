@@ -31,7 +31,7 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 
 - **Zero unaddressed PR comments** — every unresolved review thread must be triaged and closed out before the skill reports complete. Valid issues are fixed in code; false positives get a reply that cites specific evidence (what the code actually does, which test/spec proves it, why the analyser or reviewer was wrong). A thread is never left silent, and a bot-flagged thread is never closed without a reply. See [Phase 11](#phase-11-address-pr-comments-skip-if---no-push).
 
-- **All-green completion gate — non-negotiable.** The hard gate for this skill is defined in **`../../../.claude/rules/pr-checks-completion-gate.md`** (workspace-level). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
+- **All-green completion gate — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit:
   
   1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
   2. Every static-analysis bot has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s).
@@ -209,8 +209,9 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
    ```bash
    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
    if [ -z "$BASE_BRANCH" ]; then
-     BASE_BRANCH=$(git branch -r | grep -oP 'origin/(main|master)' | head -1 | sed 's@origin/@@')
+     BASE_BRANCH=$(git branch -r | sed -nE 's@^[[:space:]]*origin/(main|master)$@\1@p' | head -1)   # portable: macOS grep has no -P
    fi
+   [ -n "$BASE_BRANCH" ] || echo "STOP: base branch not found — ask the user"
    ```
    
    Convention: `ploch-common` uses `master`; newer repos use `main`.
@@ -338,17 +339,18 @@ Build the complete picture of all changes on the branch.
 3. **PR review threads, conversations, and reviews** — fetched here (not just in Phase 11). REST endpoints do not expose thread resolution state, so the primary source is the GraphQL `reviewThreads` connection:
    
    ```bash
-   # Thread IDs + resolution state (primary source for TODO creation)
-   gh api graphql -f query='
-   query($owner:String!,$repo:String!,$pr:Int!){
+   # Thread IDs + resolution state (primary source for TODO creation). --paginate walks every page;
+   # "latest" is the thread's newest comment, which decides whether the thread is still waiting on us.
+   gh api graphql --paginate -f query='
+   query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
      repository(owner:$owner,name:$repo){
        pullRequest(number:$pr){
-         reviewThreads(first:100){
+         reviewThreads(first:100,after:$endCursor){
+           pageInfo{ hasNextPage endCursor }
            nodes{
              id isResolved isOutdated
-             comments(first:20){
-               nodes{ databaseId author{login} body path line diffHunk url }
-             }
+             root: comments(first:1){ nodes{ databaseId author{login} body path line diffHunk url } }
+             latest: comments(last:1){ nodes{ author{login} createdAt } }
            }
          }
        }
@@ -361,7 +363,7 @@ Build the complete picture of all changes on the branch.
    gh api repos/<owner>/<repo>/pulls/<pr-number>/reviews --paginate
    ```
    
-   **One TODO per unresolved, non-outdated review thread + one TODO per issue-comment that raises an actionable concern.** Resolved or outdated threads are excluded. Automated-bot threads (SonarCloud, Codacy, Dependabot, codeant-ai) are included — they must be triaged and replied-to the same as human reviewer threads. Record each thread's GraphQL `id` (e.g. `PRRT_...`) and the root comment's `databaseId` in the TODO body so Phase 11 can reply + resolve without re-fetching.
+   **One TODO per unresolved review thread + one TODO per issue-comment that raises an actionable concern.** Resolved threads are excluded; **outdated threads are not** — the gate still requires a reply or resolution on them. Fetch a long thread's full history from its URL when triaging. Automated-bot threads (SonarCloud, Codacy, Dependabot, codeant-ai) are included — they must be triaged and replied-to the same as human reviewer threads. Record each thread's GraphQL `id` (e.g. `PRRT_...`) and the root comment's `databaseId` in the TODO body so Phase 11 can reply + resolve without re-fetching.
 
 **Additional sources folded in as the pass progresses:**
 
@@ -503,10 +505,11 @@ For each warning on a modified file, follow this decision tree:
 1. Check: does the **same warning appear in 3 or more other files** across the solution?
    
    ```bash
-   dotnet build "$SOLUTION_FILE" -v normal 2>&1 | grep "<WARNING_ID>" | wc -l
+   # Count distinct FILES, not output lines: a multi-targeted build repeats each warning per framework
+   dotnet build "$SOLUTION_FILE" -v normal 2>&1 | grep -E ': warning <WARNING_ID>:' | sed -E 's/\([0-9,]+\): warning .*//' | sort -u | wc -l
    ```
 
-2. **If common (3+ files):** Disable globally in `.editorconfig` rather than suppressing inline:
+2. **If common (3+ files):** propose disabling it globally in `.editorconfig` rather than suppressing inline — and **ask the user first**. A severity change silences the rule for every file, present and future, which is the same bar as an analyser exclusion in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) § When To Pause. State the rule, the files, and why it is a false positive; apply only on approval:
    
    ```ini
    dotnet_diagnostic.<ID>.severity = none  # <reason>
@@ -651,7 +654,7 @@ Reviewers receive the **entire context first**, then the review request. Build a
 
 - **Codex:** `mcp__codex-cli__review` (purpose-built review action) or `mcp__codex-cli__codex`, passing the full context package at the highest reasoning effort the tool exposes.
 - **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), same package, highest-capability model/thinking configuration.
-- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Use the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a scratch file and pass it via shell substitution rather than inlining it in the command line.
+- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Use the canonical command in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract (`--model grok-4.6 --effort high`, the read-only `--deny-tool` set, `--disable-builtin-mcps`, `--no-ask-user`, `-s`). Because the package is large, write it to a scratch file and pass only a short pointer prompt plus `--add-dir <scratch dir>` (see the contract). Never `-p "$(cat …)"`: substitution still puts the whole package on the command line, which is about 32 KB on Windows and readable by other users through `ps`.
 
 Send all three requests in the same tool-call block so they run concurrently. If the package exceeds a transport's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the brief only after the final part — the requirement is *entire context first, then the review*.
 
@@ -707,15 +710,15 @@ Before invoking `/commit`, ensure:
 
 ```bash
 # Must carry the Linear identifier: "Refs: PLO-<digits>" (case-insensitive)
-git log -1 --format=%B | grep -iE '^Refs:\s*PLO-[0-9]+' >/dev/null || {
-  echo "FAIL: latest commit missing 'Refs: PLO-<n>' footer — recreate it (git reset --soft HEAD~1), never amend"; exit 1;
+git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+' >/dev/null || {
+  echo "FAIL: latest commit missing 'Refs: PLO-<n>' footer — recreate it (see below), never amend"; exit 1;
 }
 
 # If a BREAKING CHANGE was detected in Phase 9 pre-check, verify the footer
 # (skip this check if no breaking change)
 ```
 
-If the footer is missing, **do not push**. Create a new commit that includes the full message (never `git commit --amend` unless the user explicitly asks — per `rules/agent.md`), or use `git reset --soft HEAD~1` and re-commit with the correct message.
+If the footer is missing, **do not push**. A new commit cannot repair it (the original commit would still lack the footer), and `--amend` is off-limits unless the user asks. Recreate the commit only when **this pass created it** (its hash matches the one recorded right after `git commit`) **and it is on no remote** (`git fetch`, then `git branch -r --contains HEAD` prints nothing): `git reset --soft HEAD~1` and commit again with the full message. Otherwise stop and ask the user — rewriting a published commit would need a force-push.
 
 If the finishing-touches pass made changes across multiple logical areas (e.g. docs + warning fixes + new tests), a single commit is fine — the commit message body should list all categories of changes.
 
@@ -725,7 +728,7 @@ If the finishing-touches pass made changes across multiple logical areas (e.g. d
 
 ### Phase 10: Push & CI Gate (skip if `--no-push`)
 
-**Authoritative reference:** `.claude/rules/pr-checks-completion-gate.md` (workspace-level). The four-condition gate defined there is the bar this phase must pass. The steps below are the operational mechanics; the rule defines the standard.
+**Authoritative reference:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The four-condition gate defined there is the bar this phase must pass. The steps below are the operational mechanics; the rule defines the standard.
 
 **Bots that must reach a `success` verdict before this phase exits** (when present on the PR): `build`, `Test Results`, `Analyze (csharp)` (CodeQL), `Codacy Static Code Analysis`, `SonarCloud Code Analysis` / `SonarQube Cloud`, `CodeRabbit`, `Bito AI Code Review Agent`, any coverage bot (Codecov / Coveralls / Codacy Coverage), and any repository-specific custom check. A bot that has not yet appeared in `gh pr checks` is **not** absent — it is **pending its first run**, and you wait for it.
 
@@ -784,16 +787,16 @@ After CI passes, process **every** unresolved review thread and issue-level comm
 Fetch the current state of every review thread (the Phase 2.5 snapshot is stale after commits + CI):
 
 ```bash
-gh api graphql -f query='
-query($owner:String!,$repo:String!,$pr:Int!){
+gh api graphql --paginate -f query='
+query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
   repository(owner:$owner,name:$repo){
     pullRequest(number:$pr){
-      reviewThreads(first:100){
+      reviewThreads(first:100,after:$endCursor){
+        pageInfo{ hasNextPage endCursor }
         nodes{
           id isResolved isOutdated
-          comments(first:20){
-            nodes{ databaseId author{login} body path line url createdAt }
-          }
+          root: comments(first:1){ nodes{ databaseId author{login} body path line diffHunk url } }
+          latest: comments(last:1){ nodes{ author{login} createdAt } }
         }
       }
     }
@@ -801,7 +804,7 @@ query($owner:String!,$repo:String!,$pr:Int!){
 }' -F owner=<owner> -F repo=<repo> -F pr=<pr-number>
 ```
 
-Keep only threads where `isResolved=false` AND `isOutdated=false`. These are the threads Phase 11 must close out.
+Keep every thread where `isResolved=false`, outdated ones included. These are the threads Phase 11 must close out.
 
 Also refresh:
 
@@ -822,7 +825,7 @@ Classify each thread into **exactly one** category. Record the category on the t
 | `SUGGESTION_ACCEPTED` | Non-blocking suggestion worth taking                                                | Same flow as `VALID_ISSUE`                                                                                                                                           |
 | `SUGGESTION_DECLINED` | Non-blocking suggestion we decline on merit                                         | Reply explaining why (principle, trade-off, out-of-scope + follow-up issue link) → resolve thread                                                                    |
 | `QUESTION`            | Reviewer asked for clarification, no code change implied                            | Reply with the answer → resolve thread                                                                                                                               |
-| `OUT_OF_SCOPE`        | Valid concern but outside this PR's scope                                           | Open a follow-up GitHub issue, reply linking the issue → resolve thread. Per `feedback_create_followup_issues` memory — always file the issue, never defer verbally. |
+| `OUT_OF_SCOPE`        | Valid concern but outside this PR's scope                                           | Open a follow-up **Linear** issue (per `rules/issue-tracking.md`; never `gh issue create`), reply linking it → resolve thread. Always file the issue, never defer verbally. |
 
 **A thread must never be closed without a reply.** "Resolve with no response" is only acceptable when the thread was authored by us and had no other participants.
 
@@ -879,7 +882,7 @@ For each thread in these categories (no code changes):
 
 1. Mark the TODO `in_progress`.
 2. Draft the reply following the [reply quality rules](#step-3--reply-quality-rules-especially-for-false_positive).
-3. For `OUT_OF_SCOPE`: open a follow-up issue first, then include the issue URL in the reply (per the project's `feedback_create_followup_issues` memory).
+3. For `OUT_OF_SCOPE`: open a follow-up **Linear** issue first (per [`issue-tracking.md`](../../rules/issue-tracking.md)), then include its URL in the reply.
 4. For `ALREADY_FIXED`: run `git log -S "<relevant change>" -- <file>` to find the exact commit hash, and link it in the reply.
 5. Post the reply (see Step 4.8 for the command).
 6. Resolve the thread (see Step 4.9 for the mutation).
@@ -905,7 +908,7 @@ Pass forward for the completion report:
 - List of "Awaiting reviewer" threads (should be rare or empty).
 - List of follow-up issues opened for `OUT_OF_SCOPE` items.
 
-**Cross-reference:** `review-pr-comments` skill, `address-pr-comments` skill, memory `feedback_pr_comments_must_be_addressed`, memory `feedback_create_followup_issues`.
+**Cross-reference:** `review-pr-comments` skill, [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) § Conversations Must Be Addressed, [`issue-tracking.md`](../../rules/issue-tracking.md) for follow-up issues.
 
 ---
 
@@ -913,7 +916,7 @@ Pass forward for the completion report:
 
 **REQUIRED:** Use `superpowers:verification-before-completion` before reporting.
 
-**Authoritative gate:** `.claude/rules/pr-checks-completion-gate.md` (workspace-level) — the four conditions defined there are the bar. **Reproduce the verification sequence ("The Pre-Completion Verification") from that rule and confirm every output before writing a completion report.** If any of the four conditions is false on the latest pushed commit, the skill is **not done**: continue the loop, schedule a polling wakeup if waiting on a bot, do not switch to a "completion with caveats" framing.
+**Authoritative gate:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) — the four conditions defined there are the bar. **Reproduce the verification sequence ("The Pre-Completion Verification") from that rule and confirm every output before writing a completion report.** If any of the four conditions is false on the latest pushed commit, the skill is **not done**: continue the loop, schedule a polling wakeup if waiting on a bot, do not switch to a "completion with caveats" framing.
 
 **Forbidden completion framings** (these were the historical failure modes that motivated this rule):
 
@@ -929,7 +932,7 @@ Pass forward for the completion report:
 
 1. **Build is clean.** `dotnet build "$SOLUTION_FILE"` completes with zero errors and zero warnings on modified files. Re-run immediately before reporting.
 2. **All tests pass locally.** The latest `dotnet test` run is green.
-3. **Every TODO item from Phase 2.5 is `completed`.** No `pending` or `in_progress` items. A CI-check TODO counts as complete only after the same check re-runs green; a PR-comment TODO counts as complete only after the thread is resolved or replied-to with evidence.
+3. **Every TODO item from Phase 2.5 is `completed`.** No `pending` or `in_progress` items. A CI-check TODO counts as complete only after the same check re-runs green; a PR-comment TODO counts as complete only after the thread is resolved or replied-to with evidence. Under `--no-push` those two kinds cannot be closed locally: mark them `deferred`, list them in the report, and exclude them from this condition in that mode only.
 4. **Grand Review (Phase 8) found no outstanding concerns** the user needs to decide on.
 
 **Additionally required when Phase 10 ran (`--no-push` OFF):**
@@ -1144,7 +1147,7 @@ The skill operates autonomously but **must stop and ask the user** in these situ
 2. **A warning fix changes the semantic behaviour of the branch's changes** — altering business logic, changing exception handling, modifying data transformation.
 3. **Test coverage cannot reach 80% without significant new test infrastructure** — new integration test harnesses, database fixtures, complex mock service setups beyond the scope of a polish pass.
 4. **Multiple solution files exist and the correct one is ambiguous** — present the list and ask.
-5. **No GitHub issue can be found** for the `Refs` footer — follow the lookup order in `rules/commits.md` and ask if none found.
+5. **No Linear issue can be found** for the `Refs: PLO-<n>` footer — follow the lookup order in `rules/commits.md` and ask if none found.
 
 ---
 
@@ -1189,12 +1192,12 @@ If you catch yourself about to do any of these, stop and reconsider:
 - About to **silently skip the Codex gate because the MCP is unavailable** — retry or explicitly ask the user; never pretend the gate passed.
 - About to **skip Phase 8.5** or run fewer than **all three** external reviewers without the user's explicit sign-off.
 - About to let Copilot's `--model` fall back to `auto`, or to omit `--effort high` — both silently downgrade the review.
-- About to **run Copilot without the read-only `--deny-tool` set**, or to skip the post-review `git status --porcelain` check.
+- About to **run Copilot with `--allow-all-tools` / `--allow-all`, or without the read-only rules**, or to skip the post-review `git status --porcelain` check.
 - About to **silently drop an external reviewer's `must-fix`** — every one is fixed or declined with recorded evidence.
 - About to **reply to a PR comment with a generic "false positive" message** — every false-positive reply must cite specific evidence (file/line, test, spec, invariant) per [Step 3 — Reply quality rules](#step-3--reply-quality-rules-especially-for-false_positive).
 - About to **resolve a PR review thread without posting a reply first** — a resolved thread without an explicit response does not count as addressed; the only exception is a thread we authored ourselves with no other participants.
 - About to **leave a thread unresolved after replying to a bot** (SonarCloud, Codacy, codeant-ai, Dependabot) — bot threads always get both a reply and a resolve.
-- About to **defer an out-of-scope PR comment verbally without filing a follow-up issue** — per `feedback_create_followup_issues`, always open the issue and link it in the reply.
+- About to **defer an out-of-scope PR comment verbally without filing a follow-up issue** — always file a Linear issue (per `issue-tracking.md`) and link it in the reply.
 - About to **report completion while any CI check is failing or still running**, or while any master-TODO item is not `completed`, or while un-triaged PR comments exist, or while any PR review thread is both `isResolved=false` and has no reply from us since the last reviewer activity.
 
 ---
@@ -1246,7 +1249,6 @@ If you catch yourself about to do any of these, stop and reconsider:
 - **`dotnet-claude-kit:code-review-workflow`** — Structured review with Roslyn MCP tools
 - **`dotnet-claude-kit:80-20-review`** — Prioritised review focus (Phase 8)
 - **`review-pr-comments`** — PR comment analysis and response (Phase 11)
-- **`vibe-extras:address-pr-comments`** — triage + fix flow for PR feedback (Phase 11, complementary)
 - **`superpowers:verification-before-completion`** — REQUIRED before reporting done
 
 **Uses these MCP tools:**

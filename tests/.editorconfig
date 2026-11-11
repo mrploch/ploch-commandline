@@ -15,8 +15,6 @@ dotnet_diagnostic.ca1707.severity = none # Identifiers should not contain unders
 dotnet_diagnostic.ca1851.severity = none # Possible multiple enumerations of IEnumerable collection
 # TODO: Validate if cs1957 is still relevant
 dotnet_diagnostic.cs1957.severity = suggestion # Member 'name' overrides 'method'. There are multiple override candidates at run-time. It is implementation dependent which method will be called.
-dotnet_diagnostic.cs8603.severity = suggestion # Possible null reference return
-dotnet_diagnostic.cs8604.severity = suggestion # Possible null reference argument for parameter.
 
 # Nullability
 dotnet_diagnostic.cs8600.severity = suggestion # Converting null literal or possible null value to non-nullable type.
