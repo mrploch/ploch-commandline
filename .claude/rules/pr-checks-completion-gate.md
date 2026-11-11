@@ -115,10 +115,13 @@ ME=$(gh api user --jq .login) && [ -n "$ME" ] \
 
 # 5. No new or EDITED comments or reviews since our last poll? Bots often update one summary comment in
 #    place, so compare a fingerprint of every comment's id and last-update time, not the latest ids.
-{ gh api --paginate "repos/<owner>/<repo>/issues/<PR#>/comments" --jq '.[] | "issue \(.id) \(.updated_at)"' \
-  && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/comments" --jq '.[] | "review-comment \(.id) \(.updated_at)"' \
-  && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/reviews" --jq '.[] | "review \(.id) \(.state) \(.submitted_at)"'; } \
-  | sort | git hash-object --stdin || echo "GATE ERROR: comments unavailable"
+FP=$( set -o pipefail   # a failed request fails the fingerprint instead of hashing an empty list
+  { gh api --paginate "repos/<owner>/<repo>/issues/<PR#>/comments" --jq '.[] | "issue \(.id) \(.updated_at)"' \
+    && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/comments" --jq '.[] | "review-comment \(.id) \(.updated_at)"' \
+    && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/reviews" --jq '.[] | "review \(.id) \(.state) \(.submitted_at) \(.body | @base64)"'; } \
+    | sort | git hash-object --stdin ) && echo "comments fingerprint: $FP" \
+  || echo "GATE ERROR: comments unavailable, so the gate is NOT satisfied"   # no fingerprint is printed on failure
+# Review bodies are part of the fingerprint: a review has no update time, and its body can be edited.
 # Expected: the same fingerprint as your previous poll. If it changed, find and address what is new or edited.
 
 # 6. CI annotations from each bot are clear? Both levels paginate; a failed request is an error, not "clear".
@@ -168,4 +171,4 @@ Otherwise, the loop runs autonomously. The user should not have to ask "is Codac
 
 ## How To Reference This Rule
 
-Skills should reference this rule by linking to it relatively (e.g. `[See: ../../../.claude/rules/pr-checks-completion-gate.md]`) and reproducing the **The Rule** section verbatim near the skill's completion gate. Do not paraphrase the four conditions — the wording is precise on purpose.
+Skills should reference this rule by linking to it relatively (from a skill in `.claude/skills/<name>/`, `[`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md)`) and reproducing the **The Rule** section verbatim near the skill's completion gate. Do not paraphrase the four conditions — the wording is precise on purpose.

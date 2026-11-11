@@ -154,20 +154,26 @@ fi
 #   git -C "$ROOT" diff --cached --no-relative --no-ext-diff --no-textconv --submodule=short -- "$FILE"
 ```
 
-Any hit stops the commit, and so does every line the sweep prints (`UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `LISTING STAGED FILES FAILED`): an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. If the hit is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
+Any hit stops the commit, and so does **every** line the sweep prints — `POSSIBLE SECRET`, `CREDENTIAL FILE TYPE`, `UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `NOT IN A GIT WORK TREE`, `LISTING STAGED FILES FAILED`, `SCAN LOOP FAILED`, `SWEEP ABORTED`: an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. If the hit is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
 
 **Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. The same applies to every other diff an agent prints, such as a branch diff read for review: run a quiet check first, and print nothing if it hits.
 
 ```bash
-for RANGE in "$BASE_BRANCH...HEAD" ""; do   # committed branch changes, then unstaged changes
-  git diff $RANGE --no-ext-diff --no-textconv --submodule=short | LC_ALL=C grep -qaEi "$PATTERN"
-  st=("${PIPESTATUS[@]}")                       # grep: 0 = match, 1 = no match, 2 = error
-  case "${st[1]}" in
-    (0) echo "POSSIBLE SECRET in git diff $RANGE (not printed)" ;;
-    (1) [ "${st[0]}" = 0 ] || echo "DIFF FAILED for git diff $RANGE (not checked)" ;;
-    (*) echo "SCAN ERROR on git diff $RANGE (not checked)" ;;
-  esac
-done
+( set +x -f   # no trace output, no globbing
+  if [ -z "${BASE_BRANCH:-}" ] || ! git rev-parse -q --verify "${BASE_BRANCH}^{commit}" >/dev/null; then
+    echo "DIFF FAILED: BASE_BRANCH is unset or not a commit (not checked)"; exit
+  fi
+  for RANGE in "$BASE_BRANCH...HEAD" ""; do   # committed branch changes, then unstaged changes
+    # --text: binary hunks are scanned too; --no-relative: the whole repository, whatever the folder
+    git diff --no-relative --text --no-ext-diff --no-textconv --submodule=short ${RANGE:+"$RANGE"} -- \
+      | LC_ALL=C grep -qaEi "$PATTERN"
+    st=("${PIPESTATUS[@]}")                     # grep: 0 = match, 1 = no match, 2 = error
+    case "${st[1]}" in
+      (0) echo "POSSIBLE SECRET in git diff ${RANGE:-(unstaged)} (not printed)" ;;
+      (1) [ "${st[0]}" = 0 ] || echo "DIFF FAILED for git diff ${RANGE:-(unstaged)} (not checked)" ;;
+      (*) echo "SCAN ERROR on git diff ${RANGE:-(unstaged)} (not checked)" ;;
+    esac
+  done )
 ```
 
 Print those diffs only when this loop printed nothing.
@@ -186,10 +192,13 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
 2. **Determine exposure** before deciding how far to go:
    ```bash
    gh repo view --json visibility --jq .visibility        # public = assume compromised, full stop
-   ( set +e +a; unset LEAKED   # +a and unset: never exported, even if a LEAKED variable already was;
+   ( set +e +a +x +v; unset LEAKED   # +a/unset: never exported; +x/+v: no trace prints the value;
      # the value lives only in this subshell and is gone when it ends, even on Ctrl-C
-     IFS= read -rs LEAKED || exit 1; LEAKED=${LEAKED%$'\r'}; [ -n "$LEAKED" ] || exit 1   # CRLF paste
-     cd "$(git rev-parse --show-toplevel)" || exit 1
+     IFS= read -rs LEAKED || { echo 'NO INPUT (search not run)'; exit 1; }
+     LEAKED=${LEAKED%$'\r'}                          # a CRLF paste
+     [ -n "$LEAKED" ] || { echo 'EMPTY INPUT (search not run)'; exit 1; }
+     TOP=$(git rev-parse --show-toplevel 2>/dev/null) && [ -n "$TOP" ] && cd -- "$TOP" \
+       || { echo 'NOT IN A GIT WORK TREE (search not run)'; exit 1; }
      # Every object in the repository, reachable or not, binary files included. Each blob holding the
      # value is printed with the commits that add or remove it (git log --find-object).
      git cat-file --batch-all-objects --batch-check='%(objecttype) %(objectname)' | while read -r type id; do
@@ -215,7 +224,7 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
    Not pushed and private is recoverable. Pushed, or public at any point, means assume it is compromised regardless of how quickly it was removed.
 3. **Remove it from the working tree** and parameterise, as above.
 4. **Consider history rewrite** (`git filter-repo`, BFG) only with the user's explicit approval, and only for a repo whose history can safely be rewritten; and understand it invalidates every existing clone and does not retract anything already fetched, forked, or indexed. For anything public, treat rewrite as damage limitation, never as a substitute for revocation.
-5. **Record it** — an issue in the affected repo so the rotation is auditable and the next person knows the old value is dead.
+5. **Record it** — a Linear issue in the repository's project (per [`issue-tracking.md`](./issue-tracking.md); never `gh issue create`), so the rotation is auditable and the next person knows the old value is dead. Name the credential kind, never the value.
 
 ---
 

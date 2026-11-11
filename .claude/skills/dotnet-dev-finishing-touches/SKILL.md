@@ -33,7 +33,7 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 
 - **All-green completion gate — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit — **when Phase 10 ran**. Under `--no-push` nothing is pushed, so Phase 12's local gate applies instead:
   
-  1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
+  1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped` (unless the check is intentionally and explicitly conditional, the conditional path was taken, and you can prove it). Required vs not-required is irrelevant.
   2. Every static-analysis bot has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s).
   3. Every PR review thread is either resolved or has us as the latest contributor with an active reply. Bot-authored threads (CodeRabbit, Codacy comments, Bito) follow the same rules as human-authored.
   4. Re-polling produces no new threads, comments, or check runs.
@@ -570,9 +570,10 @@ Review all changes made during the finishing-touches pass holistically.
 1. **Read the full diff:**
    
    ```bash
-   git diff          # unstaged finishing-touches changes
-   git diff --staged # if anything was staged
-   git diff "$BASE_BRANCH"...HEAD  # full branch diff including prior commits
+   # Quiet check from no-committed-secrets.md first; print only if it reported nothing
+   git diff --no-ext-diff --no-textconv --submodule=short                         # unstaged finishing-touches changes
+   git diff --staged --no-ext-diff --no-textconv --submodule=short                # staged (after the pre-commit sweep)
+   git diff "$BASE_BRANCH"...HEAD --no-ext-diff --no-textconv --submodule=short  # full branch diff
    ```
 
 2. **Check for:**
@@ -687,7 +688,9 @@ Before invoking `/commit`, ensure:
    
    ```bash
    # Lists only files staged for commit — must be empty
-   git diff --cached --name-only | grep -E '\.bak(/|$)' && echo "FAIL: .bak staged" || echo "OK"
+   STAGED=$(git diff --cached --name-only) || { echo "FAIL: cannot list staged files"; false; }
+   printf '%s\n' "$STAGED" | grep -qE '\.bak(/|$)'
+   case $? in (0) echo "FAIL: .bak staged"; false ;; (1) echo "OK" ;; (*) echo "FAIL: check error"; false ;; esac
    ```
    
    `git status` alone is **insufficient** because it also lists untracked `.bak` files, which are expected and allowed — the check must scope to the staged index.
@@ -707,7 +710,7 @@ Before invoking `/commit`, ensure:
 
 ```bash
 # Must carry the Linear identifier: "Refs: PLO-<digits>" (case-insensitive)
-git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+' >/dev/null || {
+git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$' >/dev/null || {
   echo "FAIL: latest commit missing 'Refs: PLO-<n>' footer — recreate it (see below), never amend"; exit 1;
 }
 
@@ -715,7 +718,7 @@ git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+' >/dev/null || {
 # (skip this check if no breaking change)
 ```
 
-If the footer is missing, **do not push**. A new commit cannot repair it (the original commit would still lack the footer), and `--amend` is off-limits unless the user asks. Recreate the commit only when **this pass created it** (its hash matches the one recorded right after `git commit`) **and it is on no remote** (`git fetch`, then `git branch -r --contains HEAD` prints nothing): `git reset --soft HEAD~1` and commit again with the full message. Otherwise stop and ask the user — rewriting a published commit would need a force-push.
+If the footer is missing, **do not push**. A new commit cannot repair it (the original commit would still lack the footer), and `--amend` is off-limits unless the user asks. Recreate the commit only when **this pass created it** (its hash matches the one recorded right after `git commit`) and it is on no remote — `git fetch --all --prune` **succeeds**, then `git branch -r --contains HEAD` **succeeds and prints nothing**. If either command fails, publication is unknown: stop and ask the user: `git reset --soft HEAD~1` and commit again with the full message. Otherwise stop and ask the user — rewriting a published commit would need a force-push.
 
 If the finishing-touches pass made changes across multiple logical areas (e.g. docs + warning fixes + new tests), a single commit is fine — the commit message body should list all categories of changes.
 
@@ -927,7 +930,7 @@ Pass forward for the completion report:
 
 **Always required (both modes):**
 
-1. **Build is clean.** `dotnet build "$SOLUTION_FILE"` completes with zero errors and zero warnings on modified files. Re-run immediately before reporting.
+1. **Build is clean.** `dotnet build "$SOLUTION_FILE"` completes with zero errors and zero warnings across the whole solution. Re-run immediately before reporting.
 2. **All tests pass locally.** The latest `dotnet test` run is green.
 3. **Every TODO item from Phase 2.5 is `completed`.** No `pending` or `in_progress` items. A CI-check TODO counts as complete only after the same check re-runs green; a PR-comment TODO counts as complete only after the thread is resolved or replied-to with evidence. Under `--no-push`, fix and verify locally whatever such a TODO describes that can be fixed locally; defer only its remote part (the CI re-run, the thread reply and resolution), list those deferred parts in the report, and exclude only them from this condition.
 4. **Grand Review (Phase 8) found no outstanding concerns** the user needs to decide on.

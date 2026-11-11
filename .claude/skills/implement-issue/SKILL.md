@@ -138,6 +138,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
    - `owner` must match the ERE `^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$` (no trailing hyphen, as GitHub requires), `repo` must match `^[A-Za-z0-9._-]{1,100}$`, and `number` must match `^[0-9]+$`. Reject anything else and ask the user.
    - `owner` must be `mrploch` — the workspace only checks out `mrploch` repositories. For any other owner, stop and ask the user rather than silently implementing in `mrploch/<repo>`.
    - Pass the values to `gh` as separate, double-quoted arguments (`gh issue view "$NUMBER" --repo "$OWNER/$REPO"`), never by pasting the raw input into a command line.
+   - Rebuild the URL from the validated values — `URL="https://github.com/$OWNER/$REPO/issues/$NUMBER"` — and use only `$URL` wherever a GitHub issue URL appears below (Linear search, marker line, `links`), never the raw input.
 
 2. **Find the Linear twin, starting from the sync link.** Team Ploch mirrors new issues into `mrploch/ploch-ai-tools` whatever their project (see [`issue-tracking.md`](../../rules/issue-tracking.md)), so the input repository is not necessarily the repository of the work.
 
@@ -145,13 +146,13 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
    2. Otherwise search **team Ploch**, not just one project, for the GitHub issue's full URL, then for its title:
 
       ```
-      mcp__plugin_linear_linear__list_issues(team="Ploch", query="<GitHub issue URL>")
+      mcp__plugin_linear_linear__list_issues(team="Ploch", query="$URL")
       ```
 
       Confirm any match through its GitHub attachment.
    3. Record the GitHub `number` as `github-twin` only when `repo` turns out to be the repository of the work (Step 0c.3); a mirror in another repository is not a twin for the PR body.
 
-3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in `links` and in a description that **starts** with the line `Created by implement-issue from <GitHub issue URL>`), record the GitHub `number` as `github-twin` **only when `repo` is the repository of the work** (Step 0c.3) — a `ploch-ai-tools` mirror of another repository's issue is not a twin — then continue with the new `PLO-<n>`.
+3. **If no Linear issue exists**, create one in Linear from the GitHub issue's title, body and acceptance criteria (`save_issue` with `team="Ploch"`, `project="<repo>"` — when `repo` is the `ploch-ai-tools` mirror but the issue is about another repository, ask the user which project it belongs to — and the GitHub issue's full URL in `links` and in a description that **starts** with the line `Created by implement-issue from $URL`), record the GitHub `number` as `github-twin` **only when `repo` is the repository of the work** (Step 0c.3) — a `ploch-ai-tools` mirror of another repository's issue is not a twin — then continue with the new `PLO-<n>`.
 
    The search-then-create sequence is not atomic, so two concurrent runs can both create an issue. Make it convergent, and only ever touch the issue **this run created**:
 
@@ -481,7 +482,7 @@ dotnet test <solution-file>
 
 Before committing, review your own changes thoroughly:
 
-1. Run `git diff` (or `git diff --staged` if already staged) and **read every changed line**.
+1. Run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) first, then `git diff --no-ext-diff --no-textconv --submodule=short` (with `--staged` if already staged) and **read every changed line**.
 2. Check for:
    - Adherence to project patterns and conventions.
    - Unused code, dead imports, unreachable branches.
@@ -689,7 +690,7 @@ SonarCloud rarely posts one PR thread per finding — it posts a single summary 
    - `VALID_ISSUE` / `SUGGESTION_ACCEPTED` → fix in code → loop back to **Phase 6** → the next scan auto-marks it `FIXED`.
    - `FALSE_POSITIVE` → `mcp__sonarqube-cloud__change_sonar_issue_status(key="<issue-key>", status="falsepositive")` — **pause and confirm with the user first** (silencing a finding has the same bar as adding an exclusion).
    - `SUGGESTION_DECLINED` / won't-fix → `mcp__sonarqube-cloud__change_sonar_issue_status(key="<issue-key>", status="accept")` — **pause and confirm first.**
-   - Security hotspot, real risk → fix in code, then `mcp__sonarqube-cloud__change_security_hotspot_status(hotspotKey="<key>", status="REVIEWED", resolution="FIXED", comment="<what changed>")`.
+   - Security hotspot, real risk → fix in code, then `mcp__sonarqube-cloud__change_security_hotspot_status(hotspotKey="<key>", status="REVIEWED", resolution="FIXED", comment="<what changed>")` once the fix is pushed and the next scan shows it — **pause and confirm first**, as for every status change.
    - Security hotspot, reviewed safe → `mcp__sonarqube-cloud__change_security_hotspot_status(hotspotKey="<key>", status="REVIEWED", resolution="SAFE", comment="<evidence>")` — **pause and confirm first.**
 5. **Replying to SonarCloud's summary PR comment is not enough** — the comment is addressed only when every platform finding behind it is fixed or carries a confirmed status change. If code changes were made, loop back to **Phase 12** and re-fetch.
 
@@ -756,7 +757,7 @@ Before reporting completion, **every single one** of these criteria must be met:
 | 2   | All tests pass                                                                                                                                                                                                                                                                                                                   | Test output with counts                                                                                                                                       |
 | 3   | Test coverage ≥80% on new code                                                                                                                                                                                                                                                                                                   | Coverage report or estimate                                                                                                                                   |
 | 4   | Code formatted per .editorconfig                                                                                                                                                                                                                                                                                                 | `EnforceCodeStyleInBuild` — no style errors                                                                                                                   |
-| 5   | **All CI checks green** (including non-required) — every check listed by `gh pr checks <pr-number>` shows `pass`. Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, and any repository-specific custom check **all** count, regardless of "required" status. Stale or pending checks fail this criterion. | `gh pr checks <pr-number>` — every line ends with `pass`; cross-check with `gh api repos/<owner>/<repo>/commits/<sha>/check-runs`                             |
+| 5   | **All CI checks green** (including non-required) — every check listed by `gh pr checks <pr-number>` shows `pass`. Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, and any repository-specific custom check **all** count, regardless of "required" status. Stale or pending checks fail this criterion. | `gh pr checks <pr-number>` — every line ends with `pass`; cross-check with the status rollup in the gate's step 3 (`gh pr view <pr-number> --json statusCheckRollup`), which also covers status-only bots                             |
 | 6   | **All PR comments and conversations addressed** — including bot-authored ones (CodeRabbit, Codacy, Bito, SonarCloud). Every thread is either resolved or has us as the latest contributor with an active reply.                                                                                                                  | GraphQL `reviewThreads` query: zero `isResolved=false` threads (outdated ones included, every page enumerated as in the gate's step 4) where the latest commenter is not us                                      |
 | 7   | No new comments since last check                                                                                                                                                                                                                                                                                                 | Re-fetch after waiting; re-poll until two consecutive polls return identical state                                                                            |
 | 8   | All acceptance criteria from the issue met (for partial work: every criterion in the agreed scope; see Partial work below) | Re-read issue body, verify each AC |

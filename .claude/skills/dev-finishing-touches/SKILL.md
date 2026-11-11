@@ -37,7 +37,7 @@ This is the web-site adaptation of the workspace's `.NET` finishing-touches skil
 
 - **All-green completion gate — non-negotiable.** The hard gate is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit — **when Phase 10 ran**. Under `--no-push` nothing is pushed, so Phase 12's local gate applies instead:
 
-  1. Every CI check (`validate`, `CodeQL` / both `Analyze` jobs, `Sourcery review`, `CodeRabbit`, `Cloudflare Workers Builds`, and any newly-added check) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped`. Required vs not-required is irrelevant.
+  1. Every CI check (`validate`, `CodeQL` / both `Analyze` jobs, `Sourcery review`, `CodeRabbit`, `Cloudflare Workers Builds`, and any newly-added check) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped` (unless the check is intentionally and explicitly conditional, the conditional path was taken, and you can prove it). Required vs not-required is irrelevant.
   2. Every static-analysis / review bot present on the PR has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s). If a SonarCloud or Codacy check ever appears on this repo, the full platform-query requirements from the gate rule apply.
   3. Every PR review thread is either resolved or has us as the latest contributor with an active reply. Bot-authored threads (Copilot, Codex connector, Sourcery, CodeRabbit, codereviewbot) follow the same rules as human-authored.
   4. Re-polling produces no new threads, comments, or check runs.
@@ -189,7 +189,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
    gh pr view --json number,url,title,body,labels,state 2>/dev/null || echo "NO_PR"
    ```
 
-2. **Identify the Linear issue.** Linear is the tracker (see [`issue-tracking.md`](../../rules/issue-tracking.md)). In order: an issue the caller passed in; `Closes`/`Refs`/`Fixes`/`Resolves PLO-<n>` in the PR body; the `plo-<n>` segment of the branch name; the `Refs: PLO-<n>` commit footer. A bare `#N` is only a synced GitHub twin — resolve it to its Linear issue.
+2. **Identify the Linear issue.** Linear is the tracker (see [`issue-tracking.md`](../../rules/issue-tracking.md)). In order: an issue the caller passed in; `Closes`/`Refs`/`Fixes`/`Resolves PLO-<n>` in the PR body; the `plo-<n>` segment of the branch name; the `Refs: PLO-<n>` commit footer. A bare `#N` is only a synced GitHub twin — resolve it to its Linear issue. Make sure this session's comment required by [`linear-session-logging.md`](../../rules/linear-session-logging.md) is on it (skip if this session already posted it).
 
 3. **If a linked issue is found**, fetch it from Linear (`mcp__plugin_linear_linear__get_issue` and `list_comments` with `PLO-<n>`). Use `gh issue view` read-only only for GitHub-only discussion on a synced twin.
 
@@ -479,7 +479,9 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 1. **Stage specific files** — never `git add -A` / `git add .`. **Exclude all `.bak` files** and verify the staged index:
 
    ```bash
-   git diff --cached --name-only | grep -E '\.bak(/|$)' && echo "FAIL: .bak staged" || echo "OK"
+   STAGED=$(git diff --cached --name-only) || { echo "FAIL: cannot list staged files"; false; }
+   printf '%s\n' "$STAGED" | grep -qE '\.bak(/|$)'
+   case $? in (0) echo "FAIL: .bak staged"; false ;; (1) echo "OK" ;; (*) echo "FAIL: check error"; false ;; esac
    ```
 
 2. **Issue number** known from Phase 1 — if none, follow `rules/commits.md` lookup order (PR → issue search → ask).
@@ -489,10 +491,10 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 4. This skill composes the **full** message including the mandatory `Refs: PLO-<n>` footer (the `/commit` skill does not enforce it). Post-commit, verify:
 
    ```bash
-   git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+' >/dev/null || { echo "FAIL: missing 'Refs: PLO-<n>' footer"; false; }
+   git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$' >/dev/null || { echo "FAIL: missing 'Refs: PLO-<n>' footer"; false; }
    ```
 
-   If missing, **do not push**. Recreate the commit only when this pass created it (its hash matches the one recorded right after `git commit`) and it is on no remote (`git fetch`, then `git branch -r --contains HEAD` prints nothing): `git reset --soft HEAD~1` and commit again. Otherwise stop and ask the user. Never amend unless the user asks, and never add a second commit instead — the original would still lack the footer.
+   If missing, **do not push**. Recreate the commit only when this pass created it (its hash matches the one recorded right after `git commit`) and it is on no remote — `git fetch --all --prune` **succeeds**, then `git branch -r --contains HEAD` **succeeds and prints nothing**. If either command fails, publication is unknown: stop and ask the user: `git reset --soft HEAD~1` and commit again. Otherwise stop and ask the user. Never amend unless the user asks, and never add a second commit instead — the original would still lack the footer.
 
 ---
 
@@ -515,7 +517,7 @@ Note: Apache-only behaviour (`.htaccess` redirects, the EN auto-redirect) does *
 
 ### Phase 10: Push & CI Gate (skip if `--no-push`)
 
-**Authoritative reference:** `.claude/rules/pr-checks-completion-gate.md`. The four-condition gate defined there is the bar; below are the mechanics.
+**Authoritative reference:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The four-condition gate defined there is the bar; below are the mechanics.
 
 **Checks that must reach `pass` before this phase exits** (when present on the PR): `validate` (build + astro check + lychee — required), `Analyze (actions)` + `Analyze (javascript-typescript)` (CodeQL), `Sourcery review`, `CodeRabbit`, `Cloudflare Workers Builds`, and any repository-specific or newly-added check. A bot that has not yet appeared is **pending its first run** — wait for it (`ScheduleWakeup` ~270s between polls).
 
@@ -530,7 +532,7 @@ Note: Apache-only behaviour (`.htaccess` redirects, the EN auto-redirect) does *
 
 ### Phase 11: Address PR Comments (skip if `--no-push`)
 
-**Authoritative reference:** `.claude/rules/pr-checks-completion-gate.md` § "Conversations Must Be Addressed" — the seven-category triage and reply-quality bar. The bar is **zero unaddressed threads**. Bot threads (Copilot, Codex connector, Sourcery, CodeRabbit, codereviewbot) follow the same rules as human threads. Informational-only bot notices (rate-limit skips, disabled-account notices from Bugbot/Qodo) are recorded as non-actionable in the report — they need no reply, but the decision to classify them as such must be explicit.
+**Authoritative reference:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) § "Conversations Must Be Addressed" — the seven-category triage and reply-quality bar. The bar is **zero unaddressed threads**. Bot threads (Copilot, Codex connector, Sourcery, CodeRabbit, codereviewbot) follow the same rules as human threads. Informational-only bot notices (rate-limit skips, disabled-account notices from Bugbot/Qodo) are recorded as non-actionable in the report — they need no reply, but the decision to classify them as such must be explicit.
 
 #### Step 1 — Re-enumerate threads
 
@@ -574,7 +576,7 @@ Re-run the enumeration + comment fetches. Any new thread/comment (including revi
 
 **REQUIRED:** Use `superpowers:verification-before-completion` before reporting.
 
-**Authoritative gate:** `.claude/rules/pr-checks-completion-gate.md` — reproduce its Pre-Completion Verification sequence and confirm every output. If any applicable condition is false on the latest pushed commit, the skill is **not done**: continue the loop (with polling wakeups when waiting on a bot). No "done with caveats" framings — ever.
+**Authoritative gate:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md) — **when Phase 10 ran**, reproduce its Pre-Completion Verification sequence and confirm every output. Under `--no-push` only the local conditions below apply. If any applicable condition is false on the latest pushed commit, the skill is **not done**: continue the loop (with polling wakeups when waiting on a bot). No "done with caveats" framings — ever.
 
 **Always required (both modes):**
 
