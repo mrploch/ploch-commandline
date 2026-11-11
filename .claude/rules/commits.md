@@ -10,14 +10,14 @@ All commit messages **must** follow the [Conventional Commits](https://www.conve
 <body>
 
 [BREAKING CHANGE: <description>]
-Refs: #<issue-number>
+Refs: PLO-<n>
 ```
 
 ## Structure Rules
 
 - **Header** (`<type>(<scope>): <subject>`): Required. Max 72 characters.
 - **Body**: Include when the change is non-trivial. Briefly describe *what* changed and *why*. Wrap at 72 characters.
-- **Footer**: Always include `Refs: #<issue-number>`. This is **mandatory** — every commit must reference a GitHub issue. See [Associated issue](#associated-issue) for how to find the right issue number. Do not fabricate issue numbers.
+- **Footer**: Always include `Refs: PLO-<n>`. This is **mandatory**: every commit must reference a **Linear** issue (see [`issue-tracking.md`](./issue-tracking.md)). `Refs` is Linear's non-closing magic word, so the commit is linked to the issue. See [Associated issue](#associated-issue) for how to find the right issue. Do not fabricate issue identifiers.
 - **Breaking changes**: If any change breaks backward compatibility (public API signature change, removed/renamed public member, configuration key change, behavioural contract change), add a `BREAKING CHANGE:` footer with a description of what consumers must change. Also add `!` after the type/scope in the header: `feat(api)!: ...`.
 
 ## Types
@@ -63,11 +63,14 @@ If any of these are detected, the commit **must** include the `BREAKING CHANGE:`
 
 ## Associated Issue
 
-Every commit **must** include a `Refs: #<issue-number>` footer linking to a GitHub issue. Follow this lookup order:
+Every commit **must** include a `Refs: PLO-<n>` footer linking to a **Linear** issue. Follow this lookup order:
 
-1. **Check the open PR** for the current branch (`gh pr view`). If the PR body or linked issues reference an issue, use that.
-2. **Search repository issues** (`gh issue list` or the GitHub MCP tools) for an existing issue that matches the change. If there is a clear candidate, use it — and if there is an open PR without an issue link, associate the issue with the PR.
-3. **Ask the user** if no matching issue is found. The user may want to create a new issue for the changes. Do not guess or omit the `Refs` footer — always ask rather than commit without an issue reference.
+1. **Check the branch name.** Branches are `<type>/plo-<n>-<slug>` (see [`branch-naming.md`](./branch-naming.md)), so the ID is usually already there.
+2. **Check the open PR** for the current branch (`gh pr view`). If its body carries `Closes PLO-<n>` / `Refs PLO-<n>`, use that.
+3. **Search Linear** (`list_issues` in the repository's Linear project, with a `query`) for an existing issue that matches the change. If there is a clear candidate, use it. If there is an open PR without an issue link, add `Refs PLO-<n>` to its body.
+4. **Ask the user** if no matching issue is found. The user may want a new Linear issue created for the change. Do not guess or omit the `Refs` footer. Always ask rather than commit without an issue reference.
+
+**Legacy branches:** older work tracked by a GitHub issue number still has a Linear issue, because the GitHub issues were migrated. Resolve the number to its `PLO-<n>` and use that in the footer. Add `Refs: #<n>` alongside it only when a synced GitHub twin exists.
 
 ## Examples
 
@@ -79,7 +82,7 @@ feat(common): Add StringExtensions.ContainsAny method
 Added a new extension method that checks whether a string contains
 any of the specified substrings.
 
-Refs: #162
+Refs: PLO-162
 ```
 
 ### Breaking change
@@ -93,7 +96,7 @@ StringExtensions class under a new namespace.
 BREAKING CHANGE: Ploch.Common.Strings.ContainsAny moved to
 Ploch.Common.Extensions.StringExtensions.ContainsAny. Update
 using directives accordingly.
-Refs: #162
+Refs: PLO-162
 ```
 
 ### Bug fix
@@ -104,7 +107,7 @@ fix(data): Prevent duplicate entity on concurrent upsert
 Added optimistic concurrency check in the upsert path to avoid
 inserting a duplicate when two requests race on the same key.
 
-Refs: #187
+Refs: PLO-187
 ```
 
 ### Multi-scope refactor
@@ -115,7 +118,7 @@ refactor(solution): Extract shared audit timestamp logic
 Moved SetAuditTimestamps from individual DbContext overrides into
 a shared base class to reduce duplication across Data projects.
 
-Refs: #205
+Refs: PLO-205
 ```
 
 ### Change Log updates
@@ -130,5 +133,5 @@ ci(github-actions): Add fetch-depth 0 for NBGV versioning
 NBGV requires full git history to calculate commit height.
 Updated all checkout steps across workflows.
 
-Refs: #210
+Refs: PLO-210
 ```

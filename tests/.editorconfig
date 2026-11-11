@@ -1,4 +1,4 @@
-﻿[*.cs]
+[*]
 ## XML Documentation headers
 dotnet_diagnostic.cs1573.severity = none # Parameter 'parameter' has no matching param tag in the XML comment on 'member' (but other parameters do)
 dotnet_diagnostic.cs1591.severity = none # Missing XML comment for publicly visible type or member 'Type_or_Member'
@@ -32,6 +32,8 @@ dotnet_diagnostic.s4487.severity = none # Unread "private" fields should be remo
 # StyleCop settings
 dotnet_diagnostic.sa0001.severity = none # XML comment analysis is disabled due to project configuration
 dotnet_diagnostic.sa1402.severity = none # File may only contain a single type
+dotnet_diagnostic.sa1615.severity = none # Element return value should be documented
+dotnet_diagnostic.sa1611.severity = none # Element parameters should be documented
 
 # Naming rules
 dotnet_naming_rule.method_rule.import_to_resharper = True
@@ -68,3 +70,6 @@ resharper_possible_multiple_enumeration_highlighting = none
 # suffix VSTHRD200 requires. The convention wins inside test projects: the name states the scenario,
 # and xUnit discovers the method regardless of its suffix.
 dotnet_diagnostic.VSTHRD200.severity = none
+
+
+dotnet_diagnostic.IDE1006.severity = warning

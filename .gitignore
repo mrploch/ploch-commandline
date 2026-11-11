@@ -419,6 +419,16 @@ qodana.sarif.json
 # Agent-written summary reports (see .claude/rules/summaries.md)
 /temp/
 
+# Shared Claude Code rules symlinked into the mrploch workspace root break on
+# any other machine, so ignore the directory. Already-tracked real copies stay
+# tracked (gitignore does not untrack); the un-ignored entries below are real
+# files still to be committed.
+.claude/rules/*
+!.claude/rules/no-committed-secrets.md
+!.claude/rules/response-closing.md
+!.claude/rules/response-links.md
+/history/
+
 # Codex project state written by local tools: config.toml with machine-local MCP servers
 # (it can hold credentials) and SonarQube's generated hooks with absolute local paths.
 .codex/
