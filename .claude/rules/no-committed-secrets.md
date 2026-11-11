@@ -1,3 +1,8 @@
+---
+metadata:
+  version: "1.0"
+---
+
 # Never Commit a Credential (Hard Rule)
 
 **Scope:** every repository under the mrploch workspace root (`C:\DevNet\my\mrploch` on Windows, `~/DevNet/mrploch` on macOS), every file, every branch, every commit — including local-only commits that have not been pushed. No exceptions.
@@ -22,7 +27,7 @@ A credential is any value that grants access to something. In this workspace tha
 | NuGet API key | `oy2` + … |
 | Ahrefs / third-party API key | vendor-specific |
 | Connection string with credentials | `Password=`, `Pwd=`, `AccountKey=` |
-| Private keys / certificates | `.pem`, `.pfx`, `.p12`, `BEGIN PRIVATE KEY` |
+| Private keys / certificates | `.pem`, `.pfx`, `.p12`, a `-----BEGIN … PRIVATE KEY-----` block |
 | Qodana / Codecov / Coveralls tokens | vendor-specific |
 
 If a value would be embarrassing, dangerous, or costly in the hands of a stranger, it is a credential.
@@ -57,7 +62,7 @@ Credentials reach code through **indirection**, never a literal:
 
 | Context | Correct mechanism |
 |---|---|
-| MCP server config (`.mcp.json`) | `${env:VAR_NAME}` expansion, with the real value in the shell environment or OS keychain |
+| MCP server config | The client's own expansion syntax, with the real value in the shell environment or OS keychain: `${VAR_NAME}` (or `${VAR_NAME:-default}`) in Claude Code's `.mcp.json`, `${env:VAR_NAME}` in VS Code's `mcp.json`. Check the client's documentation; a syntax it does not expand is passed through as a literal string. |
 | GitHub Actions | `${{ secrets.NAME }}`, scoped to the **step** that needs it (see [`response-links.md`](./response-links.md) sibling rules and the token-scoping precedent in `release.yml`) |
 | .NET local development | `dotnet user-secrets`, or environment variables — never `appsettings.json` |
 | NuGet feed credentials | `%VAR%` in `nuget.config` + the variable set outside the repo |
@@ -72,16 +77,23 @@ This is the same requirement [`local-setup-scripts.md`](./local-setup-scripts.md
 
 Staging is the last cheap moment to catch this. Check the **staged diff**, not the working tree:
 
-```bash
-# Review what is actually about to be committed
-git diff --cached
+Sweep **first, quietly**, and only then look at the diff. Printing the diff, or printing matching lines, would copy a staged credential into the session transcript, which may be persisted remotely (see the end of this rule) (PR #70 review):
 
-# Pattern sweep over the staged content
-git diff --cached -U0 | grep -nEi \
-  'ghp_[A-Za-z0-9]{36}|github_pat_|cbiq_|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(password|pwd|secret|api[_-]?key|token|accountkey)[\"'"'"' ]*[:=][\"'"'"' ]*[A-Za-z0-9/+_\-]{16,}'
+```bash
+# 1. Quiet sweep: names files with a hit, never the matched values
+PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(authorization|proxy-authorization)[\"'"'"' ]*[:=][\"'"'"' ]*(bearer|basic|token) +[A-Za-z0-9._~+/=\-]{8,}|bearer +[A-Za-z0-9._~+/\-]{16,}=*|(password|pwd|secret|api[_-]?key|token|accountkey)[\"'"'"' ]*[:=][\"'"'"' ]*[A-Za-z0-9/+_\-]{16,}'
+# NUL-delimited, so a staged name with spaces or glob characters is scanned whole. The staged BLOB
+# is scanned (':path'), not the textual diff: git diff reduces a binary file (.sqlite, .db, .pfx) to
+# a "Binary files differ" marker, which would hide a credential inside it (PR #70 review).
+git diff --cached --name-only -z --diff-filter=ACMR | while IFS= read -r -d '' f; do
+  git show ":$f" | LC_ALL=C grep -aqEi "$PATTERN" && echo "POSSIBLE SECRET in $f (value not shown)"
+done
+
+# 2. Only when step 1 printed nothing: review what is about to be committed
+git diff --cached
 ```
 
-Any hit stops the commit. `git reset <file>`, parameterise the value, then re-stage.
+Any hit stops the commit. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. Then `git reset <file>`, parameterise the value, and re-stage.
 
 **Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. This matters doubly for tool-managed directories (`.codex/`, `.claude/`, `.cursor/`, `ai/profile/`) which write credentials without telling you.
 
@@ -97,9 +109,11 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
 2. **Determine exposure** before deciding how far to go:
    ```bash
    gh repo view --json visibility --jq .visibility        # public = assume compromised, full stop
-   git log --all --oneline -S'<value>'                    # which commits
+   read -rs LEAKED && git log --all --oneline -S"$LEAKED"; unset LEAKED   # which commits
    git branch -r --contains <sha>                         # did it ever leave the machine?
    ```
+   `read -rs` takes the value without echoing it, so it reaches neither the shell history nor a session transcript; run it yourself (`! …` in Claude Code), because an agent must not type the value. These are **current-state** checks: `visibility` reports today's visibility and `branch -r` lists only the remote refs this clone knows now. Neither proves that the repository was never public or that the commit was never pushed and later deleted. When that history cannot be verified, treat the credential as compromised.
+
    Not pushed and private is recoverable. Pushed, or public at any point, means assume it is compromised regardless of how quickly it was removed.
 3. **Remove it from the working tree** and parameterise, as above.
 4. **Consider history rewrite** (`git filter-repo`, BFG) only for a repo whose history can safely be rewritten, and understand it invalidates every existing clone and does not retract anything already fetched, forked, or indexed. For anything public, treat rewrite as damage limitation, never as a substitute for revocation.
@@ -119,4 +133,4 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
 
 ## Also: do not echo credentials into a session
 
-When inspecting a config file to check which servers or keys it defines, read the **structure**, not the values — parse and print field names, lengths, or masked prefixes. Session transcripts may be captured and persisted to a remote service (this workspace has ContextStream transcript capture enabled), so dumping a config file with live tokens copies them somewhere new. When a value must be compared, compare it in a variable and print only the verdict.
+When inspecting a config file to check which servers or keys it defines, read the **structure**, not the values — parse and print field names, lengths, or masked prefixes. Session transcripts may be captured and persisted to a remote service, so dumping a config file with live tokens copies them somewhere new. When a value must be compared, compare it in a variable and print only the verdict.

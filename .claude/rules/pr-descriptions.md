@@ -46,7 +46,8 @@ Omit this section entirely if there are no breaking changes.
 
 ## Rules
 
-- **Link the issue:** Always include `Closes PLO-<n>`, or `Refs PLO-<n>` for partial work. These are Linear magic words: they link the PR to the Linear issue and close it on merge. See [`issue-tracking.md`](./issue-tracking.md). Add `Closes #<n>` as well only when the Linear issue has a synced GitHub twin.
+- **Link the issue:** Use `Closes PLO-<n>` when the PR completes the issue, and `Refs PLO-<n>` for partial work. Both are Linear magic words that link the PR; only `Closes` moves the issue to Done on merge. See [`issue-tracking.md`](./issue-tracking.md).
+- **Synced GitHub twin in the same repository:** mirror the same choice. Add `Closes #<n>` only alongside `Closes PLO-<n>`; for partial work write `Refs #<n>`, which links the twin without closing it. Skip the twin for one in another repository.
 - **Document decisions:** If you chose approach A over approach B, explain why. Reviewers and future maintainers need this context.
 - **Be specific:** "Updated the data layer" is insufficient. "Added `GetBySpecificationAsync` method to `IReadRepositoryAsync<TEntity>` for Ardalis.Specification support" is specific.
 - **Include test evidence:** Mention test counts, coverage percentages, or specific scenarios tested.

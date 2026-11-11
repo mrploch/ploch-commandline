@@ -424,6 +424,8 @@ qodana.sarif.json
 # tracked (gitignore does not untrack); the un-ignored entries below are real
 # files still to be committed.
 .claude/rules/*
+!.claude/rules/issue-tracking.md
+!.claude/rules/linear-session-logging.md
 !.claude/rules/no-committed-secrets.md
 !.claude/rules/response-closing.md
 !.claude/rules/response-links.md

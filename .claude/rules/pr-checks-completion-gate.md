@@ -64,7 +64,7 @@ For each thread, classify it into one of seven categories and follow the resolut
 | `ALREADY_FIXED` | Reply with the commit hash that fixed it (use `git log -S "<term>" -- <file>` to find it) → resolve thread |
 | `SUGGESTION_DECLINED` | Reply with the principled reason (out of scope + follow-up issue link, trade-off explanation, etc.) → resolve thread |
 | `QUESTION` | Reply with the answer → resolve thread |
-| `OUT_OF_SCOPE` | Open a follow-up GitHub issue → reply linking the issue → resolve thread. Always file the issue; never just say "I'll track it later" |
+| `OUT_OF_SCOPE` | Open a follow-up **Linear** issue (per [`issue-tracking.md`](./issue-tracking.md); never `gh issue create`) → reply linking the issue → resolve thread. Always file the issue; never just say "I'll track it later" |
 
 **A thread is never closed without a reply.** "Resolve with no response" is only acceptable when the thread was authored by us, has no other participants, and was made obsolete by our own subsequent commit on the same branch.
 

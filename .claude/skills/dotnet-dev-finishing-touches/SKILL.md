@@ -229,15 +229,16 @@ Gather full context about the branch's purpose.
    gh pr view --json number,url,title,body,labels,state 2>/dev/null || echo "NO_PR"
    ```
 
-2. **If a PR exists**, extract linked issue numbers from the PR body (look for `Closes #N`, `Refs #N`, `Fixes #N`, `Resolves #N`).
+2. **Identify the Linear issue.** Linear is the tracker (see [`issue-tracking.md`](../../rules/issue-tracking.md)). In order: an issue the caller passed in (for example `/implement-issue` hands over its resolved `PLO-<n>`); `Closes`/`Refs`/`Fixes`/`Resolves PLO-<n>` in the PR body; the `plo-<n>` segment of the branch name; the `Refs: PLO-<n>` commit footer. A bare `#N` is only a synced GitHub twin — resolve it to its Linear issue.
 
-3. **If a linked issue is found:**
+3. **If a linked issue is found**, fetch it from Linear:
    
-   ```bash
-   gh issue view <number> --json number,title,body,labels,comments
+   ```
+   mcp__plugin_linear_linear__get_issue(id="PLO-<n>")
+   mcp__plugin_linear_linear__list_comments(issueId="PLO-<n>")
    ```
    
-   Understand the issue requirements, acceptance criteria, and any discussion context.
+   Use `gh issue view` read-only only for GitHub-only discussion on a synced twin. Understand the issue requirements, acceptance criteria, and any discussion context.
 
 4. **Understand the branch purpose** from all gathered context — PR description, issue body, branch name, commit messages. This context drives decisions in later phases (e.g. whether a warning fix would change the branch's intended behaviour).
 
@@ -697,17 +698,17 @@ Before invoking `/commit`, ensure:
 
 4. **The commit type** matches the nature of changes (typically `chore` or `refactor` for finishing-touches, but `fix` if a real bug was found and fixed, `docs` if only documentation was added).
 
-**Commit-message ownership.** The `/commit` skill handles generic mechanics (conventional format, HEREDOC, `Co-Authored-By` trailer) but **does not** enforce this workspace's `Refs: #<issue-number>` footer or `BREAKING CHANGE:` footer — those are per-repo rules from `rules/commits.md`. This skill is therefore responsible for:
+**Commit-message ownership.** The `/commit` skill handles generic mechanics (conventional format, HEREDOC, `Co-Authored-By` trailer) but **does not** enforce this workspace's `Refs: PLO-<n>` footer or `BREAKING CHANGE:` footer — those are per-repo rules from `rules/commits.md`. This skill is therefore responsible for:
 
-- Composing the **full** commit message body, including the `Refs: #<issue-number>` footer (always mandatory per `rules/commits.md`) and `BREAKING CHANGE: …` footer (when detected).
+- Composing the **full** commit message body, including the `Refs: PLO-<n>` footer (always mandatory per `rules/commits.md`) and `BREAKING CHANGE: …` footer (when detected).
 - Passing that message to `/commit` or running `git commit -F <message-file>` / HEREDOC directly.
 
 **Post-commit verification.** Immediately after the commit, verify the footers are present:
 
 ```bash
-# Must match "Refs: #<digits>" (case-insensitive)
-git log -1 --format=%B | grep -iE '^Refs:\s*#[0-9]+' >/dev/null || {
-  echo "FAIL: latest commit missing 'Refs: #N' footer — amend or recreate"; exit 1;
+# Must carry the Linear identifier: "Refs: PLO-<digits>" (case-insensitive)
+git log -1 --format=%B | grep -iE '^Refs:\s*PLO-[0-9]+' >/dev/null || {
+  echo "FAIL: latest commit missing 'Refs: PLO-<n>' footer — recreate it (git reset --soft HEAD~1), never amend"; exit 1;
 }
 
 # If a BREAKING CHANGE was detected in Phase 9 pre-check, verify the footer

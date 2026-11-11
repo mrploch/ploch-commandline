@@ -188,13 +188,9 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
    gh pr view --json number,url,title,body,labels,state 2>/dev/null || echo "NO_PR"
    ```
 
-2. **If a PR exists**, extract linked issue numbers from the PR body (`Closes #N`, `Refs #N`, `Fixes #N`, `Resolves #N`).
+2. **Identify the Linear issue.** Linear is the tracker (see [`issue-tracking.md`](../../rules/issue-tracking.md)). In order: an issue the caller passed in; `Closes`/`Refs`/`Fixes`/`Resolves PLO-<n>` in the PR body; the `plo-<n>` segment of the branch name; the `Refs: PLO-<n>` commit footer. A bare `#N` is only a synced GitHub twin — resolve it to its Linear issue.
 
-3. **If a linked issue is found:**
-
-   ```bash
-   gh issue view <number> --json number,title,body,labels,comments
-   ```
+3. **If a linked issue is found**, fetch it from Linear (`mcp__plugin_linear_linear__get_issue` and `list_comments` with `PLO-<n>`). Use `gh issue view` read-only only for GitHub-only discussion on a synced twin.
 
 4. **Understand the branch purpose** from PR description, issue body, branch name, and commit messages. For SEO-labelled work, also read the relevant sections of `ai-tasks/seo-positioning-plan.md` / `docs/seo-strategy.md` — content decisions must not contradict the strategy.
 
@@ -493,10 +489,10 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 3. **Commit type** matches the change (`chore`/`fix`/`feat`/`docs`/`content` per this repo's history; scope typically `site`, `seo`, or `tooling`).
 
-4. This skill composes the **full** message including the mandatory `Refs: #<issue>` footer (the `/commit` skill does not enforce it). Post-commit, verify:
+4. This skill composes the **full** message including the mandatory `Refs: PLO-<n>` footer (the `/commit` skill does not enforce it). Post-commit, verify:
 
    ```bash
-   git log -1 --format=%B | grep -iE '^Refs:\s*#[0-9]+' >/dev/null || { echo "FAIL: missing Refs footer"; }
+   git log -1 --format=%B | grep -iE '^Refs:\s*PLO-[0-9]+' >/dev/null || { echo "FAIL: missing 'Refs: PLO-<n>' footer"; }
    ```
 
    If missing, **do not push** — `git reset --soft HEAD~1` and re-commit correctly (never amend unless the user asks).

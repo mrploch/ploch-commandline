@@ -59,9 +59,10 @@ path scoping.
 
 Problems in the committed rules:
 
-- **They describe the old tracker.** `commits.md` and `branch-naming.md` require
-  `Refs: #<issue-number>` and GitHub issue numbers. Practice, and the workspace copies, use Linear
-  (`PLO-<n>`). No committed rule mentions Linear.
+- **The tracker rules were stale until PLO-903.** `commits.md`, `branch-naming.md`,
+  `pr-descriptions.md`, `traceability.md` and `work-traceability.md` required GitHub issue numbers.
+  [PLO-903](https://linear.app/ploch/issue/PLO-903) moved them to Linear (`PLO-<n>`) and committed
+  `issue-tracking.md`, which defines the tracker.
 - **`rules.md` describes a different system:** `.cursor/rules/*.mdc` as the source of truth and an
   `ai-rules install` step that does not exist here.
 - **Dead tool references.** `external-ai-review.md` and several skills call MCP tools for Codex and

@@ -1,6 +1,11 @@
+---
+metadata:
+  version: "1.0"
+---
+
 # Closing Every Response — Status + Next Steps (Mandatory)
 
-**Scope:** every session and every substantive response in the mrploch workspace root (`C:\DevNet\my\mrploch` on Windows, `~/DevNet/mrploch` on macOS) **and every folder and repository beneath it**. This is a user preference, stated explicitly on 2026-08-26.
+**Scope:** every session and every substantive response in the mrploch workspace root (`<workspace>`, the `workspaceRoot` in `environment.json`; for example `C:\DevNet\my\mrploch` on Windows or `~/DevNet/mrploch` on macOS) **and every folder and repository beneath it**, wherever that root lives on the machine. This is a user preference, stated explicitly on 2026-08-26.
 
 ## The Rule
 
@@ -29,6 +34,7 @@ Rules for the block:
 - Pure conceptual Q&A with no work state ("what does `IUnitOfWork` do?").
 - Greetings, acknowledgements, one-line factual answers.
 - Mid-task progress messages where the task is continuing in the same response.
+- Responses whose format is fixed by the request — raw JSON, a file's exact contents, a commit message, or any output another tool will parse. Appending the block would make that output invalid.
 
 ## Relationship to other rules
 
