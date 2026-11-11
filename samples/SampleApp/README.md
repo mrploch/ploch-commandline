@@ -354,9 +354,8 @@ $ sample user add "Alice [Admin] Smith" -e alice@example.com -r Administrator
 ╰──────────────────────────────────╯
 ```
 
-`IOutput.MarkupLineInterpolated` escapes its string interpolation holes for you (a non-string value is
-formatted and its text parsed, so it is converted to a string first); a `Markup` built from an ordinary
-interpolated string does not.
+`IOutput.MarkupLineInterpolated` escapes its interpolation holes for you, whatever their type; a `Markup`
+built from an ordinary interpolated string does not.
 
 ### `project` — use cases and `Ardalis.Result`
 

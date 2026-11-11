@@ -82,10 +82,10 @@ public abstract class UseCaseAsyncCommand<TCommandSettings, TUseCase, TUseCaseRe
             var propertyValues = settings.GetPropertyValues();
             foreach (var (propertyName, propertyValue) in propertyValues)
             {
-                // Spectre escapes only string interpolation holes. A string value was already safe; a value of any
-                // other type (a value object, a StringBuilder, a formatted number) whose text contains '[' was parsed
-                // as markup and threw. Composite formatting keeps the IFormattable/current-culture rendering the hole
-                // had before, and the result is a string, so it is escaped and printed verbatim.
+                // Rendered to a string with composite formatting first, which keeps the IFormattable/current-culture
+                // rendering the hole always had and makes the echo independent of the escaping rule of
+                // MarkupLineInterpolated (every hole since PLO-847; only string holes before, when a value object whose
+                // text contained '[' was parsed as markup and threw).
                 var text = string.Format(CultureInfo.CurrentCulture, "{0}", propertyValue);
                 Output.MarkupLineInterpolated($"[dim]{propertyName}[/]: {text}");
             }
