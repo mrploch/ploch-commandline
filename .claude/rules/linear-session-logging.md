@@ -22,7 +22,7 @@ metadata:
 - review, comment on, re-scope, split, or close it;
 - read it in order to do work elsewhere that the issue describes.
 
-It does **not** include merely listing issues (`list_issues`), resolving a GitHub number to its Linear identifier, or mentioning an issue in passing while working on something else. The test is simple: **if the session spends effort on the issue's subject matter, the issue gets a comment.**
+It does **not** apply to a delegated sub-agent or an external reviewer (Codex, Gemini, Copilot, Antigravity) run on the main session's behalf: the main session posts the one comment. Nor does it include merely listing issues (`list_issues`), resolving a GitHub number to its Linear identifier, or mentioning an issue in passing while working on something else. The test is simple: **if the session spends effort on the issue's subject matter, the issue gets a comment.**
 
 ## The Comment
 

@@ -421,14 +421,41 @@ qodana.sarif.json
 
 # Shared Claude Code rules symlinked into the mrploch workspace root break on
 # any other machine, so ignore the directory. Already-tracked real copies stay
-# tracked (gitignore does not untrack); the un-ignored entries below are real
-# files tracked in this repository.
+# tracked (gitignore does not untrack). Every tracked rule is un-ignored below, so tools that
+# honour .gitignore without reading the index (ripgrep, Glob/Grep, Copilot's grep) still see them.
 .claude/rules/*
+!.claude/rules/agent.md
+!.claude/rules/branch-naming.md
+!.claude/rules/code-quality.md
+!.claude/rules/commits.md
+!.claude/rules/data-access.md
+!.claude/rules/data-project.md
+!.claude/rules/data-provider-project.md
+!.claude/rules/dependencies.md
+!.claude/rules/documentation.md
+!.claude/rules/domain-model.md
+!.claude/rules/external-ai-review.md
 !.claude/rules/issue-tracking.md
 !.claude/rules/linear-session-logging.md
+!.claude/rules/local-setup-scripts.md
+!.claude/rules/naming.md
 !.claude/rules/no-committed-secrets.md
+!.claude/rules/notes-keeping.md
+!.claude/rules/pr-checks-completion-gate.md
+!.claude/rules/pr-descriptions.md
+!.claude/rules/project-naming.md
+!.claude/rules/project-structure.md
+!.claude/rules/qa.md
 !.claude/rules/response-closing.md
 !.claude/rules/response-links.md
+!.claude/rules/rules.md
+!.claude/rules/sample-apps.md
+!.claude/rules/summaries.md
+!.claude/rules/todo-tasks-execution.md
+!.claude/rules/traceability.md
+!.claude/rules/work-traceability.md
+!.claude/rules/worktrees.md
+!.claude/rules/writing-dotnet-tests.md
 /history/
 
 # Codex project state written by local tools: config.toml with machine-local MCP servers

@@ -1,6 +1,6 @@
 ---
 name: implement-issue
-description: Implement a Linear issue end-to-end — fetch the Linear issue (resolving a GitHub issue number/URL to its Linear issue, or creating one in Linear if none exists), research, plan, branch, implement, test, build, commit, push, create PR, monitor ALL CI checks, address ALL PR comments, and report completion. Use when the user says "/implement-issue <PLO-id|url>" or asks to implement a Linear (or legacy GitHub) issue autonomously.
+description: Implement a Linear issue end-to-end — fetch the Linear issue (resolving a GitHub issue number/URL to its Linear issue, or creating one in Linear if none exists), research, plan, branch, implement, test, build, commit, then — unless `--no-push` — push, create PR, monitor ALL CI checks, address ALL PR comments, and report completion. Use when the user says "/implement-issue <PLO-id|url>" or asks to implement a Linear (or legacy GitHub) issue autonomously.
 ---
 
 # Implement Issue (Linear)
@@ -21,13 +21,17 @@ Orchestrate autonomous, end-to-end implementation of a Linear issue — from fet
 
 - **All comments addressed** — every single PR comment and conversation must be addressed. No exceptions. Bot-authored threads (CodeRabbit, Codacy, Bito, SonarCloud) follow the same triage rules as human reviewers. SonarCloud / SonarQube Cloud additionally reports issues that exist **only in the SonarCloud platform** (not as GitHub comments) — these are fetched via the `sonarqube-cloud` MCP server and resolved with the same seven-category triage.
 
-- **All checks pass — non-negotiable.** The hard gate for this skill is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). The skill reports complete only when **all four** gate conditions are simultaneously true on the latest pushed commit — **when the run pushes**. Under `--no-push` nothing is pushed and no PR exists, so the local report in Phase 15 applies instead:
-  
-  1. Every CI check (build, tests, Analyze, Codacy, SonarCloud / SonarQube, CodeQL, CodeRabbit, Bito, coverage bots, repository-specific checks) shows `pass` — no `fail`, `pending`, `queued`, `in_progress`, `action_required`, or `skipped` (unless the check is intentionally and explicitly conditional, the conditional path was taken, and you can prove it — the gate's exact wording applies). Required vs not-required is irrelevant.
-  2. Every static-analysis bot has rendered a verdict and that verdict is "no new issues". A bot that has not yet posted its check is **not** the same as a passing bot — wait for it (use `ScheduleWakeup` ~270s).
-  3. Every PR review thread is either resolved or has us as the latest contributor with an active reply.
-  4. Re-polling produces no new threads, comments, or check runs.
-  
+- **All checks pass — non-negotiable.** The hard gate is defined in [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md).
+
+  **When the run pushes**, the skill reports complete only when all four conditions of that rule's **The Rule** are simultaneously true on the latest pushed commit. They are reproduced verbatim:
+
+  1. **Every CI check has reported a terminal success status.** No `failure`, no `cancelled`, no `timed_out`, no `action_required`, no `pending`, no `queued`, no `in_progress`, no `neutral`, no `skipped` (unless the check is intentionally and explicitly conditional and the conditional path was taken — and you can prove that). "Required" vs "not required" is irrelevant. Every check listed by `gh pr checks <PR#>` must be `pass`.
+  2. **Every static-analysis bot has rendered its verdict and that verdict is "no new issues".** See [Static-Analysis Bots](../../rules/pr-checks-completion-gate.md#static-analysis-bots-must-pass) below for the canonical list. A bot that has not yet posted its check is **not** the same as a passing bot — wait for it. For **SonarCloud / SonarQube Cloud**, "no new issues" must be confirmed by querying the SonarCloud platform via the `sonarqube-cloud` MCP server — the green GitHub check is **not** sufficient evidence, because a quality gate can pass while new issues sit below its threshold.
+  3. **Every PR review thread is either resolved or has an on-thread reply from us with the latest activity being ours.** No reviewer-authored comment may be the most recent activity on an open thread. See [Conversations Must Be Addressed](../../rules/pr-checks-completion-gate.md#conversations-must-be-addressed) below.
+  4. **Re-polling produces no new work.** Issue comments, review comments, review threads, and CI checks are re-fetched after the last commit settles, and the result is a no-op (no new threads, no new comments, no new check runs that haven't been satisfied).
+
+  **Under `--no-push`** nothing is pushed and no PR exists, so **none of the four applies**: never push, wait for CI or poll PR threads to satisfy them. The local conditions in Phase 15 (the `--no-push` local report) are the gate.
+
   **Stale checks are still failures.** "Codacy is stale, expected to go green" is **not** an acceptable completion claim. Wait for the rescan, or re-run the job (`gh run rerun`); ask the user before pushing an empty commit just to retrigger a bot.
 
 **Announce at start:** "I'm using the implement-issue skill to implement PLO-\<n\>."
@@ -158,7 +162,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
 
    - Immediately after `save_issue`, search team Ploch again for the GitHub issue's full URL, and consider only issues whose description **starts with the marker line** — an issue that merely mentions the URL (an investigation, a follow-up) is never touched.
    - If this run's issue is the oldest marked one, continue with it. Leave any newer marked issue alone: the run that created it reconciles itself.
-   - If an older marked issue exists, another run got there first. Re-read this run's own issue; if it is still exactly as created, mark it `save_issue(id=<ours>, state="Duplicate", duplicateOf=<older>)`, then **stop and tell the user** that `<older>` already tracks the work (another run may be implementing it). If this run's issue has changed since creation, stop and ask the user instead of marking it.
+   - If an older marked issue exists, another run got there first. **Stop and ask the user** before changing anything: say that `<older>` already tracks the work (another run may be implementing it), and propose marking this run's issue `save_issue(id=<ours>, state="Duplicate", duplicateOf=<older>)` — only if it is still exactly as created, and only once the user agrees. If this run's issue has changed since creation, stop and ask the user instead of marking it.
    - If an unmarked issue is linked to the GitHub issue through its attachment, Step 0b.2 should have found it: stop and ask the user rather than reconciling.
 
 4. Proceed to Step 0c with the resolved Linear identifier.
@@ -788,7 +792,7 @@ After the completion gate passes and **before** reporting, run the **`/dotnet-de
 
 - This is a standing user requirement — **do not skip it**, even when the branch looks clean. The pass independently re-verifies XML docs, markdown-doc sync, test coverage, build warnings, the grand review, CI checks, and PR threads with its own gates.
 - When the implement-issue phases were thorough, the pass typically confirms a clean state without making changes — that confirmation is the point.
-- If the pass **does** make changes, its own fix loop applies (build → test → commit → push → CI → comments), and Phase 14 must be re-verified on the new HEAD before proceeding to Phase 15.
+- If the pass **does** make changes, its own fix loop applies. In a normal run that is build → test → commit → push → CI → comments, and Phase 14 is re-verified on the new HEAD before Phase 15. **Under `--no-push`** it is build → test → local commit only: never push, never open a PR, and skip Phase 14.
 - The finishing-touches completion report satisfies this phase; reference it (or summarise it) in the Phase 15 report.
 
 ### Phase 15: Report Completion
@@ -808,13 +812,13 @@ Provide a summary with evidence:
 - Coverage on new code: ~<percentage>%
 - Manual verification: <what was tested>
 
-### CI Status
+### CI Status            (with --no-push: "Not pushed — no CI run")
 All checks passing: <link to PR checks or output>
 
-### PR Comments
+### PR Comments          (with --no-push: "No PR")
 All <count> conversations addressed.
 
-### PR
+### PR                   (with --no-push: branch `<branch>`, local commit `<hash>`, "not pushed, not reviewed")
 [PR #<pr-number>](<PR URL>)
 
 ### Notes
@@ -892,7 +896,7 @@ When an issue requires changes in multiple repositories:
 | Build warning you don't understand | Research the analyser rule ID, then fix or document                                                               |
 | CI check failure                   | Read logs (`gh run view --log-failed`), identify root cause, fix                                                  |
 | PR comment you disagree with       | Reply with clear reasoning, citing evidence                                                                       |
-| Non-obvious implementation choice  | Consult Codex (`mcp__codex-cli__codex`) and/or Copilot (`copilot --model grok-4.6`) for a second opinion          |
+| Non-obvious implementation choice  | Consult the external panel for a second opinion, invoked exactly as [`external-ai-review.md`](../../rules/external-ai-review.md) prescribes (Copilot only with its read-only, hook-isolated command)          |
 | Multiple valid approaches          | Evaluate trade-offs, pick the one most consistent with existing patterns, document the decision in PR description |
 
 **Only ask the user when:**
@@ -994,8 +998,8 @@ If you catch yourself about to do any of these, stop and reconsider:
 - `domain-model.md` — Entity design with Ploch.Data.Model interfaces
 - `project-structure.md` — Repository and project layout conventions
 - `agent.md` — Agent behaviour specification and CI check gate
-- workspace `issue-tracking.md` — Linear is the primary issue tracker: branch, commit-footer and PR-body conventions, GitHub-twin handling
-- workspace `work-traceability.md` — Why every unit of work needs an issue in the traceability chain
+- [`issue-tracking.md`](../../rules/issue-tracking.md) — Linear is the primary issue tracker: branch, commit-footer and PR-body conventions, GitHub-twin handling
+- [`work-traceability.md`](../../rules/work-traceability.md) — Why every unit of work needs an issue in the traceability chain
 
 **Uses these skills when appropriate:**
 

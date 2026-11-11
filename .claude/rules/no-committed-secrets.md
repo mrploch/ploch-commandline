@@ -99,7 +99,9 @@ export GIT_LITERAL_PATHSPECS=1   # a staged name containing * or ? is a path, no
 { [ -n "$ROOT" ] && cd "$ROOT"; } || { echo 'NOT IN A GIT WORK TREE (sweep not run)'; exit; }
 U=$(git ls-files -u) || { echo 'INDEX UNREADABLE (sweep not run)'; exit; }
 [ -z "$U" ] || { echo 'UNMERGED ENTRIES (resolve the conflict first; sweep not run)'; exit; }
-HAS_HEAD=no; git rev-parse -q --verify HEAD >/dev/null && HAS_HEAD=yes
+if git rev-parse -q --verify 'HEAD^{commit}' >/dev/null; then HAS_HEAD=yes   # HEAD names a readable commit
+elif REF=$(git symbolic-ref -q HEAD) && ! git show-ref -q --verify "$REF"; then HAS_HEAD=no   # unborn branch: no commit yet
+else echo 'HEAD UNREADABLE (sweep not run)'; exit; fi
 scan() {  # $1 = object id, $2 = label. Silent only when the blob was read and did not match.
   git cat-file blob "$1" 2>/dev/null | LC_ALL=C grep -aqEi "$PATTERN"
   st=("${PIPESTATUS[@]}")                          # grep: 0 = match, 1 = no match, 2 = error
@@ -154,16 +156,17 @@ fi
 #   git -C "$ROOT" diff --cached --no-relative --no-ext-diff --no-textconv --submodule=short -- "$FILE"
 ```
 
-Any hit stops the commit, and so does **every** line the sweep prints — `POSSIBLE SECRET`, `CREDENTIAL FILE TYPE`, `UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `NOT IN A GIT WORK TREE`, `LISTING STAGED FILES FAILED`, `SCAN LOOP FAILED`, `SWEEP ABORTED`: an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. If the hit is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
+Any hit stops the commit, and so does **every** line the sweep prints — `POSSIBLE SECRET`, `CREDENTIAL FILE TYPE`, `UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `HEAD UNREADABLE`, `NOT IN A GIT WORK TREE`, `LISTING STAGED FILES FAILED`, `SCAN LOOP FAILED`, `SWEEP ABORTED`: an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. If the hit is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
 
-**Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. The same applies to every other diff an agent prints, such as a branch diff read for review: run a quiet check first, and print nothing if it hits.
+**Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. The same applies to every other diff an agent prints, such as a branch or staged diff read for review: run a quiet check first, and print nothing if it reports anything. Run it in the same shell as `PATTERN` above (each `Bash` call is a new shell, so paste both together):
 
 ```bash
-( set +x -f   # no trace output, no globbing
+( set +e +x -f   # no errexit (each status is read below), no trace output, no globbing
+  [ -n "${PATTERN:-}" ] || { echo "PATTERN NOT SET (not checked)"; exit; }
   if [ -z "${BASE_BRANCH:-}" ] || ! git rev-parse -q --verify "${BASE_BRANCH}^{commit}" >/dev/null; then
     echo "DIFF FAILED: BASE_BRANCH is unset or not a commit (not checked)"; exit
   fi
-  for RANGE in "$BASE_BRANCH...HEAD" ""; do   # committed branch changes, then unstaged changes
+  for RANGE in "$BASE_BRANCH...HEAD" "--cached" ""; do   # committed branch changes, staged, unstaged
     # --text: binary hunks are scanned too; --no-relative: the whole repository, whatever the folder
     git diff --no-relative --text --no-ext-diff --no-textconv --submodule=short ${RANGE:+"$RANGE"} -- \
       | LC_ALL=C grep -qaEi "$PATTERN"

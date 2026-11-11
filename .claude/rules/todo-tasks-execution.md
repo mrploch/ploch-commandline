@@ -4,7 +4,7 @@
 
 ## Principles
 
-These principles guide TODO task execution. The skill handles the workflow; these rules explain *why*.
+These principles guide TODO task execution and explain *why* each step matters.
 
 - **Autonomous execution** — research before asking. Use web search, sibling repos, docs to resolve uncertainties. Only ask the user when truly blocked.
 - **End-to-end quality** — every task must build, pass tests, pass static analysis, and survive self-review before committing.

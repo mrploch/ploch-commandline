@@ -171,4 +171,4 @@ Otherwise, the loop runs autonomously. The user should not have to ask "is Codac
 
 ## How To Reference This Rule
 
-Skills should reference this rule by linking to it relatively (from a skill in `.claude/skills/<name>/`, `[`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md)`) and reproducing the **The Rule** section verbatim near the skill's completion gate. Do not paraphrase the four conditions — the wording is precise on purpose.
+Skills should reference this rule by linking to it relatively (from a skill in `.claude/skills/<name>/`: ``[`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md)``) and reproducing the **The Rule** section verbatim near the skill's completion gate. Do not paraphrase the four conditions — the wording is precise on purpose.

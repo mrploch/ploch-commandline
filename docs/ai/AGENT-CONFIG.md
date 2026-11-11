@@ -55,7 +55,7 @@ path scoping.
 | Not applicable: no database, web API, deployed site or setup scripts | `data-access`, `data-project`, `data-provider-project`, `domain-model`, `qa`, `local-setup-scripts`, `rules` | 42 KB |
 | About a tenth applies (library families, test projects, casing) | `project-naming` | 32 KB |
 | Partly applies | `project-structure`, `sample-apps`, `dependencies` | 10 KB |
-| Applies | `agent`, `branch-naming`, `code-quality`, `commits`, `documentation`, `external-ai-review`, `naming`, `notes-keeping`, `pr-checks-completion-gate`, `pr-descriptions`, `summaries`, `todo-tasks-execution`, `traceability`, `work-traceability`, `worktrees`, `writing-dotnet-tests` | 70 KB |
+| Applies | `agent`, `branch-naming`, `code-quality`, `commits`, `documentation`, `external-ai-review`, `naming`, `notes-keeping`, `pr-checks-completion-gate`, `pr-descriptions`, `summaries`, `todo-tasks-execution`, `traceability`, `work-traceability`, `worktrees`, `writing-dotnet-tests`, and since PLO-903 `issue-tracking`, `linear-session-logging`, `no-committed-secrets`, `response-closing`, `response-links` (sizes below are the pre-PLO-903 measurement) | 70 KB |
 
 Problems in the committed rules:
 
