@@ -162,7 +162,7 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
    mcp__plugin_linear_linear__list_comments(issueId="PLO-<n>")
    ```
 
-   Scope any list/search calls by the repository's Linear project (`project="<repo>"`) — never query Linear unscoped. If the issue has a GitHub attachment (synced twin) and Step 0b did not already set it, record its number as `github-twin`.
+   Scope any list/search calls by the repository's Linear project (`project="<repo>"`) — never query Linear unscoped. If the issue has a GitHub attachment (synced twin) and Step 0b did not already set it, record its number as `github-twin` **only when the attachment URL is in the target repository** (`https://github.com/<owner>/<repo>/issues/<n>`, compared after Step 0c.3 resolves the target). Team Ploch mirrors new issues into `mrploch/ploch-ai-tools`, so a twin elsewhere is not a twin of this work; see [`issue-tracking.md`](../../rules/issue-tracking.md).
 
 2. **If the issue's state is terminal** (Done, Canceled, Duplicate, or equivalent) or it already has a linked merged PR that fully addresses it, stop and inform the user. Treat any state whose `type` is `completed` or `canceled` as terminal.
 
@@ -565,7 +565,7 @@ All three reviews are **mandatory** for every non-trivial change — three provi
    )" && gh pr edit --add-assignee @me
    ```
 
-   Include the `Closes #<github-twin>` line **only** when Phase 0 recorded a GitHub twin; otherwise omit it.
+   Include the `Closes #<github-twin>` line **only** when Phase 0 recorded a GitHub twin **in this PR's repository**; otherwise omit it. GitHub resolves a bare `#<n>` against the PR's own repository, so a twin from another repository (for example `ploch-ai-tools`) would close an unrelated local issue. For partial work use `Refs PLO-<n>` and `Refs #<github-twin>` instead.
 
 4b. **Request a GitHub Copilot review (mandatory):** immediately after creating the PR, request Copilot as a reviewer via the GitHub MCP tool:
 
