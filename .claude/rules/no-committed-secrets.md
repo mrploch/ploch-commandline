@@ -81,7 +81,7 @@ Sweep **first, quietly**, and only then look at the diff. Printing the diff, or 
 
 ```bash
 # 1. Quiet sweep: names files with a hit, never the matched values
-PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(authorization|proxy-authorization)["'"'"' ]*[:=]["'"'"' ]*(bearer|basic|token) +[A-Za-z0-9._~+/=-]{8,}|bearer +[A-Za-z0-9._~+/-]{16,}=*|(password|pwd|secret|api[_-]?key|token|accountkey)["'"'"' ]*[:=]["'"'"' ]*[^[:space:]"'"'"']{12,}'
+PATTERN='ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|cbiq_[A-Za-z0-9]{16,}|oy2[a-z0-9]{43}|BEGIN [A-Z ]*PRIVATE KEY|(authorization|proxy-authorization)[[:blank:]"'"'"']*[:=][[:blank:]"'"'"']*(bearer|basic|token) +[A-Za-z0-9._~+/=-]{8,}|bearer +[A-Za-z0-9._~+/-]{16,}=*|(password|pwd|secret|api[_-]?key|token|accountkey)[[:blank:]"'"'"']*[:=][[:blank:]"'"'"']*[^[:space:]"'"'"']{12,}|cleartextpassword["'"'"'[:blank:]]+value=["'"'"']?[^[:space:]"'"'"'/>]{8,}'
 # No backslashes inside the bracket expressions: in ERE a '\' there is a literal character, which
 # would split a value such as a domain password at its backslash.
 # Both sides of every staged path are scanned: the index entry (what will be committed) and the
@@ -120,7 +120,8 @@ side() {  # $1 = "mode object ..." line from ls-files -s / ls-tree (empty: no su
   case "$2" in (blob|tree|commit) o=$3 ;; esac     # ls-tree prints "mode type object", ls-files -s "mode object stage"
   shift $(( $# - 1 ))                              # leaves only the label
   case "$m" in
-    (100644|100755|120000) scan "$o" "$1" ;;       # file or symlink: scan it
+    (100644|100755|120000)                         # file or symlink: scan it (a key store is only reported)
+      if [ "$ks" = yes ]; then printf 'CREDENTIAL FILE TYPE %s (review manually)\n' "$1"; else scan "$o" "$1"; fi ;;
     (040000|160000) ;;                             # a directory's files are listed separately; a submodule holds no content here
     (*) printf 'UNEXPECTED ENTRY %s (mode %s, not scanned)\n' "$1" "$m" ;;
   esac
@@ -131,7 +132,8 @@ git diff --cached --no-relative --no-renames --name-only -z --diff-filter=ACDMT 
   # The leading '(' keeps bash 3.2 (macOS) from ending $( ) at the pattern's ')'.
   case "$f" in
     (*.[pP][fF][xX]|*.[pP]12|*.[pP][eE][mM]|*.[kK][eE][yY]|*.[jJ][kK][sS]|*.[kK][eE][yY][sS][tT][oO][rR][eE]|*.[sS][nN][kK])
-      printf 'CREDENTIAL FILE TYPE %s (review manually)\n' "$f"; continue ;;   # binary key stores cannot be pattern-scanned
+      ks=yes ;;   # binary key stores cannot be pattern-scanned: each side is reported, not scanned
+    (*) ks=no ;;
   esac
   E=$(git ls-files -s -- "$f") || { printf 'UNREADABLE %s (index entry, not scanned)\n' "$f"; continue; }
   side "$E" "$f"
@@ -159,27 +161,29 @@ fi
 #   git -C "$ROOT" diff --cached --no-relative --no-ext-diff --no-textconv --submodule=short -- "$FILE"
 ```
 
-Any hit stops the commit, and so does **every** line the sweep prints — `POSSIBLE SECRET`, `CREDENTIAL FILE TYPE`, `UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `HEAD UNREADABLE`, `NOT IN A GIT WORK TREE`, `LISTING STAGED FILES FAILED`, `SCAN LOOP FAILED`, `SWEEP ABORTED`: an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. A hit labelled **`(committed version)`** is different: the value is already in history and the staged change probably removes it. **Never unstage that file** (that would put the credential back in the commit); follow [When a credential has already been committed](#when-a-credential-has-already-been-committed), and never print that file's diff. Once the old value is revoked at the issuer, the commit that removes it may go ahead. For a hit on the staged version that is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
+Any hit stops the commit, and so does **every** line the sweep prints — `POSSIBLE SECRET`, `CREDENTIAL FILE TYPE`, `UNREADABLE`, `SCAN ERROR`, `UNEXPECTED ENTRY`, `UNMERGED ENTRIES`, `INDEX UNREADABLE`, `HEAD UNREADABLE`, `NOT IN A GIT WORK TREE`, `LISTING STAGED FILES FAILED`, `SCAN LOOP FAILED`, `SWEEP ABORTED`: an unscanned file is never treated as clean. **A clean sweep is not proof of safety:** a pattern scan misses credentials in formats it does not know (a 40-hex Sonar token, for one), so still review each staged file in the editor, and treat any file holding keys, certificates or connection strings as needing a manual decision. Do not print the hit to inspect it: open the file in the editor. The patterns require a credential-shaped body after each prefix, so documented prefixes and placeholders (`ghp_…`, `github_pat_` + …) do not match; a hit that the editor shows to be placeholder text is a false positive, and the commit may go ahead. A hit labelled **`(committed version)`** — a `POSSIBLE SECRET` or a `CREDENTIAL FILE TYPE` — is different: the value is already in history and the staged change probably removes it. **Never unstage that file** (that would put the credential back in the commit); follow [When a credential has already been committed](#when-a-credential-has-already-been-committed), and never print that file's diff. Once the old value is revoked at the issuer, the commit that removes it may go ahead. For a hit on the staged version that is a real credential, unstage it with `git reset -- "$FILE"` (quoted, after `--`, so no file name can be read as an option), parameterise the value and re-stage; if that value was ever committed before, follow the revocation steps below first.
 
-**Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. The same applies to every other diff an agent prints, such as a branch or staged diff read for review: run a quiet check first, and print nothing if it reports anything. Run it in the same shell as `PATTERN` above, with `BASE_BRANCH` set to the base **ref** (for example `BASE_BRANCH=origin/main` after `git fetch`); each `Bash` call is a new shell, so paste all three together:
+**Never stage a whole directory blind.** `git add -A` and `git add .` are how `.codex/config.toml` and a SQLite log got committed in the first place. Stage named paths, then verify with `git diff --cached --name-only` that the list is exactly what you intended. The same applies to every other diff an agent prints, such as a branch or staged diff read for review: run a quiet check first, and print nothing if it reports anything. Run it in the same shell as `PATTERN` above, with `BASE_REF` set to the **fetched base ref** (for example `BASE_REF=origin/main` after `git fetch origin`); each `Bash` call is a new shell, so paste all three together. It exits non-zero whenever it prints anything:
 
 ```bash
 ( set +e +x -f   # no errexit (each status is read below), no trace output, no globbing
-  [ -n "${PATTERN:-}" ] || { echo "PATTERN NOT SET (not checked)"; exit; }
-  if [ -z "${BASE_BRANCH:-}" ] || ! git rev-parse -q --verify "${BASE_BRANCH}^{commit}" >/dev/null; then
-    echo "DIFF FAILED: BASE_BRANCH is unset or not a commit (not checked)"; exit
+  [ -n "${PATTERN:-}" ] || { echo "PATTERN NOT SET (not checked)"; exit 1; }
+  if [ -z "${BASE_REF:-}" ] || ! git rev-parse -q --verify "${BASE_REF}^{commit}" >/dev/null; then
+    echo "DIFF FAILED: BASE_REF is unset or not a commit (not checked)"; exit 1
   fi
-  for RANGE in "$BASE_BRANCH...HEAD" "--cached" ""; do   # committed branch changes, staged, unstaged
+  found=no
+  for RANGE in "$BASE_REF...HEAD" "--cached" ""; do   # committed branch changes, staged, unstaged
     # --text: binary hunks are scanned too; --no-relative: the whole repository, whatever the folder
     git diff --no-relative --text --no-ext-diff --no-textconv --submodule=short ${RANGE:+"$RANGE"} -- \
       | LC_ALL=C grep -qaEi "$PATTERN"
     st=("${PIPESTATUS[@]}")                     # grep: 0 = match, 1 = no match, 2 = error
     case "${st[1]}" in
-      (0) echo "POSSIBLE SECRET in git diff ${RANGE:-(unstaged)} (not printed)" ;;
-      (1) [ "${st[0]}" = 0 ] || echo "DIFF FAILED for git diff ${RANGE:-(unstaged)} (not checked)" ;;
-      (*) echo "SCAN ERROR on git diff ${RANGE:-(unstaged)} (not checked)" ;;
+      (0) echo "POSSIBLE SECRET in git diff ${RANGE:-(unstaged)} (not printed)"; found=yes ;;
+      (1) [ "${st[0]}" = 0 ] || { echo "DIFF FAILED for git diff ${RANGE:-(unstaged)} (not checked)"; found=yes; } ;;
+      (*) echo "SCAN ERROR on git diff ${RANGE:-(unstaged)} (not checked)"; found=yes ;;
     esac
-  done )
+  done
+  [ "$found" = no ] )
 ```
 
 Print those diffs only when this loop printed nothing.
@@ -201,12 +205,14 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
    git branch -r --contains <sha>                         # did it ever leave the machine?
    ```
 
-   Which commits hold the value — **run this yourself, in your own terminal, pasted on its own** (not through `!` in Claude Code, which gives `read` no keyboard input; and not in one paste with other commands, whose next line would be read as the value). Type the value at the silent prompt:
+   Which commits hold the value — **run this yourself, in your own terminal, pasted on its own** (not through `!` in Claude Code, which has no terminal for `read`). It runs under `bash` whatever your login shell is (macOS defaults to zsh, which has no `PIPESTATUS`), reads the value from the terminal at a silent prompt, and keeps it out of every command line:
 
    ```bash
+   bash <<'SEARCH'
    ( set +e +a +x +v; unset LEAKED   # +a/unset: never exported; +x/+v: no trace prints the value;
      # the value lives only in this subshell and is gone when it ends, even on Ctrl-C
-     IFS= read -rs LEAKED || { echo 'NO INPUT (search not run)'; exit 1; }
+     printf 'Value (not echoed): ' >&2
+     IFS= read -rs LEAKED < /dev/tty || { echo 'NO INPUT (search not run)'; exit 1; }; echo >&2
      LEAKED=${LEAKED%$'\r'}                          # a CRLF paste
      [ -n "$LEAKED" ] || { echo 'EMPTY INPUT (search not run)'; exit 1; }
      TOP=$(git rev-parse --show-toplevel 2>/dev/null) && [ -n "$TOP" ] && cd -- "$TOP" \
@@ -229,6 +235,7 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
      [ "${st[0]}" = 0 ] || echo 'LISTING OBJECTS FAILED (search incomplete)'
      [ "${st[1]}" = 0 ] || echo "SEARCH LOOP FAILED (status ${st[1]}, search incomplete)"
    )   # prints object and commit hashes only, never content; any "incomplete" line voids a clean result
+   SEARCH
    ```
    `read -rs` takes the value without echoing it, so it reaches neither the shell history nor a session transcript. It stays in a subshell variable (never exported, so no child process's environment carries it) and reaches `grep` through a process substitution (`-f <(printf …)`, a pipe; `printf` is a shell builtin), never as a command argument: any local user can read a process's arguments with `ps`. Do not replace this with `git log -S"$LEAKED"`, which puts the value in Git's argument list. The search reads every blob, including binary ones such as a SQLite log, so it takes a while on a large repository; run it yourself as described above, because an agent must not type the value. These are **current-state** checks: `visibility` reports today's visibility and `branch -r` lists only the remote refs this clone knows now. Neither proves that the repository was never public or that the commit was never pushed and later deleted. When that history cannot be verified, treat the credential as compromised.
 

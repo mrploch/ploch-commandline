@@ -1,6 +1,6 @@
 ---
 name: dev-finishing-touches
-description: Last-mile quality pass for ploch-ai-site branches (Astro static site, bilingual PL/EN) — reviews all changes (committed + uncommitted), verifies content parity and SEO surfaces (hreflang, JSON-LD, meta, sitemaps), builds with zero astro-check errors/warnings/hints, runs a mandatory triple external AI review of the whole PR (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local check output + failing CI checks + every unresolved PR review thread + every external-AI-review finding, triages each item into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, and only completes when every CI check is green, every TODO is resolved, zero PR review threads remain unaddressed, and manual browser verification of both language versions has passed. Use when the user says "/dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
+description: Last-mile quality pass for ploch-ai-site branches (Astro static site, bilingual PL/EN) — reviews all changes (committed + uncommitted), verifies content parity and SEO surfaces (hreflang, JSON-LD, meta, sitemaps), builds with zero astro-check errors/warnings/hints, runs a mandatory triple external AI review of the whole PR (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local check output + failing CI checks + every unresolved PR review thread + every external-AI-review finding, triages each item into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, and only completes when every CI check is green, every TODO is resolved, zero PR review threads remain unaddressed, and manual browser verification of both language versions has passed. Under `--no-push` it stays local: no push, no CI or PR-thread gates. Use when the user says "/dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing (asked to clean up *before* pushing, it runs in `--no-push` mode unless the user says to push).
 ---
 
 # Finishing Touches — Branch Quality Pass (ploch-ai-site)
@@ -65,6 +65,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | -------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Node.js 22.12+ / `npm`                             | Phases 4–7, 9.5                 | Stop — the skill cannot run without it.                                                                                                                                                             |
 | `gh` CLI, authenticated (`gh auth status`)         | Phases 1, 1.5, 10, 11           | Stop if Phase 10/11 is in scope. For Phase 1/1.5 the skill can continue without PR context but must flag the gap in the report.                                                                     |
+| Linear MCP (`mcp__plugin_linear_linear__*`) | Phases 1, 9, 11 | Pause and ask; never fall back to GitHub issues. Report an unavailable tool explicitly, as [`linear-session-logging.md`](../../rules/linear-session-logging.md) requires. |
 | `git` CLI, working tree clean of unrelated changes | All phases                      | Stop and ask the user to commit/stash unrelated work.                                                                                                                                               |
 | `Agent` tool (for Phase 1.5 sub-agent)             | Phase 1.5 only                  | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report.                                                                                                |
 | `TaskCreate` / `TaskUpdate` / `TaskList` tools     | Phase 2.5 master TODO list      | Fall back to an in-memory list tracked in the main transcript. Never proceed without *some* tracked list.  |
@@ -154,7 +155,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. One `.bak` per file per pass (the pre-pass state).
-- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Record each backup as an `original<TAB>backup` line in a pairs file in the scratch directory; the report and cleanup use only those recorded pairs.
+- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Record each backup as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> <pairs file>`, the file in the scratch directory); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
 - **New files** do not need a `.bak`.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files for the Phase 12 report. Cleanup is the user's call — do not auto-delete.
@@ -177,6 +178,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
    ```bash
    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
    [ -z "$BASE_BRANCH" ] && BASE_BRANCH=main
+   git fetch origin "$BASE_BRANCH"   # later diffs use the fetched origin/$BASE_BRANCH
    ```
 
 3. **Know the site map** for later phases: `src/pages/**` (PL at `/`, EN under `en/`), `src/layouts/Base.astro` (shared head/nav/footer/hreflang), `src/i18n/ui.ts` (locale strings), `src/lib/jsonld.ts` (JSON-LD builder), `public/` (verbatim assets incl. `.htaccess`, `_headers`, `robots.txt`, `sitemap-*.xml`), `text-contents/pl|en/` (authoritative markdown content), `docs/` + `adr/` + `ai-tasks/` (not deployed).
@@ -232,7 +234,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 2. **Uncommitted:** `git diff --name-only` (unstaged) + `git diff --staged --name-only`
 3. **Untracked:** `git ls-files --others --exclude-standard`
 4. **Merge** into a deduplicated set. Classify by kind: pages/layouts/components (`.astro`), TypeScript (`.ts`), styles (`.css`), verbatim assets (`public/**`), content sources (`text-contents/**`), docs/config.
-5. **Read the full diffs** (`git diff "origin/$BASE_BRANCH"...HEAD`, plus unstaged) — they are the raw material for Phases 3, 7, and 8.5. Before printing any diff, run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) ("The same applies to every other diff") over these ranges, with `BASE_BRANCH="origin/$BASE_BRANCH"` in the same shell (diff against the fetched remote base, not a possibly stale local branch); if it reports a possible secret, print nothing and inspect the file in the editor. Print diffs with `--no-ext-diff --no-textconv --submodule=short`.
+5. **Read the full diffs** (`git diff "origin/$BASE_BRANCH"...HEAD`, plus unstaged) — they are the raw material for Phases 3, 7, and 8.5. Before printing any diff, run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) ("The same applies to every other diff") over these ranges, with `BASE_REF="origin/$BASE_BRANCH"` in the same shell (diff against the fetched remote base, not a possibly stale local branch); if it reports a possible secret, print nothing and inspect the file in the editor. Print diffs with `--no-ext-diff --no-textconv --submodule=short`.
 
 ---
 
@@ -484,7 +486,7 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
    ```bash
    # NUL-delimited: Git quotes names with tabs or non-ASCII characters in plain output, which would hide ".bak"
-   git diff --cached --name-only -z \
+   git diff --cached --no-relative --name-only -z \
      | { bak=no; while IFS= read -r -d '' f; do case "$f" in (*.bak|*.bak/*) bak=yes ;; esac; done; [ "$bak" = no ]; }
    st=("${PIPESTATUS[@]}")
    if [ "${st[0]}" != 0 ]; then echo "FAIL: cannot list staged files"; false
@@ -492,7 +494,7 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
    else echo "OK"; fi
    ```
 
-2. **Issue number** known from Phase 1 — if none, follow `rules/commits.md` lookup order (PR → issue search → ask).
+2. **The Linear identifier** (`PLO-<n>`) is known from Phase 1 — if none was found, follow the lookup order in `rules/commits.md` (branch `plo-<n>` segment → open PR body → search Linear → ask the user). Before `/commit` or `git commit`, run the staged sweep from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md); any line it prints stops the commit.
 
 3. **Commit type** matches the change (`chore`/`fix`/`feat`/`docs`/`content` per this repo's history; scope typically `site`, `seo`, or `tooling`).
 
@@ -642,7 +644,7 @@ All <count> threads addressed — category breakdown table (VALID_ISSUE→commit
 |----------|--------|
 | ...      | ....bak |
 
-Cleanup (this pass's backups only): `cut -s -f2 "$PAIRS_FILE" | while IFS= read -r bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done`
+Cleanup (this pass's backups only): `while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < <pairs file>`
 
 ### Commit(s)
 `<hash>` — `<subject>`
@@ -780,7 +782,10 @@ Each iteration is a **new commit**. After all fixes, update the PR description t
 - **`review-pr-comments`** — PR comment triage detail (Phase 11)
 - **`superpowers:verification-before-completion`** — REQUIRED before reporting done
 
+**Also follows:** [`issue-tracking.md`](../../rules/issue-tracking.md), [`linear-session-logging.md`](../../rules/linear-session-logging.md), [`no-committed-secrets.md`](../../rules/no-committed-secrets.md), [`external-ai-review.md`](../../rules/external-ai-review.md), [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md).
+
 **Uses these MCP tools:**
+- `mcp__plugin_linear_linear__*` — issue lookup, session comment, follow-up issues
 - **`mcp__codex-cli__review` / `mcp__codex-cli__codex`** — Phase 8.5 whole-branch review + the per-fix Codex Validation Gate (load via `ToolSearch`)
 - **`mcp__gemini-cli__gemini`** (fallback `mcp__gemini__gemini-analyze-code`) — Phase 8.5 whole-branch review (load via `ToolSearch`)
 - **`copilot` CLI (Grok 4.6)** — Phase 8.5 whole-branch review, invoked through `Bash`; flags, preflight and fallbacks in [`rules/external-ai-review.md`](../../rules/external-ai-review.md)

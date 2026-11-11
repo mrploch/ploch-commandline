@@ -1,6 +1,6 @@
 ---
 name: dotnet-dev-finishing-touches
-description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, runs a mandatory triple external AI review of the whole branch (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via Codex MCP, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing.
+description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, runs a mandatory triple external AI review of the whole branch (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via Codex MCP, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Under `--no-push` it stays local: no push, no CI or PR-thread gates. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing (asked to clean up *before* pushing, it runs in `--no-push` mode unless the user says to push).
 ---
 
 # Finishing Touches — .NET Branch Quality Pass
@@ -62,6 +62,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | `dotnet` CLI (.NET 10+ SDK; the repository targets net10.0) | Phases 4, 5, 7             | Stop — the skill cannot run without it.                                                                                                                                                            |
 | `mcp__sonarqube-cloud__*` (when SonarCloud analyses the repo) | Phases 2.5, 11, 12 | Stop and ask: the gate requires the platform check; a green GitHub check is not enough. |
 | `gh` CLI, authenticated (`gh auth status`)         | Phases 1, 1.5, 10, 11      | Stop if Phase 10/11 is in scope. For Phase 1/1.5 the skill can continue without PR context but must flag the gap in the report.                                                                    |
+| Linear MCP (`mcp__plugin_linear_linear__*`) | Phases 1, 9, 11 | Pause and ask; never fall back to GitHub issues. Report an unavailable tool explicitly, as [`linear-session-logging.md`](../../rules/linear-session-logging.md) requires. |
 | `git` CLI, working tree clean of unrelated changes | All phases                 | Stop and ask the user to commit/stash unrelated work.                                                                                                                                              |
 | `Agent` tool (for Phase 1.5 sub-agent)             | Phase 1.5 only             | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report.                                                                                               |
 | `TaskCreate` / `TaskUpdate` / `TaskList` tools     | Phase 2.5 master TODO list | Fall back to an in-memory list tracked in the main transcript. Never proceed without *some* tracked list. |
@@ -88,7 +89,7 @@ digraph finishing_touches {
     coverage_infra [shape=diamond, label="Needs significant\nnew test infra?"];
     ask_tests [label="STOP: Ask user\nabout test infrastructure"];
     build [label="5. Build Solution\n(dotnet build)"];
-    warnings [shape=diamond, label="Warnings on\nmodified files?"];
+    warnings [shape=diamond, label="Warnings in\nthe solution?"];
     classify [label="6. Classify Each Warning\n(/dotnet-dev-practical)"];
     valid [label="6a. Valid: Fix code"];
     api_impact [shape=diamond, label="Fix affects\npublic API?"];
@@ -185,7 +186,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. If a file is edited multiple times during the pass, only one `.bak` is needed (the original state before any finishing-touches changes).
-- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record each backup this pass created as an `original<TAB>backup` line in a pairs file in the scratch directory; the report, the diff and the cleanup use only those recorded pairs, never names reconstructed from a pattern.
+- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record each backup as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> <pairs file>`, the file in the scratch directory); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
 - **New files** (e.g. new test classes) do not need a `.bak` — there is no original to back up.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files in a list for the completion report in Phase 12.
@@ -220,6 +221,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
      BASE_BRANCH=$(git branch -r | sed -nE 's@^[[:space:]]*origin/(main|master)$@\1@p' | head -1)   # portable: macOS grep has no -P
    fi
    [ -n "$BASE_BRANCH" ] || echo "STOP: base branch not found — ask the user"
+   git fetch origin "$BASE_BRANCH"   # later diffs use the fetched origin/$BASE_BRANCH, never a stale local branch
    ```
    
    Convention: `ploch-common` uses `master`; newer repos use `main`.
@@ -320,11 +322,11 @@ Build the complete picture of all changes on the branch.
 
 4. **Merge** all lists into a deduplicated set of modified files. Filter to `.cs` files for code analysis phases.
 
-5. **Read the full diffs** for context. Before printing any diff, run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) ("The same applies to every other diff") over these ranges, with `BASE_BRANCH="origin/$BASE_BRANCH"` in the same shell (diff against the fetched remote base, not a possibly stale local branch); if it reports a possible secret, print nothing and inspect the file in the editor. Print diffs with `--no-ext-diff --no-textconv --submodule=short`. Staged changes go through the pre-commit sweep in that rule.
+5. **Read the full diffs** for context. Before printing any diff, run the quiet check from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) ("The same applies to every other diff") over these ranges, with `BASE_REF="origin/$BASE_BRANCH"` in the same shell (diff against the fetched remote base, not a possibly stale local branch); if it reports a possible secret, print nothing and inspect the file in the editor. Print diffs with `--no-ext-diff --no-textconv --submodule=short`. Staged changes go through the pre-commit sweep in that rule.
    
    ```bash
-   git diff "origin/$BASE_BRANCH"...HEAD --no-ext-diff --no-textconv --submodule=short  # committed changes
-   git diff --no-ext-diff --no-textconv --submodule=short                         # unstaged
+   git diff --no-relative "origin/$BASE_BRANCH"...HEAD --no-ext-diff --no-textconv --submodule=short  # committed changes
+   git diff --no-relative --no-ext-diff --no-textconv --submodule=short                         # unstaged
    ```
 
 ---
@@ -339,7 +341,7 @@ Build the complete picture of all changes on the branch.
 
 **Required TODO sources — all three must be harvested, not just local issues:**
 
-1. **Local build warnings** — from Phase 5. Initially seeded as a single placeholder TODO ("Run initial build and enumerate warnings on modified files"); once the build runs, the placeholder is expanded into one TODO per warning-on-modified-file.
+1. **Local build warnings** — from Phase 5. Initially seeded as a single placeholder TODO ("Run initial build and enumerate warnings, modified files first"); once the build runs, the placeholder is expanded into one TODO per warning-on-modified-file.
 
 2. **Failing CI checks** — from the Phase 1.5 sub-agent's `CI_ISSUES` list. One TODO per non-green check, with the check name, run link, and root-cause excerpt referenced in the TODO body.
 
@@ -578,9 +580,9 @@ Review all changes made during the finishing-touches pass holistically.
    
    ```bash
    # Quiet check from no-committed-secrets.md first; print only if it reported nothing
-   git diff --no-ext-diff --no-textconv --submodule=short                         # unstaged finishing-touches changes
-   git diff --staged --no-ext-diff --no-textconv --submodule=short                # staged (after the pre-commit sweep)
-   git diff "origin/$BASE_BRANCH"...HEAD --no-ext-diff --no-textconv --submodule=short  # full branch diff
+   git diff --no-relative --no-ext-diff --no-textconv --submodule=short                         # unstaged finishing-touches changes
+   git diff --staged --no-relative --no-ext-diff --no-textconv --submodule=short                # staged (after the pre-commit sweep)
+   git diff --no-relative "origin/$BASE_BRANCH"...HEAD --no-ext-diff --no-textconv --submodule=short  # full branch diff
    ```
 
 2. **Check for:**
@@ -691,12 +693,12 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 Before invoking `/commit`, ensure:
 
-1. **All files are ready.** Stage specific files — **never** `git add -A` or `git add .`. **Exclude all `.bak` files** — they must never be staged or committed. Verify the **staged** index contains no `.bak` paths:
+1. **All files are ready.** Run the staged sweep from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) after staging and before `/commit` or `git commit`; any line it prints stops the commit. Stage specific files — **never** `git add -A` or `git add .`. **Exclude all `.bak` files** — they must never be staged or committed. Verify the **staged** index contains no `.bak` paths:
    
    ```bash
    # Lists only files staged for commit — must be empty
    # NUL-delimited: Git quotes names with tabs or non-ASCII characters in plain output, which would hide ".bak"
-   git diff --cached --name-only -z \
+   git diff --cached --no-relative --name-only -z \
      | { bak=no; while IFS= read -r -d '' f; do case "$f" in (*.bak|*.bak/*) bak=yes ;; esac; done; [ "$bak" = no ]; }
    st=("${PIPESTATUS[@]}")
    if [ "${st[0]}" != 0 ]; then echo "FAIL: cannot list staged files"; false
@@ -706,7 +708,7 @@ Before invoking `/commit`, ensure:
    
    `git status` alone is **insufficient** because it also lists untracked `.bak` files, which are expected and allowed — the check must scope to the staged index.
 
-2. **The Linear identifier** (`PLO-<n>`) is known from Phase 1. If none was found, follow the lookup order in `rules/commits.md` (branch `plo-<n>` segment → PR body → search Linear → ask) the user.
+2. **The Linear identifier** (`PLO-<n>`) is known from Phase 1. If none was found, follow the lookup order in `rules/commits.md` (branch `plo-<n>` segment → PR body → search Linear → ask the user).
 
 3. **Breaking changes** are detected: check for removed/renamed public APIs, changed method signatures, changed defaults, changed serialisation formats.
 
@@ -1037,16 +1039,16 @@ are available for diff review. Delete them when satisfied.
 
 **Quick diff command:**
 ```bash
-# This pass's recorded pairs only ("original<TAB>backup" per line), so no original is guessed from a name
-while IFS=$'\t' read -r orig bak; do
+# This pass's recorded NUL-delimited pairs only, so no original is guessed from a name
+while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
   echo "=== $orig ==="; diff -- "$bak" "$orig" || true
-done < "$PAIRS_FILE"
+done < <pairs file>
 ```
 
 **Cleanup command:**
 
 ```bash
-cut -s -f2 "$PAIRS_FILE" | while IFS= read -r bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done   # this pass's backups only
+while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < <pairs file>   # this pass's backups only
 ```
 
 ### Commit
@@ -1139,10 +1141,13 @@ When CI fails or PR comments require code changes:
 
 ```
 
-Fix code → Phase 5 (Build — zero warnings locally)
+Fix code → Codex Validation Gate (non-trivial fixes, before the commit)
+         → Phase 5 (Build — zero warnings in the whole solution)
+         → Phase 4 tests (dotnet test — all pass)
          → Phase 7 (Rebuild & Verify)
          → Phase 8 (Grand Review)
-         → Phase 9 (Commit — new commit, not amend)
+         → Phase 8.5 re-review (only when the fix materially changes the branch)
+         → Phase 9 (staged sweep, then commit — new commit, not amend)
          → Push (only after local build is clean!)
          → Phase 10 (Monitor CI)
          → Phase 11 (Address Comments)
@@ -1267,7 +1272,10 @@ If you catch yourself about to do any of these, stop and reconsider:
 - **`review-pr-comments`** — PR comment analysis and response (Phase 11)
 - **`superpowers:verification-before-completion`** — REQUIRED before reporting done
 
+**Also follows:** [`issue-tracking.md`](../../rules/issue-tracking.md), [`linear-session-logging.md`](../../rules/linear-session-logging.md), [`no-committed-secrets.md`](../../rules/no-committed-secrets.md), [`external-ai-review.md`](../../rules/external-ai-review.md), [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md).
+
 **Uses these MCP tools:**
+- `mcp__plugin_linear_linear__*` — issue lookup, session comment, follow-up issues
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_diagnostics` — Build diagnostics from Roslyn
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_public_api` — Public API surface for doc review
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_test_coverage_map` — Coverage analysis
