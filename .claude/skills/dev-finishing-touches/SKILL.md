@@ -484,7 +484,7 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 **Before committing, record `PRE_HEAD=$(git rev-parse --verify HEAD)`** — it is what proves later that a commit was made by this pass. Afterwards the commit is this pass's only when `[ "$(git rev-parse --verify HEAD)" != "$PRE_HEAD" ] && [ "$(git rev-parse --verify HEAD~1)" = "$PRE_HEAD" ]`; otherwise the commit failed and HEAD is still the user's earlier commit. Without a recorded `PRE_HEAD`, never reset.
 
-0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still run the per-commit footer check from Phase 10 step 1 must print nothing (a count comparison would let one commit's two footers hide another's missing one); otherwise stop and ask the user before Phase 10 pushes anything.
+0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still run the per-commit footer check from Phase 10 step 1; it must print nothing (a count comparison would let one commit's two footers hide another's missing one); otherwise stop and ask the user before Phase 10 pushes anything.
 
 **Delegate to the `/commit` skill** for the mechanics. Before invoking:
 
