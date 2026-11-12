@@ -26,7 +26,7 @@ Orchestrate autonomous, end-to-end implementation of a Linear issue — from fet
   **When the run pushes**, the skill reports complete only when all four conditions of that rule's **The Rule** are simultaneously true on the latest pushed commit. They are reproduced verbatim:
 
   1. **Every CI check has reported a terminal success status.** No `failure`, no `cancelled`, no `timed_out`, no `action_required`, no `pending`, no `queued`, no `in_progress`, no `neutral`, no `skipped` (unless the check is intentionally and explicitly conditional and the conditional path was taken — and you can prove that). "Required" vs "not required" is irrelevant. Every check listed by `gh pr checks <PR#>` must be `pass`.
-  2. **Every static-analysis bot has rendered its verdict and that verdict is "no new issues".** See [Static-Analysis Bots](../../rules/pr-checks-completion-gate.md#static-analysis-bots-must-pass) below for the canonical list. A bot that has not yet posted its check is **not** the same as a passing bot — wait for it. For **SonarCloud / SonarQube Cloud**, "no new issues" must be confirmed by querying the SonarCloud platform via the `sonarqube-cloud` MCP server — the green GitHub check is **not** sufficient evidence, because a quality gate can pass while new issues sit below its threshold.
+  2. **Every static-analysis bot has rendered its verdict and that verdict is "no new issues".** See [Static-Analysis Bots](../../rules/pr-checks-completion-gate.md#static-analysis-bots-must-pass) in that rule for the canonical list. A bot that has not yet posted its check is **not** the same as a passing bot — wait for it. For **SonarCloud / SonarQube Cloud**, "no new issues" must be confirmed by querying the SonarCloud platform via the `sonarqube-cloud` MCP server — the green GitHub check is **not** sufficient evidence, because a quality gate can pass while new issues sit below its threshold.
   3. **Every PR review thread is either resolved or has an on-thread reply from us with the latest activity being ours.** No reviewer-authored comment may be the most recent activity on an open thread. See [Conversations Must Be Addressed](../../rules/pr-checks-completion-gate.md#conversations-must-be-addressed) in that rule.
   4. **Re-polling produces no new work.** Issue comments, review comments, review threads, and CI checks are re-fetched after the last commit settles, and the result is a no-op (no new threads, no new comments, no new check runs that haven't been satisfied).
 
@@ -360,7 +360,7 @@ Before writing any code, build comprehensive understanding. This phase is critic
 
    Re-read the issue just before this write: if its state or assignee changed since Step 0c.4 (planning can take a while), stop and ask the user instead. After the write, record the returned state and assignee as this run's **ownership record**.
 
-   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), re-read the issue first and restore `previous-state` from Step 0c.4 **only if its state and assignee still match the ownership record**. (`updatedAt` cannot be used: this run's own comments, such as the session-logging comment, change it.) If either differs, or the record is missing, leave the state alone and say so in the comment; when in doubt, do not restore. In either case leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
+   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), re-read the issue first and restore `previous-state` from Step 0c.4 **only if its state and assignee still match the ownership record and no other session has claimed it** — read the comments since this run's session comment: another session's `Claude Code session` comment, or a branch or PR from another run linked to the issue, means someone else is working on it. (`updatedAt` cannot be used: this run's own comments change it.) If exclusive ownership cannot be established, leave the state unchanged and report the ambiguity. If either differs, or the record is missing, leave the state alone and say so in the comment; when in doubt, do not restore. In either case leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
 
 ### Phase 5: Implement
 
@@ -429,7 +429,8 @@ If working on the `ploch-data` repository and the change adds or modifies librar
 #### Step 1: Build the full solution
 
 ```bash
-dotnet build <solution-file> -warnaserror-
+dotnet build <solution-file> -p:TreatWarningsAsErrors=false   # diagnostic build: report every warning (MSBuild has no -warnaserror- switch)
+dotnet build <solution-file>                                    # the strict build that must pass
 ```
 
 Read the **entire** build output. Do not skim.
@@ -504,7 +505,7 @@ Before committing, review your own changes thoroughly:
 
 **Panel definition, transports, models, invocation flags, preflight and fallbacks: [`external-ai-review.md`](../../rules/external-ai-review.md).** That rule is the single source of truth; this skill deliberately does not restate the reviewers or their flags, so a change to the panel needs one edit, there.
 
-All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content), the design decisions taken and why, the repository primer, the complete change — `git diff "origin/$BASE"` (the working tree against the fetched base: committed **and** uncommitted tracked changes; Phase 9 runs before the first commit) plus the full contents of new untracked files — the full current contents of every modified file, verification evidence (build/test results), and a request for a structured verdict with concrete findings.
+All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content), the design decisions taken and why, the repository primer, the complete change — `git diff --no-relative --no-ext-diff --no-textconv --submodule=short "origin/$BASE"` (the working tree against the fetched base: committed **and** uncommitted tracked changes; Phase 9 runs before the first commit) plus the full contents of new untracked files — the full current contents of every modified file, verification evidence (build/test results), and a request for a structured verdict with concrete findings.
 
 1. **Preflight each reviewer** as the rule describes, and follow its fallback ladder for any reviewer that is unavailable. Never silently drop one.
 2. **Dispatch the three reviews** with the rule's exact invocation for each.

@@ -173,8 +173,11 @@ Re-run that identity probe after any Copilot CLI upgrade or account change. The 
 The package goes to three external providers, so it gets the same treatment as a printed diff: before writing `$PKG_FILE`, the quiet check and the staged sweep from [`no-committed-secrets.md`](./no-committed-secrets.md) must report nothing for every change in scope, and no credential file type may be included. Then scan the finished package itself, which also holds full file contents and untracked files the diff checks never see:
 
 ```bash
-LC_ALL=C grep -qaEi "$PATTERN" "$PKG_FILE"
-case $? in (1) ;; (0) echo "STOP: possible secret in the review package (not printed)" ;; (*) echo "STOP: package scan failed" ;; esac
+( [ -n "${PATTERN:-}" ] || { echo "STOP: PATTERN not set (paste it from no-committed-secrets.md in this shell)"; exit 1; }
+  [ -s "${PKG_FILE:-}" ] || { echo "STOP: review package missing or empty"; exit 1; }
+  LC_ALL=C grep -qaEi "$PATTERN" "$PKG_FILE"
+  case $? in (1) exit 0 ;; (0) echo "STOP: possible secret in the review package (not printed)"; exit 1 ;;
+             (*) echo "STOP: package scan failed"; exit 1 ;; esac ) || exit 1   # never dispatch after a STOP
 ```
 
 Any finding stops the panel until it is resolved. Remove the package directory (and its `tree` copy) when the panel finishes.
