@@ -1,6 +1,6 @@
 ---
 name: dev-finishing-touches
-description: Last-mile quality pass for ploch-ai-site branches (Astro static site, bilingual PL/EN) — reviews all changes (committed + uncommitted), verifies content parity and SEO surfaces (hreflang, JSON-LD, meta, sitemaps), builds with zero astro-check errors/warnings/hints, runs a mandatory triple external AI review of the whole PR (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local check output + failing CI checks + every unresolved PR review thread + every external-AI-review finding, triages each item into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, and only completes when every CI check is green, every TODO is resolved, zero PR review threads remain unaddressed, and manual browser verification of both language versions has passed. Under `--no-push` it stays local: no push, no CI or PR-thread gates. Use when the user says "/dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing (asked to clean up *before* pushing, it runs in `--no-push` mode unless the user says to push).
+description: Last-mile quality pass for ploch-ai-site branches (Astro static site, bilingual PL/EN) — reviews all changes (committed + uncommitted), verifies content parity and SEO surfaces (hreflang, JSON-LD, meta, sitemaps), builds with zero astro-check errors/warnings/hints, runs a mandatory triple external AI review of the whole PR (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local check output + failing CI checks + every unresolved PR review thread + every external-AI-review finding, triages each item into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, and only completes when every CI check is green, every TODO is resolved, zero PR review threads remain unaddressed, and manual browser verification of both language versions has passed. Under `--no-push` it stays local, with no push and no CI or PR-thread gates. Use when the user says "/dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing (asked to clean up *before* pushing, it runs in `--no-push` mode unless the user says to push).
 ---
 
 # Finishing Touches — Branch Quality Pass (ploch-ai-site)
@@ -157,10 +157,10 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. One `.bak` per file per pass (the pre-pass state).
-- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Set `PAIRS` once, before the first backup, to a file in the scratch directory that is **kept until the user has cleaned up** (`PAIRS=<scratch>/bak-pairs; : > "$PAIRS"`), and record **every** backup this pass creates as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> "$PAIRS"`, with `PAIRS` the file set above); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
+- If a `.bak` already exists from a previous run, **keep it** (the user may not have reviewed it yet) and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak`. Set `PAIRS` once, before the first backup, to a file in the scratch directory that is **kept until the user has cleaned up** (`PAIRS=<scratch>/bak-pairs; : > "$PAIRS"`), and record **every** backup this pass creates as a NUL-delimited pair of **absolute** paths (`"$REPO_ROOT/<path>"`), so the cleanup works from any folder, (`printf '%s\0%s\0' "$orig" "$bak" >> "$PAIRS"`, with `PAIRS` the file set above); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
 - **New files** do not need a `.bak`.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
-- Track all created `.bak` files for the Phase 12 report. Cleanup is the user's call — do not auto-delete.
+- Track all created `.bak` files for the Phase 12 report. Cleanup is the user's call — the skill never deletes them; the report gives the user a cleanup command to run.
 
 ---
 
@@ -482,7 +482,7 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 ### Phase 9: Commit
 
-0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch.
+0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still check the commits this pass would push: every commit since the base must carry the footer (`git log --format=%B "origin/$BASE_BRANCH"..HEAD | grep -ciE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$'` matches the commit count from `git rev-list --count "origin/$BASE_BRANCH"..HEAD`); if not, stop and ask the user before Phase 10 pushes anything.
 
 **Delegate to the `/commit` skill** for the mechanics. Before invoking:
 
@@ -508,7 +508,7 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
    git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$' >/dev/null || { echo "FAIL: missing 'Refs: PLO-<n>' footer"; false; }
    ```
 
-   If missing, **do not push**. A second commit cannot repair it (the original would still lack the footer), and `--amend` is off-limits unless the user asks. Exactly three cases:
+   If missing, **do not push**. A second commit cannot repair it (the original would still lack the footer), and `--amend` is off-limits unless the user asks. Then exactly three cases:
    - Record `PRE_HEAD=$(git rev-parse --verify HEAD)` **before** running `/commit` or `git commit`. The commit is this pass's only when, afterwards, `[ "$(git rev-parse --verify HEAD)" != "$PRE_HEAD" ] && [ "$(git rev-parse --verify HEAD~1)" = "$PRE_HEAD" ]` — otherwise the commit failed and HEAD is still the user's earlier commit.
    - **This pass created the commit** (the `PRE_HEAD` check below) **and it is verifiably unpublished** — `git fetch origin` succeeds, then `git branch -r --contains HEAD` succeeds and prints nothing → `git reset --soft HEAD~1` and commit again with the full message.
    - **The commit is on a remote**, or this pass did not create it → stop and ask the user (rewriting it would need a force-push).
@@ -654,15 +654,21 @@ All <count> threads addressed — category breakdown table (VALID_ISSUE→commit
 Cleanup (this pass's backups only):
 
 ```bash
-# This pass's backups only, from the recorded NUL-delimited pairs (the report writes the real path;
-# omit this block when nothing was backed up). The manifest is removed only when every backup was.
+# For the user to run once the backups are reviewed (the skill never runs it). This pass's backups
+# only, from the recorded NUL-delimited pairs of ABSOLUTE paths; the report writes the real manifest
+# path and omits this block when nothing was backed up. The manifest is removed only when every
+# backup was, and is kept if it cannot be read.
 PAIRS='<literal pairs path>'; left=no
-while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
-  case "$bak" in
-    (*.bak) rm -f -- "$bak" || { echo "NOT REMOVED: $bak"; left=yes; } ;;
-    (*) echo "SKIPPED $bak (not a .bak path)"; left=yes ;;
-  esac
-done < "$PAIRS"
+if [ -r "$PAIRS" ]; then
+  while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
+    case "$bak" in
+      (/*.bak) rm -f -- "$bak" || { echo "NOT REMOVED: $bak"; left=yes; } ;;
+      (*) echo "SKIPPED $bak (not an absolute .bak path)"; left=yes ;;
+    esac
+  done < "$PAIRS"
+else
+  echo "MANIFEST UNREADABLE: $PAIRS (nothing removed)"; left=yes
+fi
 [ "$left" = no ] && rm -f -- "$PAIRS"
 ```
 

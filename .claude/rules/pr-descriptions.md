@@ -39,7 +39,7 @@ Omit this section entirely if there are no breaking changes.
 
 ## Related
 
-- Closes PLO-<n>
+- Closes PLO-<n>        <!-- or Refs PLO-<n> for agreed partial work; see Rules below -->
 - Related to PLO-<other>
 - Depends on <other-pr-url> (if cross-repo dependency)
 ```
