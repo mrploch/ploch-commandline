@@ -711,7 +711,7 @@ SonarCloud rarely posts one PR thread per finding — it posts a single summary 
 
 #### GitHub PR comments, review threads & conversations
 
-1. **Fetch all PR feedback.** Review threads come from GraphQL, which is the only API that exposes `isResolved` and the thread ids needed to resolve them — use the paginated thread query from [`dotnet-dev-finishing-touches`](../dotnet-dev-finishing-touches/SKILL.md) Phase 2.5 (`root` and `latest` comment per thread, outdated threads included). Then:
+1. **Fetch all PR feedback.** Review threads come from GraphQL, which is the only API that exposes `isResolved` and the thread ids needed to resolve them — use the paginated thread query from [`dotnet-dev-finishing-touches`](../dotnet-dev-finishing-touches/SKILL.md) Phase 2.5 (`root`, `latest` and `all` comments per thread, outdated threads included; triage reads every comment in the thread, not only the first and last). Then:
 
    ```bash
    # Review comments (inline on code), for their full text
@@ -856,7 +856,7 @@ The idempotency check still applies, with one refinement for both bodies: when a
 
 **Phase 15 never sets the issue to Done.** The PR is not merged yet, and merging is the user's decision.
 
-**After the merge** (a later session, or when the user reports it): a `Closes PLO-<n>` normally moves the issue to Done automatically. Confirm the state. Only if it is **still** the state this run left it in (In Progress or In Review) set it with `mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")`. If it has moved since — cancelled, reopened, reassigned — leave it alone and tell the user. Never for partial work.
+**After the merge** (a later session, or when the user reports it): a `Closes PLO-<n>` normally moves the issue to Done automatically. Confirm the state, and list the issue's linked PRs (its GitHub attachments, `mcp__plugin_linear_linear__get_issue`). If any other linked PR is still open, leave the issue as it is: Linear keeps it open until every linked PR merges, and that is correct. Only if no other linked PR is open and the issue is **still** in the state this run left it in (In Progress or In Review), set it with `mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")`. If it has moved since — cancelled, reopened, reassigned — leave it alone and tell the user. Never for partial work.
 
 **With `--no-push`** — there is no PR, so Phase 14's remote criteria (5–7, 12, 13) do not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (if a local completion comment for this branch already exists, update it with the new commit hash rather than posting another). Leave the issue "In Progress".
 

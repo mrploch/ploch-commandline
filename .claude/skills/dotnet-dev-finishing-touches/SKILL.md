@@ -363,6 +363,8 @@ Build the complete picture of all changes on the branch.
              id isResolved isOutdated
              root: comments(first:1){ nodes{ databaseId author{login} body path line diffHunk url } }
              latest: comments(last:1){ nodes{ author{login} createdAt body url } }
+             # every comment: a request can sit between the root and the latest one. Triage reads all of them; totalCount > 100 means fetch the rest.
+             all: comments(first:100){ totalCount nodes{ databaseId author{login} createdAt body url } }
            }
          }
        }
@@ -847,6 +849,8 @@ query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
           id isResolved isOutdated
           root: comments(first:1){ nodes{ databaseId author{login} body path line diffHunk url } }
           latest: comments(last:1){ nodes{ author{login} createdAt body url } }
+          # every comment: a request can sit between the root and the latest one. Triage reads all of them; totalCount > 100 means fetch the rest.
+          all: comments(first:100){ totalCount nodes{ databaseId author{login} createdAt body url } }
         }
       }
     }
