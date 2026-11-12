@@ -217,8 +217,12 @@ By the end of Phase 0, `owner` and `repo` are always resolved (Step 0c.3) — th
    ```bash
    # The workspace root is the parent of the current checkout (repositories and worktrees are
    # siblings). Derive it; never assume a path, because the root differs per machine.
+   # The repository name comes from Linear (a project name) or GitHub input: it is data, never shell
+   # source. Put it in a variable first and accept only a GitHub repository name's characters.
+   REPO_NAME='<repo-name>'   # single-quoted literal; reject the run if the name contains a quote
+   printf '%s\n' "$REPO_NAME" | grep -Eqx '[A-Za-z0-9._-]{1,100}' || echo "STOP: invalid repository name"
    CUR=$(git rev-parse --show-toplevel 2>/dev/null) && ROOT=$(dirname "$CUR") || ROOT=$PWD
-   REPO_DIR="$ROOT/<repo-name>"
+   REPO_DIR="$ROOT/$REPO_NAME"
    # Accept the checkout only if its top level is named <repo-name> and origin is mrploch/<repo-name>
    # (HTTPS or SSH). REPO_DIR then takes Git's own spelling of the path (C:/… in Git Bash).
    TOP=$(git -C "$REPO_DIR" rev-parse --show-toplevel 2>/dev/null) && [ "$(basename "$TOP")" = "<repo-name>" ] \
@@ -364,7 +368,7 @@ Before writing any code, build comprehensive understanding. This phase is critic
 
    Re-read the issue just before this write: if its state or assignee changed since Step 0c.4 (planning can take a while), stop and ask the user instead. After the write, record the returned state and assignee as this run's **ownership record**.
 
-   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), re-read the issue first and restore `previous-state` from Step 0c.4 **only if its state and assignee still match the ownership record and no other session has claimed it** — read the comments since this run's session comment: another session's `Claude Code session` comment, or a branch or PR from another run linked to the issue, means someone else is working on it. (`updatedAt` cannot be used: this run's own comments change it.) If exclusive ownership cannot be established, leave the state unchanged and report the ambiguity. If either differs, or the record is missing, leave the state alone and say so in the comment; when in doubt, do not restore. In either case leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
+   **If the run stops before a PR exists** (blocked, cancelled by the user, or abandoned), re-read the issue first and restore `previous-state` from Step 0c.4 **only if its state and assignee still match the ownership record and no other session has claimed it** — read the comments since this run's session comment: another session's `Claude Code session` comment, or a branch or PR from another run linked to the issue, means someone else is working on it. (`updatedAt` cannot be used: this run's own comments change it.) If exclusive ownership cannot be established, leave the state unchanged and report the ambiguity. If either differs, leave the state alone and say so in the comment. If the record is **missing** (the write may have succeeded while its response was lost), re-read the issue: when it shows In Progress, this run's assignee, and no other session's claim since this run's session comment, treat it as this run's write and restore; otherwise leave it and report the ambiguity. When in doubt, do not restore. In either case leave a Linear comment saying where the work stopped and which branch holds it. An issue must not stay "In Progress" with no active work.
 
 ### Phase 5: Implement
 
@@ -848,7 +852,7 @@ mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue
 mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: partially implemented in [PR #<pr-number>](<PR URL>).\n\nCovered: <criteria>\nRemaining: <criteria, or the follow-up PLO-<m> link>")
 ```
 
-The idempotency check still applies, with one refinement for both bodies: when a marked comment for this PR already exists, compare it with what this run would post — the mode (implemented or partially implemented) and the `Covered:` / `Remaining:` lists. Skip only when they match. Otherwise update that comment (`save_comment` with its `id`) so it states the current scope; never post a second one, and never leave a stale `Remaining:` list after the PR covers more.
+The idempotency check still applies, with one refinement for both bodies: when a marked comment for this PR already exists, compare it with what this run would post — the mode (implemented or partially implemented) and the `Covered:` / `Remaining:` lists. Skip only when they match. Otherwise update that comment (`save_comment` with its `id`) so it states the current scope; never post a second one, and never leave a stale `Remaining:` list after the PR covers more. Linear has no idempotency key, so after posting, list the comments again: if two marked comments for this PR now exist (a retry raced), keep the oldest, bring it up to date, and delete the newer one this run posted.
 
 **Phase 15 never sets the issue to Done.** The PR is not merged yet, and merging is the user's decision.
 

@@ -46,7 +46,7 @@ Field rules:
 
 ### One comment per session per issue
 
-Do not post a second identical comment when the same session returns to the same issue later in the conversation. Do post a new comment when:
+Before posting, list the issue's comments and look for this session's id: a retry after a lost response must not post the comment twice. Do not post a second identical comment when the same session returns to the same issue later in the conversation. Do post a new comment when:
 
 - a **different** session (a new conversation, a resume with a new id) works the issue;
 - the **working folder changes** mid-session — for example moving from the workspace root into the repo, or into a worktree. Post a short follow-up naming the new folder rather than editing the original.
