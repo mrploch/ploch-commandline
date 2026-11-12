@@ -260,6 +260,7 @@ Gather full context about the branch's purpose.
 ---
 
 ### Phase 1.5: CI Status Pre-Check (Sub-Agent)
+**Under `--no-push`** this phase does not run: CI and PR threads are not gates in local-only mode, so nothing remote is harvested into the TODO list.
 
 **Purpose:** Before any local work begins, inventory the current CI state of the branch so failing checks are visible from the start and feed directly into the master TODO list in Phase 2.5. This runs even when the branch has **not** been pushed yet (in which case the sub-agent simply reports "no runs yet" and the main skill continues).
 
@@ -347,7 +348,7 @@ Build the complete picture of all changes on the branch.
 
 2. **Failing CI checks** — from the Phase 1.5 sub-agent's `CI_ISSUES` list. One TODO per non-green check, with the check name, run link, and root-cause excerpt referenced in the TODO body.
 
-3. **PR review threads, conversations, and reviews** — fetched here (not just in Phase 11). REST endpoints do not expose thread resolution state, so the primary source is the GraphQL `reviewThreads` connection: Only when Phase 1 found a PR; with `NO_PR` there is nothing to harvest.
+3. **PR review threads, conversations, and reviews** — fetched here (not just in Phase 11). REST endpoints do not expose thread resolution state, so the primary source is the GraphQL `reviewThreads` connection: Only when Phase 1 found a PR; with `NO_PR` there is nothing to harvest. Skipped under `--no-push`.
    
    ```bash
    # Thread IDs + resolution state (primary source for TODO creation). --paginate walks every page;
@@ -361,7 +362,7 @@ Build the complete picture of all changes on the branch.
            nodes{
              id isResolved isOutdated
              root: comments(first:1){ nodes{ databaseId author{login} body path line diffHunk url } }
-             latest: comments(last:1){ nodes{ author{login} createdAt } }
+             latest: comments(last:1){ nodes{ author{login} createdAt body url } }
            }
          }
        }
@@ -703,7 +704,7 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 **Before committing, record `PRE_HEAD=$(git rev-parse --verify HEAD)`** — it is what proves later that a commit was made by this pass. Afterwards the commit is this pass's only when `[ "$(git rev-parse --verify HEAD)" != "$PRE_HEAD" ] && [ "$(git rev-parse --verify HEAD~1)" = "$PRE_HEAD" ]`; otherwise the commit failed and HEAD is still the user's earlier commit. Without a recorded `PRE_HEAD`, never reset.
 
-0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still run the per-commit footer check from Phase 10 step 1; it must print nothing (a count comparison would let one commit's two footers hide another's missing one); otherwise stop and ask the user before Phase 10 pushes anything.
+0. **Nothing to commit?** Skip this phase only when **no in-scope change is left uncommitted** — staged, unstaged or untracked, ignoring `.bak` backups — whether the pass or the user made it. Changes the pass validated but did not create are still committed here; skipping them would let Phase 10 push an old HEAD. When nothing is left, skip: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping — and only when Phase 10 will run (not under `--no-push`, where nothing is pushed) — still run the per-commit footer check from Phase 10 step 1; it must print nothing (a count comparison would let one commit's two footers hide another's missing one); otherwise stop and ask the user before Phase 10 pushes anything.
 
 **Delegate to the `/commit` skill** for the actual commit creation.
 
@@ -843,7 +844,7 @@ query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
         nodes{
           id isResolved isOutdated
           root: comments(first:1){ nodes{ databaseId author{login} body path line diffHunk url } }
-          latest: comments(last:1){ nodes{ author{login} createdAt } }
+          latest: comments(last:1){ nodes{ author{login} createdAt body url } }
         }
       }
     }

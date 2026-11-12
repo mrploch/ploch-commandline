@@ -172,14 +172,13 @@ A GitHub issue number is a pointer to the Linear issue, never the issue of recor
 
 #### Step 0c: Fetch the Linear issue
 
-1. **Fetch the full Linear issue:**
+1. **Post the session comment first, then fetch the full Linear issue.** The comment required by [`linear-session-logging.md`](../../rules/linear-session-logging.md) is the first action after the issue is identified — before its content is read — and a short follow-up follows when Phase 4 moves into the task worktree:
 
    ```
+   mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="<session comment>")
    mcp__plugin_linear_linear__get_issue(id="PLO-<n>")
    mcp__plugin_linear_linear__list_comments(issueId="PLO-<n>")
    ```
-
-   Post the session comment required by [`linear-session-logging.md`](../../rules/linear-session-logging.md) now — it is the first action after the issue is identified — and a short follow-up when Phase 4 moves into the task worktree.
 
    Scope issue searches (`list_issues`) by the repository's Linear project (`project="<repo>"`) once the project is known; Step 0b's team-wide search for a GitHub URL is the one exception, because the project is not yet known there. Comment calls are scoped by `issueId`. If the issue has a GitHub attachment (synced twin) and Step 0b did not already set it, record its number as `github-twin` **only when the attachment URL is in the target repository** (`https://github.com/<owner>/<repo>/issues/<n>`, compared after Step 0c.3 resolves the target). Team Ploch mirrors new issues into `mrploch/ploch-ai-tools`, so a twin elsewhere is not a twin of this work; see [`issue-tracking.md`](../../rules/issue-tracking.md).
 
@@ -853,7 +852,7 @@ The idempotency check still applies, with one refinement for both bodies: when a
 
 **Phase 15 never sets the issue to Done.** The PR is not merged yet, and merging is the user's decision.
 
-**After the merge** (a later session, or when the user reports it): a `Closes PLO-<n>` normally moves the issue to Done automatically. Confirm the state; only if it did not move, set it with `mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")`. Never for partial work.
+**After the merge** (a later session, or when the user reports it): a `Closes PLO-<n>` normally moves the issue to Done automatically. Confirm the state. Only if it is **still** the state this run left it in (In Progress or In Review) set it with `mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")`. If it has moved since — cancelled, reopened, reassigned — leave it alone and tell the user. Never for partial work.
 
 **With `--no-push`** — there is no PR, so Phase 14's remote criteria (5–7, 12, 13) do not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (if a local completion comment for this branch already exists, update it with the new commit hash rather than posting another). Leave the issue "In Progress".
 

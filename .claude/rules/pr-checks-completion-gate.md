@@ -125,6 +125,8 @@ FP=$( set -o pipefail   # a failed request fails the fingerprint instead of hash
     | sort | git hash-object --stdin ) && echo "comments fingerprint: $FP" \
   || echo "GATE ERROR: comments unavailable, so the gate is NOT satisfied"   # no fingerprint is printed on failure
 # Review bodies are part of the fingerprint: a review has no update time, and its body can be edited.
+# An unchanged fingerprint only means nothing is NEW. Every reviewer issue comment and review body must ALSO have
+# been answered (a later reply from us, or the concern fixed and said so) — an old unanswered comment fails the gate.
 # Expected: the same fingerprint as your previous poll. If it changed, find and address what is new or edited.
 
 # 6. CI annotations from each bot are clear? Both levels paginate; a failed request is an error, not "clear".

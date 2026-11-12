@@ -19,7 +19,7 @@ Before starting implementation of any substantive unit of work, ensure the **ful
 ## Maintenance during the work
 
 - Update the Notion task's **Status log** (append-only) and `Status` property at the same milestones that trigger Daily Notes / workspace-note updates (PR created, CI green, decision made, merged).
-- When the PR that **completes** the issue merges (`Closes PLO-<n>`): task `Status` = `Done`, Daily Notes entry `Status` = `Done` with Outcome filled, workspace note moved/updated per notes-keeping rule. The Linear issue closes via that `Closes PLO-<n>`, and a same-repository GitHub twin closes with it.
+- When the PR that **completes** the issue merges (`Closes PLO-<n>`) **and the Linear issue is actually Done** (check it: Linear waits for every linked PR, so an open sibling PR keeps it open): task `Status` = `Done`, Daily Notes entry `Status` = `Done` with Outcome filled, workspace note moved/updated per notes-keeping rule. The Linear issue closes via that `Closes PLO-<n>`, and a same-repository GitHub twin closes with it.
 - When a partial PR (`Refs PLO-<n>`) merges, record it in the status log only: the task, the Daily Notes entry and the Linear issue stay open until the remaining criteria land.
 - **Follow-ups and scope changes:** file follow-up Linear issues (never "track it later") and create Notion sub-tasks (`Parent Task` relation) when they represent real planned work.
 - **Ordering:** create the chain **before** implementation starts. An unlinked PR or an untracked task is a traceability defect, the same severity as a missing `Refs:` footer.

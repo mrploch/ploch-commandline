@@ -186,7 +186,7 @@ Any hit stops the commit, and so does **every** line the sweep prints — `POSSI
   [ "$found" = no ] )
 ```
 
-Print those diffs only when this loop printed nothing.
+Print nothing when this loop printed anything. Even when it is clean, a pattern scan misses formats it does not know, so treat a clean result as permission to review, not to dump: read the changes file by file in the editor, and print a diff only for content you wrote yourself in this session.
 
 This matters doubly for tool-managed directories (`.codex/`, `.claude/`, `.cursor/`, `ai/profile/`) which write credentials without telling you.
 
@@ -225,8 +225,10 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
        st=("${PIPESTATUS[@]}")                      # grep: 0 = found, 1 = not found, 2 = error
        case "${st[1]}" in
          (0) echo "blob $id"
-             git --no-pager log --all -m --no-ext-diff --no-textconv --format='  commit %h' --find-object="$id" \
-               || echo "  COMMIT LOOKUP FAILED for blob $id" ;;
+             C=$(git --no-pager log --all --reflog -m --no-ext-diff --no-textconv --format='  commit %h' --find-object="$id") \
+               || { echo "  COMMIT LOOKUP FAILED for blob $id"; continue; }
+             [ -n "$C" ] && printf '%s\n' "$C" \
+               || echo "  no commit reachable from a ref or the reflog (dangling object: find it with git fsck --unreachable)" ;;
          (1) [ "${st[0]}" = 0 ] || echo "UNREADABLE blob $id (search incomplete)" ;;
          (*) echo "SCAN ERROR on blob $id (search incomplete)" ;;
        esac
