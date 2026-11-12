@@ -25,7 +25,7 @@ Perform a thorough review-and-fix cycle on the current branch's changes before c
 
 - **CI state is known up front, not after push** — a sub-agent inspects existing CI run status before any local work begins so failing checks are visible and planned from the start. See [Phase 1.5](#phase-15-ci-status-pre-check-sub-agent).
 
-- **Non-trivial fixes require Codex validation** — any change beyond mechanical edits is reviewed by the Codex MCP (`mcp__codex-cli__codex`) **before the commit**, not after. Applies equally to warning fixes, CI-failure fixes, and PR-comment-driven fixes. See [Codex Validation Gate](#codex-validation-gate).
+- **Non-trivial fixes require Codex validation** — any change beyond mechanical edits is reviewed by Codex (the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation) **before the commit**, not after. Applies equally to warning fixes, CI-failure fixes, and PR-comment-driven fixes. See [Codex Validation Gate](#codex-validation-gate).
 
 - **Triple external AI review is mandatory** — before commit/push, the **entire branch context** (PR description, linked issue, full diff, full contents of modified files, repo conventions, verification already performed) is handed to **Codex, Gemini and GitHub Copilot CLI (Grok 4.6)**, which each perform an independent high-effort whole-branch review. Three model families means three sets of blind spots. This is distinct from the per-fix Codex gate: the gate validates one staged diff, this reviews the whole branch. Every finding is triaged into the master TODO. See [Phase 8.5](#phase-85-external-ai-review--codex--gemini--copilot-mandatory) and [`rules/external-ai-review.md`](../../rules/external-ai-review.md).
 
@@ -68,7 +68,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | `git` CLI, working tree clean of unrelated changes | All phases                 | Stop and ask the user to commit/stash unrelated work.                                                                                                                                              |
 | `Agent` tool (for Phase 1.5 sub-agent)             | Phase 1.5 only             | Skip Phase 1.5 and run the CI pre-check inline from the main context; record the skip in the report.                                                                                               |
 | `TaskCreate` / `TaskUpdate` / `TaskList` tools     | Phase 2.5 master TODO list | Fall back to an in-memory list tracked in the main transcript. Never proceed without *some* tracked list. |
-| `mcp__codex-cli__codex` / `mcp__codex-cli__review` | Phase 8.5 + Codex Validation Gate | Retry once via `ToolSearch`; if still missing, **pause and ask the user** whether to proceed without the gate (and record the decision in the final report). Never silently skip.                  |
+| `codex` CLI, signed in | Phase 8.5 + Codex Validation Gate | Run the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation (never the `mcp__codex-cli__*` MCP tools, which run with the user's own Codex configuration (its MCP servers and connectors) and cannot take the isolation flags). Retry once; if still missing, **pause and ask the user** whether to proceed without the gate (and record the decision in the final report). Never silently skip.                  |
 | `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code`) | Phase 8.5                  | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                              |
 | `copilot` CLI on `PATH`, authenticated (GitHub Copilot CLI) | Phase 8.5                  | Shell-out reviewer — **not** an MCP tool. Run the preflight in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Preflight; on failure follow its fallback ladder (retry with token env stripped → Kimi K3 → ask the user). Never silently skip. |
 | `superpowers:verification-before-completion` skill | Phase 12                   | If unavailable, invoke the verification checklist inline (re-run build, re-run tests, re-check CI, re-enumerate PR threads) — do not skip the verification itself.                                 |
@@ -188,7 +188,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
 **Rules:**
 
 - Create the `.bak` copy **before the first edit** to that file. If a file is edited multiple times during the pass, only one `.bak` is needed (the original state before any finishing-touches changes).
-- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Record each backup as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> "$PAIRS"`, with `PAIRS` a file in the scratch directory that lives until the report is written); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
+- If a `.bak` file already exists for that path (e.g. from a previous run), **keep it** — it may be the only copy the user has not reviewed yet — and name this pass's backup `<file>.<yyyyMMdd-HHmmss>.bak` instead. Set `PAIRS` once, before the first backup, to a file in the scratch directory that is **kept until the user has cleaned up** (`PAIRS=<scratch>/bak-pairs; : > "$PAIRS"`), and record **every** backup this pass creates as a NUL-delimited pair (`printf '%s\0%s\0' "$orig" "$bak" >> "$PAIRS"`, with `PAIRS` the file set above); NUL is the only separator no file name can contain. The report, the diff and the cleanup use only those recorded pairs.
 - **New files** (e.g. new test classes) do not need a `.bak` — there is no original to back up.
 - `.bak` files must **never** be staged, committed, or pushed. See Phase 9.
 - Track all created `.bak` files in a list for the completion report in Phase 12.
@@ -306,14 +306,14 @@ Build the complete picture of all changes on the branch.
 1. **All committed changes vs base branch:**
    
    ```bash
-   git diff "origin/$BASE_BRANCH"...HEAD --name-only
+   git diff --no-relative "origin/$BASE_BRANCH"...HEAD --name-only
    ```
 
 2. **Uncommitted changes (staged + unstaged):**
    
    ```bash
-   git diff --name-only          # unstaged
-   git diff --staged --name-only # staged
+   git diff --no-relative --name-only          # unstaged
+   git diff --staged --no-relative --name-only # staged
    ```
 
 3. **Untracked files:**
@@ -525,7 +525,7 @@ For each warning on a modified file, follow this decision tree:
    # Count only when the build itself ran: a failed build is an error, never "0 files"
    if OUT=$(dotnet build "$SOLUTION_FILE" -v normal -p:TreatWarningsAsErrors=false 2>&1); then
      printf '%s\n' "$OUT" | grep -E ': (warning|error) <WARNING_ID>:' \
-       | sed -E 's/^[[:space:]]*([0-9]+>)?//; s/\([0-9,]+\): (warning|error) .*//' | sort -u | wc -l   # strip MSBuild node prefixes
+       | sed -E 's/^[[:space:]]*([0-9]+(:[0-9]+)?>)?//; s/\([0-9,]+\): (warning|error) .*//' | sort -u | wc -l   # strip MSBuild node prefixes
    else
      echo "BUILD FAILED: fix the build before counting"; false
    fi
@@ -677,7 +677,7 @@ Reviewers receive the **entire context first**, then the review request. Build a
 
 #### Step 2 — Dispatch all three reviews in parallel
 
-- **Codex:** `mcp__codex-cli__review` (purpose-built review action) or `mcp__codex-cli__codex`, passing the full context package at the highest reasoning effort the tool exposes.
+- **Codex:** the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation, run through `Bash` with the package on standard input — never the `mcp__codex-cli__*` MCP tools, which run with the user's own Codex configuration (its MCP servers and connectors) and cannot take the isolation flags. It reviews at `model_reasoning_effort="high"`.
 - **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), same package, highest-capability model/thinking configuration.
 - **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Run **exactly** the canonical command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract — do not restate or trim its flags here. In short: the package goes in its own scratch directory, Copilot starts there (`-C`) with a short pointer prompt, and it reads a **tracked-files-only copy** of the repository (`--add-dir "$TREE"`), never the checkout. Never `-p "$(cat …)"`: substitution puts the whole package on the command line (about 32 KB on Windows, and readable through `ps`).
 
@@ -748,7 +748,8 @@ fi
 ```
 
 If the footer is missing, **do not push**. A second commit cannot repair it (the original would still lack the footer), and `--amend` is off-limits unless the user asks. Exactly three cases:
-- **This pass created the commit** (its hash matches the one recorded right after `git commit`) **and it is verifiably unpublished** — `git fetch --all --prune` succeeds, then `git branch -r --contains HEAD` succeeds and prints nothing → `git reset --soft HEAD~1` and commit again with the full message.
+- Record `PRE_HEAD=$(git rev-parse --verify HEAD)` **before** running `/commit` or `git commit`. The commit is this pass's only when, afterwards, `[ "$(git rev-parse --verify HEAD)" != "$PRE_HEAD" ] && [ "$(git rev-parse --verify HEAD~1)" = "$PRE_HEAD" ]` — otherwise the commit failed and HEAD is still the user's earlier commit.
+- **This pass created the commit** (the `PRE_HEAD` check below) **and it is verifiably unpublished** — `git fetch origin` succeeds, then `git branch -r --contains HEAD` succeeds and prints nothing → `git reset --soft HEAD~1` and commit again with the full message.
 - **The commit is on a remote**, or this pass did not create it → stop and ask the user (rewriting it would need a force-push).
 - **Either check failed** (publication unknown) → stop and ask the user. Do not reset.
 
@@ -1035,12 +1036,12 @@ All <count> review threads addressed.
 |----------|-------|---------|
 | VALID_ISSUE (fixed in code) | <n> | <list of [thread](<thread URL>) → [`<hash>`](<commit URL>) links> |
 | SUGGESTION_ACCEPTED (fixed in code) | <n> | <list of [thread](<thread URL>) → [`<hash>`](<commit URL>) links> |
-| FALSE_POSITIVE (reply + resolve) | <n> | <list of thread URLs → reply URLs> |
+| FALSE_POSITIVE (reply + resolve) | <n> | <list of [thread](<thread URL>) → [reply](<reply URL>) links> |
 | ALREADY_FIXED (reply + resolve) | <n> | <list of [thread](<thread URL>) → [`<hash>`](<commit URL>) links> |
-| SUGGESTION_DECLINED (reply + resolve) | <n> | <list of thread URLs → reply URLs> |
-| QUESTION (reply + resolve) | <n> | <list of thread URLs → reply URLs> |
+| SUGGESTION_DECLINED (reply + resolve) | <n> | <list of [thread](<thread URL>) → [reply](<reply URL>) links> |
+| QUESTION (reply + resolve) | <n> | <list of [thread](<thread URL>) → [reply](<reply URL>) links> |
 | OUT_OF_SCOPE (reply + follow-up issue + resolve) | <n> | <list of [thread](<thread URL>) → [PLO-<n>](<Linear URL>) links> |
-| AWAITING_REVIEWER (reply, thread left open) | <n> | <list of thread URLs → reply URLs> |
+| AWAITING_REVIEWER (reply, thread left open) | <n> | <list of [thread](<thread URL>) → [reply](<reply URL>) links> |
 
 **Follow-up issues opened:** <list of `[PLO-<n>](<Linear URL>)` links, or "none">.
 
@@ -1063,13 +1064,13 @@ are available for diff review. Delete them when satisfied.
 # This pass's recorded NUL-delimited pairs only, so no original is guessed from a name
 while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
   echo "=== $orig ==="; diff -- "$bak" "$orig" || true
-done < "$PAIRS"
+done < '<literal pairs path>'   # the report writes the real path; omit this block when no file was backed up
 ```
 
 **Cleanup command:**
 
 ```bash
-while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < "$PAIRS"   # this pass's backups only
+while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < '<literal pairs path>' && rm -f -- '<literal pairs path>'   # real path in the report; omit when nothing was backed up   # this pass's backups only
 ```
 
 ### Commit
@@ -1082,7 +1083,7 @@ while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.ba
 
 ## Codex Validation Gate
 
-**Purpose:** Non-trivial fixes (anything beyond a mechanical edit) must pass a second-opinion review by the Codex MCP (`mcp__codex-cli__codex`) **before the change is committed**, not after. This gate is **distinct from [Phase 8.5](#phase-85-external-ai-review--codex--gemini--copilot-mandatory)**: the gate validates one specific staged diff, Phase 8.5 reviews the entire branch. A fix that came *out of* Phase 8.5 still goes through this gate if it is non-trivial. This is a cross-cutting gate that applies to Phases 6 (warning fixes), 10 (CI-failure fixes), and 11 (PR-comment fixes), as well as any test additions in Phase 4b.
+**Purpose:** Non-trivial fixes (anything beyond a mechanical edit) must pass a second-opinion review by Codex (the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation) **before the change is committed**, not after. This gate is **distinct from [Phase 8.5](#phase-85-external-ai-review--codex--gemini--copilot-mandatory)**: the gate validates one specific staged diff, Phase 8.5 reviews the entire branch. A fix that came *out of* Phase 8.5 still goes through this gate if it is non-trivial. This is a cross-cutting gate that applies to Phases 6 (warning fixes), 10 (CI-failure fixes), and 11 (PR-comment fixes), as well as any test additions in Phase 4b.
 
 **Before sending:** the staged sweep from [`no-committed-secrets.md`](../../rules/no-committed-secrets.md) must pass on the staged fix — Codex is an external provider, so the same rule as for the panel applies ([`external-ai-review.md`](../../rules/external-ai-review.md) § Before Anything Leaves the Machine).
 
@@ -1109,7 +1110,7 @@ while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.ba
 
 **How to invoke Codex:**
 
-Use the `codex` action of `mcp__codex-cli__codex` with a self-contained brief. The brief **must include**:
+Run the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation with the brief (and the staged diff) written to a file in a fresh `mktemp -d` package directory and passed on standard input. The brief **must include**:
 
 1. The TODO item being addressed (title + source + reference).
 2. The original code (relevant snippet, with file + line range).
@@ -1154,8 +1155,8 @@ Use the `codex` action of `mcp__codex-cli__codex` with a self-contained brief. T
 
 **Record the Codex outcome** on the TODO item so the Phase 12 report can list which items went through Codex and how they landed.
 
-**Fallback:** If the Codex MCP is unavailable (tool not loaded, authentication failure, network error), the skill **must not** silently skip the gate. Either:
-- Retry once after confirming the tool is available (`ToolSearch` for `mcp__codex-cli__codex`), or
+**Fallback:** If Codex is unavailable (CLI missing, sign-in or network failure), the skill **must not** silently skip the gate. Either:
+- Retry the isolated command once, or
 - Pause and ask the user whether to proceed without Codex validation for this pass (and record the decision in the final report).
 
 ---
@@ -1307,7 +1308,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_test_coverage_map` — Coverage analysis
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__detect_antipatterns` — Anti-pattern detection
 - `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__find_dead_code` — Unused code detection
-- **`mcp__codex-cli__codex` / `mcp__codex-cli__review`** — **Required** second-opinion review for every non-trivial fix (see [Codex Validation Gate](#codex-validation-gate)) and one third of the Phase 8.5 panel. Use `ToolSearch` to load the schema if not already available.
+- **`codex` CLI (isolated `codex exec`)** — Phase 8.5 whole-branch review and the per-fix Codex Validation Gate, invoked as the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation; never the `mcp__codex-cli__*` MCP tools, which run with the user's own Codex configuration (its MCP servers and connectors) and cannot take the isolation flags.
 - **`mcp__gemini-cli__gemini`** (fallback `mcp__gemini__gemini-analyze-code`) — Phase 8.5 whole-branch review (load via `ToolSearch`)
 - **`copilot` CLI (Grok 4.6)** — Phase 8.5 whole-branch review, invoked through `Bash`; flags, preflight and fallbacks in [`rules/external-ai-review.md`](../../rules/external-ai-review.md)
 - GitHub CLI (`gh`) — PR management, CI monitoring, comment handling

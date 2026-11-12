@@ -106,7 +106,7 @@ else
   else echo 'HEAD UNREADABLE (sweep not run)'; exit; fi
 fi
 scan() {  # $1 = object id, $2 = label. Silent only when the blob was read and did not match.
-  git cat-file blob "$1" 2>/dev/null | LC_ALL=C grep -aqEi "$PATTERN"
+  git cat-file blob "$1" 2>/dev/null | LC_ALL=C grep -aqEi -e "$PATTERN"
   st=("${PIPESTATUS[@]}")                          # grep: 0 = match, 1 = no match, 2 = error
   case "${st[1]}" in
     (0) printf 'POSSIBLE SECRET in %s (value not shown)\n' "$2" ;;

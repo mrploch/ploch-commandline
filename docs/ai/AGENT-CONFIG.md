@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-05, against commit `6a2c931` |
+| Last verified | 2026-10-05, against commit `6a2c931`; PLO-903 (2026-11) updated the tracker findings without re-measuring sizes |
 | Verified by | Listing and measuring every committed agent file; comparing with a live Claude Code session |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 

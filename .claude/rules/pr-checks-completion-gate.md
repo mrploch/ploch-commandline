@@ -81,7 +81,7 @@ For bot-flagged false positives (SonarCloud, Codacy, codeant-ai, CodeRabbit): th
 
 ## The Pre-Completion Verification (Run This Before Reporting)
 
-Immediately before writing any completion message, execute this sequence and verify each output. If any step is non-empty (where empty is the success state), the gate fails and the task continues.
+Immediately before writing any completion message, execute this sequence and verify each output. Each step's **Expected** line is its success condition; if any step does not match it, or prints `GATE ERROR`, the gate fails and the task continues.
 
 ```bash
 # 1. All checks pass on the latest commit?

@@ -30,7 +30,7 @@ Orchestrate autonomous, end-to-end implementation of a Linear issue — from fet
   3. **Every PR review thread is either resolved or has an on-thread reply from us with the latest activity being ours.** No reviewer-authored comment may be the most recent activity on an open thread. See [Conversations Must Be Addressed](../../rules/pr-checks-completion-gate.md#conversations-must-be-addressed) in that rule.
   4. **Re-polling produces no new work.** Issue comments, review comments, review threads, and CI checks are re-fetched after the last commit settles, and the result is a no-op (no new threads, no new comments, no new check runs that haven't been satisfied).
 
-  **Under `--no-push`** nothing is pushed and no PR exists, so **none of the four applies**: never push, wait for CI or poll PR threads to satisfy them. The local conditions in Phase 15 (the `--no-push` local report) are the gate.
+  **Under `--no-push`** nothing is pushed and no PR exists, so **none of the four applies**: never push, wait for CI or poll PR threads to satisfy them. The gate is then Phase 14's **local** criteria (see its `--no-push` note) plus the Phase 14.5 pass in `--no-push` mode; Phase 15 reports the result.
 
   **Stale checks are still failures.** "Codacy is stale, expected to go green" is **not** an acceptable completion claim. Wait for the rescan, or re-run the job (`gh run rerun`); ask the user before pushing an empty commit just to retrigger a bot.
 
@@ -507,7 +507,7 @@ Before committing, review your own changes thoroughly:
 
 **Panel definition, transports, models, invocation flags, preflight and fallbacks: [`external-ai-review.md`](../../rules/external-ai-review.md).** That rule is the single source of truth; this skill deliberately does not restate the reviewers or their flags, so a change to the panel needs one edit, there.
 
-All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the repository primer; the branch intent — the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content) and the design decisions taken and why; the complete change — `git diff --no-relative --no-ext-diff --no-textconv --submodule=short "origin/$BASE"` (the working tree against the fetched base: committed **and** uncommitted tracked changes; Phase 9 runs before the first commit) plus the full contents of new untracked files — the full current contents of every modified file, verification evidence (build/test results), and a request for a structured verdict with concrete findings.
+All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the repository primer; the branch intent — the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content) and the design decisions taken and why; the complete change — `git diff --no-relative --no-ext-diff --no-textconv --submodule=short "$(git merge-base "origin/$BASE" HEAD)"` (the working tree against the merge base with the fetched base: committed **and** uncommitted tracked changes; Phase 9 runs before the first commit) plus the full contents of new untracked files — the full current contents of every modified file, verification evidence (build/test results), and a request for a structured verdict with concrete findings.
 
 1. **Preflight each reviewer** as the rule describes, and follow its fallback ladder for any reviewer that is unavailable. Never silently drop one.
 2. **Dispatch the three reviews** with the rule's exact invocation for each.
@@ -751,6 +751,8 @@ SonarCloud rarely posts one PR thread per finding — it posts a single summary 
 
 ### Phase 14: Completion Gate
 
+**Under `--no-push`** only the local criteria apply — 1–4 and 8–11 in the table below (build, tests, analysers, formatting, acceptance criteria, docs, SampleApp, commit format). The remote ones (5–7, 12, 13) are not evaluated, and the run never pushes to satisfy them.
+
 **Authoritative gate:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). **Reproduce the verification sequence ("The Pre-Completion Verification") from that rule and confirm every output before writing a completion report.**
 
 **Forbidden completion framings** (these were historical failure modes):
@@ -839,13 +841,13 @@ Also update the Linear issue. The comment must be **idempotent**, because a retr
 **With a PR** — only once the PR exists and Phase 14's gate has passed:
 
 ```
-mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: implemented in <PR URL>.")   # skip or update per the idempotency rule
+mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: implemented in [PR #<pr-number>](<PR URL>).")   # skip or update per the idempotency rule
 ```
 
 **Partial work** (see [Partial work](#partial-work)) — the body names what is left, and the issue is **not** marked Done:
 
 ```
-mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: partially implemented in <PR URL>.\n\nCovered: <criteria>\nRemaining: <criteria, or the follow-up PLO-<m> link>")
+mcp__plugin_linear_linear__save_comment(issueId="PLO-<n>", body="implement-issue completion: partially implemented in [PR #<pr-number>](<PR URL>).\n\nCovered: <criteria>\nRemaining: <criteria, or the follow-up PLO-<m> link>")
 ```
 
 The idempotency check still applies, with one refinement for both bodies: when a marked comment for this PR already exists, compare it with what this run would post — the mode (implemented or partially implemented) and the `Covered:` / `Remaining:` lists. Skip only when they match. Otherwise update that comment (`save_comment` with its `id`) so it states the current scope; never post a second one, and never leave a stale `Remaining:` list after the PR covers more.
@@ -908,7 +910,7 @@ When an issue requires changes in multiple repositories:
 | Build warning you don't understand | Research the analyser rule ID, then fix or document                                                               |
 | CI check failure                   | Read logs (`gh run view --log-failed`), identify root cause, fix                                                  |
 | PR comment you disagree with       | Reply with clear reasoning, citing evidence                                                                       |
-| Non-obvious implementation choice  | Consult the external panel for a second opinion, invoked exactly as [`external-ai-review.md`](../../rules/external-ai-review.md) prescribes (Copilot only with its read-only, hook-isolated command)          |
+| Non-obvious implementation choice  | Consult the external panel for a second opinion, invoked exactly as [`external-ai-review.md`](../../rules/external-ai-review.md) prescribes (every reviewer with the read-only, isolated invocation that rule specifies)          |
 | Multiple valid approaches          | Evaluate trade-offs, pick the one most consistent with existing patterns, document the decision in PR description |
 
 **Only ask the user when:**
@@ -988,7 +990,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 | 11. PR                 | Detailed description, linked issue                                                              | PR URL                                                        |
 | 12. CI                 | ALL green (including non-required)                                                              | `gh pr checks` output                                         |
 | 13. Comments           | ALL addressed (GitHub + SonarCloud platform), no new ones                                       | Zero unresolved threads; zero open SonarCloud issues/hotspots |
-| 14. Gate               | All 13 criteria met                                                                             | Checklist verified                                            |
+| 14. Gate               | All 13 criteria met (`--no-push`: the local ones)                                                                             | Checklist verified                                            |
 | 14.5 Finishing Touches | `/dotnet-dev-finishing-touches` completed its own gate                                          | Finishing-touches report                                      |
 | 15. Report             | Evidence provided                                                                               | Summary with links                                            |
 
