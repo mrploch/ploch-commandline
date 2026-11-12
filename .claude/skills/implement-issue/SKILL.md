@@ -348,6 +348,8 @@ Before writing any code, build comprehensive understanding. This phase is critic
      || { echo "STOP: the task worktree was not created"; false; }
    ```
 
+   Once inside the worktree, post the short follow-up session comment that [`linear-session-logging.md`](../../rules/linear-session-logging.md) requires when the working folder changes (it names `$WT`).
+
    On `STOP`, **stop the run**. Never continue in an existing directory: if `$WT` already exists (from an earlier run), ask the user whether to reuse or remove it.
 
    Example: `feature/plo-72-dbcontext-creation-lifecycle-plugins`, `fix/plo-187-duplicate-entity-concurrent-upsert`. Lowercase `plo-<n>` — Linear matches the ID case-insensitively and links the branch and its PR to the issue (see `rules/issue-tracking.md`).
@@ -505,7 +507,7 @@ Before committing, review your own changes thoroughly:
 
 **Panel definition, transports, models, invocation flags, preflight and fallbacks: [`external-ai-review.md`](../../rules/external-ai-review.md).** That rule is the single source of truth; this skill deliberately does not restate the reviewers or their flags, so a change to the panel needs one edit, there.
 
-All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content), the design decisions taken and why, the repository primer, the complete change — `git diff --no-relative --no-ext-diff --no-textconv --submodule=short "origin/$BASE"` (the working tree against the fetched base: committed **and** uncommitted tracked changes; Phase 9 runs before the first commit) plus the full contents of new untracked files — the full current contents of every modified file, verification evidence (build/test results), and a request for a structured verdict with concrete findings.
+All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the repository primer; the branch intent — the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content) and the design decisions taken and why; the complete change — `git diff --no-relative --no-ext-diff --no-textconv --submodule=short "origin/$BASE"` (the working tree against the fetched base: committed **and** uncommitted tracked changes; Phase 9 runs before the first commit) plus the full contents of new untracked files — the full current contents of every modified file, verification evidence (build/test results), and a request for a structured verdict with concrete findings.
 
 1. **Preflight each reviewer** as the rule describes, and follow its fallback ladder for any reviewer that is unavailable. Never silently drop one.
 2. **Dispatch the three reviews** with the rule's exact invocation for each.

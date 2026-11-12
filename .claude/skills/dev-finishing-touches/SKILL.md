@@ -640,7 +640,7 @@ Re-run the enumeration + comment fetches. Any new thread/comment (including revi
 <pages checked in PL + EN, toggle both directions, method (browser MCP / curl), console clean, notes on Apache-only behaviour deferred to production>
 
 ### CI Status
-All checks green on `<sha>`: <gh pr checks output>
+All checks green on [`<short-hash>`](https://github.com/<owner>/<repo>/commit/<hash>): <gh pr checks output>
 
 ### PR Comments
 All <count> threads addressed — category breakdown table (VALID_ISSUE→commits, FALSE_POSITIVE→reply URLs, …, AWAITING_REVIEWER list, follow-up issues opened).

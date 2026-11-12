@@ -449,7 +449,8 @@ For each modified `.cs` file in a NuGet-producing project:
 1. **Run tests with coverage:**
    
    ```bash
-   dotnet test "$SOLUTION_FILE" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"
+   # Git Bash: MSYS_NO_PATHCONV=1 stops MSYS rewriting the /p: switches as paths before dotnet.exe sees them
+   MSYS_NO_PATHCONV=1 dotnet test "$SOLUTION_FILE" /p:CollectCoverage=true /p:CoverletOutput=./CoverageResults/ "/p:CoverletOutputFormat=cobertura%2copencover"
    ```
 
 2. **Analyse coverage** on the modified files. The target is **>= 80%** on changed/new code.
@@ -740,8 +741,10 @@ git log -1 --format=%B | grep -iE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$' >/
   echo "FAIL: latest commit missing 'Refs: PLO-<n>' footer — recreate it (see below), never amend"; exit 1;
 }
 
-# Only when the pre-check found a breaking change: the footer must be present
-git log -1 --format=%B | grep -qE '^BREAKING CHANGE: .+' || { echo "FAIL: breaking change detected but no 'BREAKING CHANGE:' footer"; exit 1; }
+# Only when the Phase 9 pre-check found a breaking change (it sets BREAKING=yes); a normal commit skips this
+if [ "${BREAKING:-no}" = yes ]; then
+  git log -1 --format=%B | grep -qE '^BREAKING CHANGE: .+' || { echo "FAIL: breaking change detected but no 'BREAKING CHANGE:' footer"; exit 1; }
+fi
 ```
 
 If the footer is missing, **do not push**. A second commit cannot repair it (the original would still lack the footer), and `--amend` is off-limits unless the user asks. Exactly three cases:
@@ -1030,16 +1033,16 @@ All <count> review threads addressed.
 
 | Category | Count | Threads |
 |----------|-------|---------|
-| VALID_ISSUE (fixed in code) | <n> | <list of thread URLs → commit hashes> |
-| SUGGESTION_ACCEPTED (fixed in code) | <n> | <list of thread URLs → commit hashes> |
+| VALID_ISSUE (fixed in code) | <n> | <list of [thread](<thread URL>) → [`<hash>`](<commit URL>) links> |
+| SUGGESTION_ACCEPTED (fixed in code) | <n> | <list of [thread](<thread URL>) → [`<hash>`](<commit URL>) links> |
 | FALSE_POSITIVE (reply + resolve) | <n> | <list of thread URLs → reply URLs> |
-| ALREADY_FIXED (reply + resolve) | <n> | <list of thread URLs → existing commit hashes> |
+| ALREADY_FIXED (reply + resolve) | <n> | <list of [thread](<thread URL>) → [`<hash>`](<commit URL>) links> |
 | SUGGESTION_DECLINED (reply + resolve) | <n> | <list of thread URLs → reply URLs> |
 | QUESTION (reply + resolve) | <n> | <list of thread URLs → reply URLs> |
-| OUT_OF_SCOPE (reply + follow-up issue + resolve) | <n> | <list of thread URLs → issue URLs> |
+| OUT_OF_SCOPE (reply + follow-up issue + resolve) | <n> | <list of [thread](<thread URL>) → [PLO-<n>](<Linear URL>) links> |
 | AWAITING_REVIEWER (reply, thread left open) | <n> | <list of thread URLs → reply URLs> |
 
-**Follow-up issues opened:** `<list of issue URLs, or "none">`.
+**Follow-up issues opened:** <list of `[PLO-<n>](<Linear URL>)` links, or "none">.
 
 ### Suggestions (deferred)
 - <suggestion 1>
@@ -1071,7 +1074,7 @@ while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.ba
 
 ### Commit
 
-`<commit-hash>` — `<commit-message-subject>`
+[`<short-hash>`](https://github.com/<owner>/<repo>/commit/<hash>) — `<commit-message-subject>`
 
 ````
 
