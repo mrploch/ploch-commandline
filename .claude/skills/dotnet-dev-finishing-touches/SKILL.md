@@ -223,7 +223,7 @@ cp "path/to/MyClass.cs" "path/to/MyClass.cs.bak"
      BASE_BRANCH=$(git branch -r | sed -nE 's@^[[:space:]]*origin/(main|master)$@\1@p' | head -1)   # portable: macOS grep has no -P
    fi
    [ -n "$BASE_BRANCH" ] || echo "STOP: base branch not found — ask the user"
-   git fetch origin "$BASE_BRANCH"   # later diffs use the fetched origin/$BASE_BRANCH, never a stale local branch
+   [ -n "$BASE_BRANCH" ] && git fetch origin "$BASE_BRANCH"   # later diffs use the fetched origin/$BASE_BRANCH, never a stale local branch
    ```
    
    Convention: `ploch-common` uses `master`; newer repos use `main`.
@@ -703,7 +703,7 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 **Before committing, record `PRE_HEAD=$(git rev-parse --verify HEAD)`** — it is what proves later that a commit was made by this pass. Afterwards the commit is this pass's only when `[ "$(git rev-parse --verify HEAD)" != "$PRE_HEAD" ] && [ "$(git rev-parse --verify HEAD~1)" = "$PRE_HEAD" ]`; otherwise the commit failed and HEAD is still the user's earlier commit. Without a recorded `PRE_HEAD`, never reset.
 
-0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still check **each** commit this pass would push for the footer — `git rev-list "origin/$BASE_BRANCH"..HEAD | while read -r c; do git log -1 --format=%B "$c" | grep -qiE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$' || echo "MISSING FOOTER $c"; done` must print nothing (a count comparison would let one commit's two footers hide another's missing one); otherwise stop and ask the user before Phase 10 pushes anything.
+0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still run the per-commit footer check from Phase 10 step 1 must print nothing (a count comparison would let one commit's two footers hide another's missing one); otherwise stop and ask the user before Phase 10 pushes anything.
 
 **Delegate to the `/commit` skill** for the actual commit creation.
 
@@ -766,7 +766,18 @@ If the finishing-touches pass made changes across multiple logical areas (e.g. d
 
 **Bots that must reach a `success` verdict before this phase exits** (when present on the PR): `build`, `Test Results`, `Analyze (csharp)` (CodeQL), `Codacy Static Code Analysis`, `SonarCloud Code Analysis` / `SonarQube Cloud`, `CodeRabbit`, `Bito AI Code Review Agent`, any coverage bot (Codecov / Coveralls / Codacy Coverage), and any repository-specific custom check. A bot that has not yet appeared in `gh pr checks` is **not** absent — it is **pending its first run**, and you wait for it.
 
-1. **Pre-push build verification:**
+1. **Pre-push checks.** First the per-commit footer check — whether or not Phase 9 made a commit:
+
+   ```bash
+   # Every commit Phase 10 would push must carry the footer, not only the one this pass made
+   LIST=$(git rev-list "origin/$BASE_BRANCH"..HEAD) || { echo "STOP: cannot list the commits to push"; false; } \
+     && printf '%s\n' "$LIST" | while read -r c; do [ -n "$c" ] || continue
+          git log -1 --format=%B "$c" | grep -qiE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$' || echo "MISSING FOOTER $c"; done
+   ```
+
+   It must print nothing. A `STOP` or a `MISSING FOOTER` line stops the push: ask the user (an earlier commit without a footer is never rewritten without their approval).
+
+   Then the build verification:
    
    ```bash
    dotnet build "$SOLUTION_FILE"
@@ -1166,7 +1177,7 @@ Run the isolated `codex exec` command in [`external-ai-review.md`](../../rules/e
 | `APPROVED` | Mark the TODO complete after the local verification in Phase 7 passes. |
 | `APPROVED_WITH_NOTES` | Apply the recommended refinements, re-verify locally, then mark complete. Record the notes in the final report. |
 | `CHANGES_REQUESTED` | Apply the requested changes, re-run the Codex review on the revised fix. Do **not** mark the TODO complete until a subsequent verdict is `APPROVED` or `APPROVED_WITH_NOTES`. |
-| `REJECTED` | Discard the fix, pick a different approach, start again from the classification in Phase 6 (or the equivalent phase that raised the item). If Codex repeatedly rejects, stop and ask the user. |
+| `REJECTED` | Discard the fix — undo only this fix's own edits, from the pass's `.bak` copies; never `git checkout`, `git restore` or `git reset --hard` over the user's uncommitted work — pick a different approach, start again from the classification in Phase 6 (or the equivalent phase that raised the item). If Codex repeatedly rejects, stop and ask the user. |
 
 **Batching:** Multiple small fixes touching the same file are reviewed together (single Codex invocation per file is fine). Cross-file refactors or CI-failure fixes that span several files should be reviewed as one cohesive change, not one-file-at-a-time.
 

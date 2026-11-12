@@ -175,7 +175,7 @@ Any hit stops the commit, and so does **every** line the sweep prints — `POSSI
   for RANGE in "$BASE_REF...HEAD" "--cached" ""; do   # committed branch changes, staged, unstaged
     # --text: binary hunks are scanned too; --no-relative: the whole repository, whatever the folder
     git diff --no-relative --text --no-ext-diff --no-textconv --submodule=short ${RANGE:+"$RANGE"} -- \
-      | LC_ALL=C grep -qaEi "$PATTERN"
+      | LC_ALL=C grep -qaEi -e "$PATTERN"
     st=("${PIPESTATUS[@]}")                     # grep: 0 = match, 1 = no match, 2 = error
     case "${st[1]}" in
       (0) echo "POSSIBLE SECRET in git diff ${RANGE:-(unstaged)} (not printed)"; found=yes ;;
