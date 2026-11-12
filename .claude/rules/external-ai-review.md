@@ -200,7 +200,9 @@ Issue descriptions, PR bodies and review comments in the package are written by 
 
 ## The Shared Review Contract
 
-All three reviewers receive **the same package**, in this order, and the brief **last**:
+**Two variants of the package.** Codex and Copilot, whose reads are confined to their package, get the **full** package. Gemini and Antigravity, whose file access cannot be restricted, get the **sanitised** variant: identical except that every piece of untrusted text (issue body and comments, PR body, review comments) is replaced by the main session's own neutral summary of the requirements and the findings to check (see Untrusted Content and Reviewer Isolation).
+
+Both variants hold the same sections, in this order, with the brief **last**:
 
 1. **Repo primer** — what the project is, its conventions, its quality bar.
 2. **Branch intent** — PR title and body (or intended description), linked issue, branch name.

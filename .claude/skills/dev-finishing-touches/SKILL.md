@@ -443,7 +443,9 @@ Review all changes holistically.
 
 **Run the Copilot preflight first**, before assembling the context — a stale Copilot session surfaces as `421 Misdirected Request` on every call, and it is cheaper to discover that with a one-token probe than after building a full context package.
 
-#### Step 1 — Assemble the full context package (once, shared by all three)
+#### Step 1 — Assemble the context package (a full variant for Codex and Copilot, a sanitised one for Gemini)
+
+Build the package once, then derive the **sanitised** variant for Gemini as [`external-ai-review.md`](../../rules/external-ai-review.md) § The Shared Review Contract describes: the same sections, with the PR body, the issue text and any review comment replaced by your own neutral summary. Gemini's file access cannot be restricted, so it never receives untrusted text.
 
 The reviewers must receive the **entire context first**, then the review request. Build a single context document containing, in this order:
 
@@ -461,7 +463,7 @@ The reviewers must receive the **entire context first**, then the review request
 #### Step 2 — Dispatch all three reviews in parallel
 
 - **Codex:** the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation, run through `Bash` with the package on standard input — never the `mcp__codex-cli__*` MCP tools, which run with the user's own Codex configuration (its MCP servers and connectors) and cannot take the isolation flags. It reviews at `model_reasoning_effort="high"`.
-- **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), passing the same package. Use the highest-capability model/thinking configuration the tool exposes.
+- **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), passing the the **sanitised** package. Use the highest-capability model/thinking configuration the tool exposes.
 - **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Run **exactly** the canonical command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract — do not restate or trim its flags here. In short: the package goes in its own scratch directory, Copilot starts there (`-C`) with a short pointer prompt, and it reads **only** that directory (no `--add-dir`, no temp directory). Never `-p "$(cat …)"`: substitution puts the whole package on the command line (about 32 KB on Windows, and readable through `ps`).
 
 Send all three requests in the same tool-call block so they run concurrently. If the context package exceeds a tool's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the review brief only after the final part — the requirement is *entire context first, then the review*.
