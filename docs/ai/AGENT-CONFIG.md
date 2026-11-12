@@ -65,8 +65,9 @@ Problems in the committed rules:
   `issue-tracking.md`, which defines the tracker.
 - **`rules.md` describes a different system:** `.cursor/rules/*.mdc` as the source of truth and an
   `ai-rules install` step that does not exist here.
-- **Dead tool references.** `external-ai-review.md` and several skills call MCP tools for Codex and
-  Gemini reviewers that are not configured. `todo-tasks-execution.md` points at a skill that does
+- **Dead tool references.** `external-ai-review.md` and several skills called MCP tools for Codex and
+  Gemini reviewers that were not configured; since PLO-903 Codex runs as the isolated `codex exec` CLI,
+  so only the Gemini MCP tools can be missing. `todo-tasks-execution.md` points at a skill that does
   not exist.
 - **ContextStream** instructions and configuration were in ten committed files; PLO-653 removed them. The
   notes-keeping rule still names "ContextStream calls" as an example of what not to log, matching the workspace rule.

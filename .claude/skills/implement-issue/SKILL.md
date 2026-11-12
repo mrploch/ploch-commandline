@@ -91,6 +91,7 @@ digraph implement_issue {
     gate_ok [shape=diamond, label="Pass?"];
     finishing [label="14.5 Finishing-Touches Pass\n(/dotnet-dev-finishing-touches)"];
     report [label="15. Report Completion"];
+    gate_local [label="14. Completion Gate\n(local criteria only)"];
     finishing_local [label="14.5 Finishing-Touches Pass\n(--no-push mode)"];
     skip_push [label="Report locally\n(Linear comment, issue not Done)"];
 
@@ -103,7 +104,9 @@ digraph implement_issue {
     issues -> commit [label="no"];
     commit -> push_check;
     push_check -> push [label="no"];
-    push_check -> finishing_local [label="yes"];
+    push_check -> gate_local [label="yes"];
+    gate_local -> finishing_local [label="met"];
+    gate_local -> implement [label="gaps found"];
     finishing_local -> skip_push;
     push -> monitor -> ci_ok;
     ci_ok -> comments [label="yes"];
@@ -799,7 +802,7 @@ A PR may deliberately cover only part of an issue — **only** when the user agr
 
 After the completion gate passes and **before** reporting, run the **`/dotnet-dev-finishing-touches`** skill on the branch (full mode, not `--no-push`, unless this run used `--no-push`). **Pass it the resolved Linear issue** (`PLO-<n>`, plus `github-twin` if any) so it fetches the issue and its acceptance criteria from Linear even when the PR body carries no GitHub reference.
 
-- **With `--no-push`** the run reaches this phase straight after Phase 10 (Phases 11–14 are skipped): run the pass in `--no-push` mode, then go to the local report in Phase 15.
+- **With `--no-push`** the run skips Phases 11–13, runs Phase 14's **local** criteria, then this pass in `--no-push` mode, then the local report in Phase 15.
 
 - This is a standing user requirement — **do not skip it**, even when the branch looks clean. The pass independently re-verifies XML docs, markdown-doc sync, test coverage, build warnings, the grand review, and — when the run pushed — CI checks and PR threads with its own gates.
 - When the implement-issue phases were thorough, the pass typically confirms a clean state without making changes — that confirmation is the point.

@@ -99,7 +99,8 @@ gh api repos/<owner>/<repo>/pulls/<PR#> --jq '.head.sha'
 gh pr view <PR#> --repo <owner>/<repo> --json statusCheckRollup --jq '.statusCheckRollup[]
     | {name: (.name // .context), state: (.conclusion // .state), status: (.status // "COMPLETED")}' \
   || echo "GATE ERROR: status rollup unavailable, so the gate is NOT satisfied"
-# Expected: each named bot appears with state SUCCESS. A bot that doesn't appear at all is "not yet run" — wait for it.
+# Expected: each named bot appears with state SUCCESS, or SKIPPED only under condition 1's exception (intentionally
+# conditional, skip path proven, for example Bito skipped by its own configuration). A bot that doesn't appear at all is "not yet run" — wait for it.
 
 # 4. Every thread resolved, or (rule condition 3) its LATEST comment is ours? Outdated threads count too.
 #    --paginate walks every page of threads; comments(last:1) is the latest comment, not the first.

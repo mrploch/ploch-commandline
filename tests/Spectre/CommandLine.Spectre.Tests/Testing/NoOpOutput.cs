@@ -45,6 +45,7 @@ internal class NoOpOutput : IOutput
     public virtual IOutput WriteLine<TMessage>(TMessage message) => this;
 
     /// <summary>Called for every exception written; overridden by tests that need to observe the call.</summary>
+    /// <param name="exception">The exception that was written.</param>
     protected virtual void OnException(Exception? exception)
     {
         // Discarded by default.
