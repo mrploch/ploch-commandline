@@ -225,7 +225,7 @@ Order matters. **Revoke first** — everything else is cosmetic until the value 
        st=("${PIPESTATUS[@]}")                      # grep: 0 = found, 1 = not found, 2 = error
        case "${st[1]}" in
          (0) echo "blob $id"
-             git log --all -m --no-ext-diff --no-textconv --format='  commit %h' --find-object="$id" \
+             git --no-pager log --all -m --no-ext-diff --no-textconv --format='  commit %h' --find-object="$id" \
                || echo "  COMMIT LOOKUP FAILED for blob $id" ;;
          (1) [ "${st[0]}" = 0 ] || echo "UNREADABLE blob $id (search incomplete)" ;;
          (*) echo "SCAN ERROR on blob $id (search incomplete)" ;;

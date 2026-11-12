@@ -75,7 +75,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code`) | Phase 8.5                       | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                               |
 | `copilot` CLI on `PATH`, authenticated (GitHub Copilot CLI) | Phase 8.5                       | Shell-out reviewer — **not** an MCP tool. Run the preflight in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Preflight; on failure follow its fallback ladder (retry with token env stripped → Kimi K3 → ask the user). Never silently skip. |
 | Browser tooling (`claude-in-chrome` MCP, Playwright MCP, or `curl` fallback) | Phase 9.5 manual verification | Prefer a real browser MCP. If none is available, use `astro preview` + `curl` + dist HTML inspection and state in the report that visual verification was curl-level only.                          |
-| `superpowers:verification-before-completion` skill | Phase 12                        | If unavailable, invoke the verification checklist inline (re-run build + check, re-check CI, re-enumerate PR threads) — do not skip the verification itself.                                        |
+| `superpowers:verification-before-completion` skill | Phase 12                        | If unavailable, invoke the verification checklist inline (re-run build + check, re-check CI, re-enumerate PR threads) — do not skip the verification itself. Under `--no-push`, only the local checks: re-run the build and tests and re-check the TODO list; never poll CI or PR threads. |
 
 ## The Process
 
@@ -254,7 +254,7 @@ cp "src/layouts/Base.astro" "src/layouts/Base.astro.bak"
 
 2. **Failing CI checks** — from `CI_ISSUES`. One TODO per non-green check, with check name, run link, and root-cause excerpt.
 
-3. **PR review threads, conversations, and reviews** — fetched here (not only in Phase 11), via GraphQL `reviewThreads` (REST does not expose resolution state):
+3. **PR review threads, conversations, and reviews** — fetched here (not only in Phase 11), via GraphQL `reviewThreads` (REST does not expose resolution state): Only when Phase 1 found a PR; with `NO_PR` there is nothing to harvest.
 
    ```bash
    gh api graphql --paginate -f query='
@@ -461,7 +461,7 @@ The reviewers must receive the **entire context first**, then the review request
 
 - **Codex:** the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation, run through `Bash` with the package on standard input — never the `mcp__codex-cli__*` MCP tools, which run with the user's own Codex configuration (its MCP servers and connectors) and cannot take the isolation flags. It reviews at `model_reasoning_effort="high"`.
 - **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), passing the same package. Use the highest-capability model/thinking configuration the tool exposes.
-- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Run **exactly** the canonical command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract — do not restate or trim its flags here. In short: the package goes in its own scratch directory, Copilot starts there (`-C`) with a short pointer prompt, and it reads a **tracked-files-only copy** of the repository (`--add-dir "$TREE"`), never the checkout. Never `-p "$(cat …)"`: substitution puts the whole package on the command line (about 32 KB on Windows, and readable through `ps`).
+- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Run **exactly** the canonical command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract — do not restate or trim its flags here. In short: the package goes in its own scratch directory, Copilot starts there (`-C`) with a short pointer prompt, and it reads **only** that directory (no `--add-dir`, no temp directory). Never `-p "$(cat …)"`: substitution puts the whole package on the command line (about 32 KB on Windows, and readable through `ps`).
 
 Send all three requests in the same tool-call block so they run concurrently. If the context package exceeds a tool's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the review brief only after the final part — the requirement is *entire context first, then the review*.
 
@@ -651,7 +651,20 @@ All <count> threads addressed — category breakdown table (VALID_ISSUE→commit
 |----------|--------|
 | ...      | ....bak |
 
-Cleanup (this pass's backups only): `while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < '<literal pairs path>' && rm -f -- '<literal pairs path>'   # real path in the report; omit when nothing was backed up`
+Cleanup (this pass's backups only):
+
+```bash
+# This pass's backups only, from the recorded NUL-delimited pairs (the report writes the real path;
+# omit this block when nothing was backed up). The manifest is removed only when every backup was.
+PAIRS='<literal pairs path>'; left=no
+while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
+  case "$bak" in
+    (*.bak) rm -f -- "$bak" || { echo "NOT REMOVED: $bak"; left=yes; } ;;
+    (*) echo "SKIPPED $bak (not a .bak path)"; left=yes ;;
+  esac
+done < "$PAIRS"
+[ "$left" = no ] && rm -f -- "$PAIRS"
+```
 
 ### Commit(s)
 [`<short-hash>`](https://github.com/<owner>/<repo>/commit/<hash>) — `<subject>` (under `--no-push`, the plain local hash)

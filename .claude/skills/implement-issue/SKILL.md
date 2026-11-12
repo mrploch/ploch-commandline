@@ -541,7 +541,7 @@ All three reviews are **mandatory** for every non-trivial change — three provi
   Refs: PLO-<n>
   ```
 
-- The `Refs: PLO-<n>` footer is **mandatory**. The Linear identifier comes from Phase 0. Never write `Refs: #<n>` without the `PLO-` identifier.
+- The `Refs: PLO-<n>` footer is **mandatory**. The Linear identifier comes from Phase 0. Never write `Refs: #<n>` without the `PLO-` identifier. A same-repository twin's `Refs: #<n>` goes on its **own** footer line; a twin in another repository gets none.
 
 - Detect and document breaking changes — check for removed/renamed public APIs, changed signatures, changed defaults. Add `BREAKING CHANGE:` footer if any.
 
@@ -730,9 +730,10 @@ SonarCloud rarely posts one PR thread per finding — it posts a single summary 
 
    ```bash
    # Reply to a review comment
-   gh api repos/<owner>/<repo>/pulls/<pr-number>/comments/<comment-id>/replies -f body="<your reply>"
+   # Write the reply to a file first: in double quotes, backticks and $ in Markdown would be run by the shell
+   gh api repos/<owner>/<repo>/pulls/<pr-number>/comments/<comment-id>/replies -F body=@"$REPLY_FILE"
    # Reply to an issue comment
-   gh api repos/<owner>/<repo>/issues/<pr-number>/comments -f body="<your reply>"
+   gh api repos/<owner>/<repo>/issues/<pr-number>/comments -F body=@"$REPLY_FILE"
    # Then resolve the thread (GraphQL thread id from step 1); never resolve without a reply
    gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<thread-id>
    ```
@@ -806,7 +807,7 @@ After the completion gate passes and **before** reporting, run the **`/dotnet-de
 
 - This is a standing user requirement — **do not skip it**, even when the branch looks clean. The pass independently re-verifies XML docs, markdown-doc sync, test coverage, build warnings, the grand review, and — when the run pushed — CI checks and PR threads with its own gates.
 - When the implement-issue phases were thorough, the pass typically confirms a clean state without making changes — that confirmation is the point.
-- If the pass **does** make changes, its own fix loop applies. In a normal run that is build → test → commit → push → CI → comments, and Phase 14 is re-verified on the new HEAD before Phase 15. **Under `--no-push`** it is build → test → local commit only: never push, never open a PR, and skip Phase 14.
+- If the pass **does** make changes, its own fix loop applies. In a normal run that is build → test → commit → push → CI → comments, and Phase 14 is re-verified on the new HEAD before Phase 15. **Under `--no-push`** it is build → test → local commit only: never push, never open a PR, and re-verify Phase 14's **local** criteria (1–4, 8–11) on the new HEAD.
 - The finishing-touches completion report satisfies this phase; reference it (or summarise it) in the Phase 15 report.
 
 ### Phase 15: Report Completion
@@ -859,7 +860,7 @@ The idempotency check still applies, with one refinement for both bodies: when a
 
 **After the merge** (a later session, or when the user reports it): a `Closes PLO-<n>` normally moves the issue to Done automatically. Confirm the state; only if it did not move, set it with `mcp__plugin_linear_linear__save_issue(id="PLO-<n>", state="Done")`. Never for partial work.
 
-**With `--no-push`** — there is no PR, so Phase 14 does not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (if a local completion comment for this branch already exists, update it with the new commit hash rather than posting another). Leave the issue "In Progress".
+**With `--no-push`** — there is no PR, so Phase 14's remote criteria (5–7, 12, 13) do not apply and the issue is **never** marked Done. Post one comment, starting with `implement-issue completion (local):`, naming the branch and the local commit hash and stating that the work is committed locally and not yet pushed or reviewed (if a local completion comment for this branch already exists, update it with the new commit hash rather than posting another). Leave the issue "In Progress".
 
 ---
 
@@ -971,7 +972,7 @@ If you catch yourself about to do any of these, stop and reconsider:
 - About to **mark a Linear issue Done after a `--no-push` run**.
 - About to **run `gh issue create`**, or write `Refs: #<n>` / `Closes #<n>` without the `PLO-<n>` identifier — Linear is the tracker (`rules/issue-tracking.md`).
 - About to **create a Linear issue for a GitHub input without first searching Linear for its twin** (Step 0b.2) — this produces duplicates.
-- About to **mark a Linear issue "Done" while its PR is still open or CI/comments are unresolved** — the issue is set to Done only after the PR has **merged** (Phase 15), never when the gate passes on an open PR.
+- About to **mark a Linear issue "Done" while its PR is still open or CI/comments are unresolved** — the issue is set to Done only after the PR has **merged**, in a later step — Phase 15 never sets Done — and never when the gate passes on an open PR.
 
 ---
 

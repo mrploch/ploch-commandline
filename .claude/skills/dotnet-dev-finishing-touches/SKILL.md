@@ -62,7 +62,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | Requirement                                        | Required for               | Fallback if missing                                                                                                                                                                                |
 | -------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `dotnet` CLI (.NET 10+ SDK; the repository targets net10.0) | Phases 4, 5, 7             | Stop — the skill cannot run without it.                                                                                                                                                            |
-| `mcp__sonarqube-cloud__*` (when SonarCloud analyses the repo) | Phases 2.5, 11, 12 | Stop and ask: the gate requires the platform check; a green GitHub check is not enough. |
+| `mcp__sonarqube-cloud__*` (when SonarCloud analyses the repo **and a PR exists**; not needed under `--no-push`) | Phases 2.5, 11, 12 | Stop and ask: the gate requires the platform check; a green GitHub check is not enough. |
 | `gh` CLI, authenticated (`gh auth status`)         | Phases 1, 1.5, 10, 11      | Stop if Phase 10/11 is in scope. For Phase 1/1.5 the skill can continue without PR context but must flag the gap in the report.                                                                    |
 | Linear MCP (`mcp__plugin_linear_linear__*`) | Phases 1, 9, 11 | Pause and ask; never fall back to GitHub issues. Report an unavailable tool explicitly, as [`linear-session-logging.md`](../../rules/linear-session-logging.md) requires. |
 | `git` CLI, working tree clean of unrelated changes | All phases                 | Stop and ask the user to commit/stash unrelated work.                                                                                                                                              |
@@ -71,7 +71,7 @@ Before running any phase, check these prerequisites. If one is missing, **stop a
 | `codex` CLI, signed in | Phase 8.5 + Codex Validation Gate | Run the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation (never the `mcp__codex-cli__*` MCP tools, which run with the user's own Codex configuration (its MCP servers and connectors) and cannot take the isolation flags). Retry once; if still missing, **pause and ask the user** whether to proceed without the gate (and record the decision in the final report). Never silently skip.                  |
 | `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code`) | Phase 8.5                  | Load via `ToolSearch`; retry once; if still missing, **pause and ask the user** whether to proceed with a reduced panel (record the decision). Never silently skip.                              |
 | `copilot` CLI on `PATH`, authenticated (GitHub Copilot CLI) | Phase 8.5                  | Shell-out reviewer — **not** an MCP tool. Run the preflight in [`rules/external-ai-review.md`](../../rules/external-ai-review.md) § Preflight; on failure follow its fallback ladder (retry with token env stripped → Kimi K3 → ask the user). Never silently skip. |
-| `superpowers:verification-before-completion` skill | Phase 12                   | If unavailable, invoke the verification checklist inline (re-run build, re-run tests, re-check CI, re-enumerate PR threads) — do not skip the verification itself.                                 |
+| `superpowers:verification-before-completion` skill | Phase 12                   | If unavailable, invoke the verification checklist inline (re-run build, re-run tests, re-check CI, re-enumerate PR threads) — do not skip the verification itself. Under `--no-push`, only the local checks: re-run the build and tests and re-check the TODO list; never poll CI or PR threads. |
 
 ## The Process
 
@@ -347,7 +347,7 @@ Build the complete picture of all changes on the branch.
 
 2. **Failing CI checks** — from the Phase 1.5 sub-agent's `CI_ISSUES` list. One TODO per non-green check, with the check name, run link, and root-cause excerpt referenced in the TODO body.
 
-3. **PR review threads, conversations, and reviews** — fetched here (not just in Phase 11). REST endpoints do not expose thread resolution state, so the primary source is the GraphQL `reviewThreads` connection:
+3. **PR review threads, conversations, and reviews** — fetched here (not just in Phase 11). REST endpoints do not expose thread resolution state, so the primary source is the GraphQL `reviewThreads` connection: Only when Phase 1 found a PR; with `NO_PR` there is nothing to harvest.
    
    ```bash
    # Thread IDs + resolution state (primary source for TODO creation). --paginate walks every page;
@@ -378,7 +378,7 @@ Build the complete picture of all changes on the branch.
 
 **Additional sources folded in as the pass progresses:**
 
-- SonarCloud platform findings (when SonarCloud analyses the repository): open issues and `TO_REVIEW` hotspots for the PR, queried as in step 7 of the gate's Pre-Completion Verification — one TODO each, triaged in Phase 11 like a thread. A status change on the platform needs the user's confirmation.
+- SonarCloud platform findings (when SonarCloud analyses the repository **and Phase 1 found a PR**): open issues and `TO_REVIEW` hotspots for the PR, queried as in step 7 of the gate's Pre-Completion Verification — one TODO each, triaged in Phase 11 like a thread. A status change on the platform needs the user's confirmation.
 
 - XML doc gaps identified in Phase 3 — **one TODO per file** (not per member) to keep the list manageable.
 - Coverage gaps identified in Phase 4 — one TODO per file under 80%.
@@ -679,7 +679,7 @@ Reviewers receive the **entire context first**, then the review request. Build a
 
 - **Codex:** the isolated `codex exec` command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Untrusted Content and Reviewer Isolation, run through `Bash` with the package on standard input — never the `mcp__codex-cli__*` MCP tools, which run with the user's own Codex configuration (its MCP servers and connectors) and cannot take the isolation flags. It reviews at `model_reasoning_effort="high"`.
 - **Gemini:** `mcp__gemini-cli__gemini` (or `mcp__gemini__gemini-analyze-code` if the gemini-cli server is absent), same package, highest-capability model/thinking configuration.
-- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Run **exactly** the canonical command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract — do not restate or trim its flags here. In short: the package goes in its own scratch directory, Copilot starts there (`-C`) with a short pointer prompt, and it reads a **tracked-files-only copy** of the repository (`--add-dir "$TREE"`), never the checkout. Never `-p "$(cat …)"`: substitution puts the whole package on the command line (about 32 KB on Windows, and readable through `ps`).
+- **Copilot:** the `copilot` CLI via `Bash` — **not** an MCP tool, so there is no `mcp__copilot__*` to load. Run **exactly** the canonical command in [`external-ai-review.md`](../../rules/external-ai-review.md) § Copilot CLI Invocation Contract — do not restate or trim its flags here. In short: the package goes in its own scratch directory, Copilot starts there (`-C`) with a short pointer prompt, and it reads **only** that directory (no `--add-dir`, no temp directory). Never `-p "$(cat …)"`: substitution puts the whole package on the command line (about 32 KB on Windows, and readable through `ps`).
 
 Send all three requests in the same tool-call block so they run concurrently. If the package exceeds a transport's input limit, split it into a numbered multi-part upload ("context part 1/3…") and send the brief only after the final part — the requirement is *entire context first, then the review*.
 
@@ -1070,7 +1070,16 @@ done < '<literal pairs path>'   # the report writes the real path; omit this blo
 **Cleanup command:**
 
 ```bash
-while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do case "$bak" in (*.bak) rm -f -- "$bak" ;; (*) echo "SKIPPED $bak (not a .bak path)" ;; esac; done < '<literal pairs path>' && rm -f -- '<literal pairs path>'   # real path in the report; omit when nothing was backed up   # this pass's backups only
+# This pass's backups only, from the recorded NUL-delimited pairs (the report writes the real path;
+# omit this block when nothing was backed up). The manifest is removed only when every backup was.
+PAIRS='<literal pairs path>'; left=no
+while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
+  case "$bak" in
+    (*.bak) rm -f -- "$bak" || { echo "NOT REMOVED: $bak"; left=yes; } ;;
+    (*) echo "SKIPPED $bak (not a .bak path)"; left=yes ;;
+  esac
+done < "$PAIRS"
+[ "$left" = no ] && rm -f -- "$PAIRS"
 ```
 
 ### Commit
