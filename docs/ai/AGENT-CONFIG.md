@@ -34,7 +34,7 @@ repository is checked out inside the workspace.
 | ~~`.contextstream/config.json`~~ | 0 | deleted | ContextStream | Removed (PLO-653) |
 | ~~`.cursor/mcp.json`~~ | 0 | deleted | Cursor | Removed (PLO-653) |
 | `.claude/rules/` | 32 | 154 KB at 27 files; not re-measured | Claude Code, all of it, every session | Reduce; see section 3. PLO-903 added `issue-tracking`, `linear-session-logging`, `no-committed-secrets`, `response-closing` and `response-links` |
-| `.claude/skills/` | 9 | 228 KB | Claude Code, on demand | Keep 4 of 6 skills |
+| `.claude/skills/` | 9 | 228 KB (measured with 6 skills) | Claude Code, on demand | Keep; re-measure before trimming |
 | `.claude/mrploch-dev/` | 2 | 35 KB | Nothing; unregistered plugin | Remove |
 | `.agents/` | 12 | 183 KB | Codex, Antigravity | Regenerate from one source or remove |
 | `.cursor/rules/` | 26 | 137 KB | Cursor | Stale mirror; regenerate or remove |

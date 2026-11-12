@@ -43,7 +43,7 @@ Each returned issue and hotspot is triaged with the **same seven-category model*
 
 For each bot whose verdict is "fail" or "action_required" or "no verdict yet because the bot hasn't run":
 
-- **Fail** → fetch the detailed output (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs` for status checks; `gh api repos/<owner>/<repo>/check-runs/<id>/annotations` for per-line annotations; `gh pr view <PR#> --json comments,reviews` for PR-comment-based feedback). Resolve every individual finding with either a code fix or — for false positives — a justified exclusion documented in the relevant config (`.codacy.yml`, `sonar-project.properties`, `.codeql/`, etc.) with a comment explaining why and a link to the affected PR/issue.
+- **Fail** → fetch the detailed output (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs` for status checks; `gh api repos/<owner>/<repo>/check-runs/<id>/annotations` for per-line annotations; `gh pr view <PR#> --json comments,reviews` for PR-comment-based feedback). Resolve every individual finding with either a code fix or — for false positives — a justified exclusion documented in the relevant config (`.codacy.yml`, `sonar-project.properties`, `.codeql/`, etc.) with a comment explaining why and a link to the affected PR/issue — **after the user has confirmed it** (see [When To Pause](#when-to-pause-and-confirm-with-the-user)).
 - **Action_required** → treat as fail.
 - **Pending / queued / in_progress** → wait. Use a polling cycle (e.g. `ScheduleWakeup` ~270s to stay inside the 5-min cache window). Do not declare completion.
 - **Not started** → wait. Some bots (Codacy, SonarCloud) take 1–5 min to start after a push.

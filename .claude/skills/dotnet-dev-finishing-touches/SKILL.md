@@ -1,6 +1,6 @@
 ---
 name: dotnet-dev-finishing-touches
-description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, runs a mandatory triple external AI review of the whole branch (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via the isolated Codex CLI gate, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Under `--no-push` it stays local, with no push and no CI or PR-thread gates. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing (asked to clean up *before* pushing, it runs in `--no-push` mode unless the user says to push).
+description: Last-mile quality pass for .NET library branches — reviews all changes (committed + uncommitted), adds missing XML docs, ensures 80%+ test coverage, builds with zero warnings, resolves static analyzer diagnostics using /dotnet-dev-practical suppression techniques, runs a mandatory triple external AI review of the whole branch (Codex, Gemini AND GitHub Copilot CLI on Grok 4.6, each given the entire context first, then reviewing at high effort), creates a conventional commit, and, unless `--no-push`, monitors CI until green. Starts with a CI pre-check sub-agent, builds a unified TODO list covering local warnings + failing CI checks + every unresolved PR review thread, triages each thread into valid / false-positive / already-fixed / suggestion / question, fixes valid issues in code (Codex-validated before commit) and replies to false positives with specific evidence-based reasoning, validates non-trivial fixes via the isolated Codex CLI gate, and only completes when every CI check is green, every TODO is resolved, and zero PR review threads remain unaddressed. Under `--no-push` it stays local, with no push and no CI or PR-thread gates. Use when the user says "/dotnet-dev-finishing-touches" or asks to polish, finish, or clean up a branch before pushing (asked to clean up *before* pushing, it runs in `--no-push` mode unless the user says to push).
 ---
 
 # Finishing Touches — .NET Branch Quality Pass
@@ -378,7 +378,7 @@ Build the complete picture of all changes on the branch.
 
 **Additional sources folded in as the pass progresses:**
 
-- SonarCloud platform findings (when SonarCloud analyses the repository **and Phase 1 found a PR**): open issues and `TO_REVIEW` hotspots for the PR, queried as in step 7 of the gate's Pre-Completion Verification — one TODO each, triaged in Phase 11 like a thread. A status change on the platform needs the user's confirmation.
+- SonarCloud platform findings (when SonarCloud analyses the repository, **Phase 1 found a PR, and the run is not `--no-push`**): open issues and `TO_REVIEW` hotspots for the PR, queried as in step 7 of the gate's Pre-Completion Verification — one TODO each, triaged in Phase 11 like a thread. A status change on the platform needs the user's confirmation.
 
 - XML doc gaps identified in Phase 3 — **one TODO per file** (not per member) to keep the list manageable.
 - Coverage gaps identified in Phase 4 — one TODO per file under 80%.
@@ -701,7 +701,9 @@ Store for the Phase 12 report: each reviewer's verdict, finding counts by severi
 
 ### Phase 9: Commit
 
-0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still check the commits this pass would push: every commit since the base must carry the footer (`git log --format=%B "origin/$BASE_BRANCH"..HEAD | grep -ciE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$'` matches the commit count from `git rev-list --count "origin/$BASE_BRANCH"..HEAD`); if not, stop and ask the user before Phase 10 pushes anything.
+**Before committing, record `PRE_HEAD=$(git rev-parse --verify HEAD)`** — it is what proves later that a commit was made by this pass. Afterwards the commit is this pass's only when `[ "$(git rev-parse --verify HEAD)" != "$PRE_HEAD" ] && [ "$(git rev-parse --verify HEAD~1)" = "$PRE_HEAD" ]`; otherwise the commit failed and HEAD is still the user's earlier commit. Without a recorded `PRE_HEAD`, never reset.
+
+0. **Nothing to commit?** If the pass changed no files (`git status --porcelain` lists nothing new beyond the user's own work), skip this phase: there is no commit to make and no footer to check. This is the normal outcome when `implement-issue` Phase 14.5 runs the pass on a clean branch. Before skipping, still check **each** commit this pass would push for the footer — `git rev-list "origin/$BASE_BRANCH"..HEAD | while read -r c; do git log -1 --format=%B "$c" | grep -qiE '^Refs:[[:space:]]*PLO-[0-9]+[[:space:]]*$' || echo "MISSING FOOTER $c"; done` must print nothing (a count comparison would let one commit's two footers hide another's missing one); otherwise stop and ask the user before Phase 10 pushes anything.
 
 **Delegate to the `/commit` skill** for the actual commit creation.
 
@@ -748,8 +750,7 @@ fi
 ```
 
 If the footer is missing, **do not push**. A second commit cannot repair it (the original would still lack the footer), and `--amend` is off-limits unless the user asks. Then exactly three cases:
-- Record `PRE_HEAD=$(git rev-parse --verify HEAD)` **before** running `/commit` or `git commit`. The commit is this pass's only when, afterwards, `[ "$(git rev-parse --verify HEAD)" != "$PRE_HEAD" ] && [ "$(git rev-parse --verify HEAD~1)" = "$PRE_HEAD" ]` — otherwise the commit failed and HEAD is still the user's earlier commit.
-- **This pass created the commit** (the `PRE_HEAD` check below) **and it is verifiably unpublished** — `git fetch origin` succeeds, then `git branch -r --contains HEAD` succeeds and prints nothing → `git reset --soft HEAD~1` and commit again with the full message.
+- **This pass created the commit** (the `PRE_HEAD` check, recorded before the commit) **and it is verifiably unpublished** — `git fetch origin` succeeds, then `git branch -r --contains HEAD` succeeds and prints nothing → `git reset --soft HEAD~1` and commit again with the full message.
 - **The commit is on a remote**, or this pass did not create it → stop and ask the user (rewriting it would need a force-push).
 - **Either check failed** (publication unknown) → stop and ask the user. Do not reset.
 
@@ -892,7 +893,7 @@ For each thread in these categories:
 
 5. **Codex validation (mandatory before commit for non-trivial fixes)** — invoke the [Codex Validation Gate](#codex-validation-gate) with the thread URL, original code, the **staged** diff, the build and test results, and reasoning. Do **not** commit until the verdict is `APPROVED` or `APPROVED_WITH_NOTES`.
 
-6. Commit (via the `/commit` skill — one commit per logical thread group; batching threads that touch the same file or concern is fine, but the commit message body must list every thread addressed). **Never amend.**
+6. Commit through Phase 9 — `PRE_HEAD`, the staged sweep, then the `/commit` skill and the footer check (one commit per logical thread group; batching threads that touch the same file or concern is fine, but the commit message body must list every thread addressed). **Never amend.**
 
 7. Push. Monitor CI via Phase 10 until all checks are green.
 
@@ -1079,7 +1080,7 @@ PAIRS='<literal pairs path>'; left=no
 if [ -r "$PAIRS" ]; then
   while IFS= read -r -d '' orig && IFS= read -r -d '' bak; do
     case "$bak" in
-      (/*.bak) rm -f -- "$bak" || { echo "NOT REMOVED: $bak"; left=yes; } ;;
+      (/*.bak|[A-Za-z]:/*.bak) rm -f -- "$bak" || { echo "NOT REMOVED: $bak"; left=yes; } ;;   # POSIX or Git Bash C:/ path
       (*) echo "SKIPPED $bak (not an absolute .bak path)"; left=yes ;;
     esac
   done < "$PAIRS"

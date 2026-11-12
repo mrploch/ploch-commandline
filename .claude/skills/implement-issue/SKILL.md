@@ -752,7 +752,7 @@ SonarCloud rarely posts one PR thread per finding — it posts a single summary 
 
 **Under `--no-push`** only the local criteria apply — 1–4 and 8–11 in the table below (build, tests, analysers, formatting, acceptance criteria, docs, SampleApp, commit format). The remote ones (5–7, 12, 13) are not evaluated, and the run never pushes to satisfy them.
 
-**Authoritative gate:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). **Reproduce the verification sequence ("The Pre-Completion Verification") from that rule and confirm every output before writing a completion report.**
+**Authoritative gate:** [`pr-checks-completion-gate.md`](../../rules/pr-checks-completion-gate.md). **When the run pushed, reproduce the verification sequence ("The Pre-Completion Verification") from that rule and confirm every output before writing a completion report.** Under `--no-push` check only the local criteria named above.
 
 **Forbidden completion framings** (these were historical failure modes):
 
