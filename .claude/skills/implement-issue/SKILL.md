@@ -504,7 +504,7 @@ Before committing, review your own changes thoroughly:
 
 **Panel definition, transports, models, invocation flags, preflight and fallbacks: [`external-ai-review.md`](../../rules/external-ai-review.md).** That rule is the single source of truth; this skill deliberately does not restate the reviewers or their flags, so a change to the panel needs one edit, there.
 
-All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content), the design decisions taken and why, the diff (`git diff "origin/$BASE"...HEAD`), verification evidence (build/test results), and a request for a structured verdict with concrete findings.
+All three reviews are **mandatory** for every non-trivial change — three providers, three sets of blind spots. Run them in parallel (one tool-call block) and pass **full context** to each, in the order the rule's Shared Review Contract defines: the Linear identifier (`PLO-<n>`) + title + requirements (wrapped as untrusted issue content), the design decisions taken and why, the repository primer, the complete change — `git diff "origin/$BASE"` (the working tree against the fetched base: committed **and** uncommitted tracked changes; Phase 9 runs before the first commit) plus the full contents of new untracked files — the full current contents of every modified file, verification evidence (build/test results), and a request for a structured verdict with concrete findings.
 
 1. **Preflight each reviewer** as the rule describes, and follow its fallback ladder for any reviewer that is unavailable. Never silently drop one.
 2. **Dispatch the three reviews** with the rule's exact invocation for each.
@@ -786,7 +786,7 @@ Before reporting completion, **every single one** of these criteria must be met:
 A PR may deliberately cover only part of an issue — **only** when the user agreed to split it, or the issue itself defines the PR's slice. Then:
 
 - Agree and write down the PR's scope: list the acceptance criteria it covers and the ones left for later, in the PR body and in a Linear comment.
-- Link with `Refs PLO-<n>` (and `Refs #<github-twin>`), never `Closes`, so the issue stays open after the merge.
+- Link with `Refs PLO-<n>`, never `Closes`, so the issue stays open after the merge. Add `Refs #<github-twin>` only for a twin **in this PR's repository** (as in Phase 11); a twin in another repository gets no `#<n>` reference.
 - Criterion 8 above becomes "every acceptance criterion **in the agreed scope** is met"; every other criterion still applies in full.
 - In Phase 15, post the completion comment with the remaining criteria and leave the issue open (not Done), or file the remainder as a follow-up Linear issue and link it.
 

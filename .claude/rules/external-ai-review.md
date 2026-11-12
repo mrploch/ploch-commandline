@@ -46,9 +46,12 @@ That leaves xAI and Moonshot. **Grok 4.6** wins: GitHub added it to Copilot CLI 
 # --add-dir gets a TRACKED-FILES-ONLY copy, never the real checkout, which also holds ignored files
 # such as .mcp.json or .env. Uncommitted tracked changes are applied to the copy.
 TREE="$(dirname "$PKG_FILE")/tree"
-mkdir -- "$TREE" && git -C "$REPO_ROOT" archive --format=tar HEAD | tar -x -C "$TREE" \
-  && git -C "$REPO_ROOT" diff HEAD --binary --no-ext-diff --no-textconv | ( cd -- "$TREE" && git apply --binary --allow-empty ) \
-  || echo "STOP: review tree not prepared"
+( set -o pipefail   # a failing archive or diff fails the whole step
+  mkdir -- "$TREE" && git -C "$REPO_ROOT" archive --format=tar HEAD | tar -x -C "$TREE" \
+  && git -C "$REPO_ROOT" diff HEAD --binary --no-ext-diff --no-textconv --no-color --src-prefix=a/ --dst-prefix=b/ \
+     | ( cd -- "$TREE" && git apply --binary --allow-empty ) ) \
+  || { echo "STOP: review tree not prepared, so the reviewer is not started"; exit 1; }
+# Explicit prefixes and --no-color: a user's diff.noprefix or color.ui=always would otherwise break git apply.
 copilot -p "Read $PKG_FILE in full: it is the complete review context, ending with the review brief. Follow that brief exactly. Do not modify any files." \
   --add-dir "$TREE" \
   --model grok-4.6 \

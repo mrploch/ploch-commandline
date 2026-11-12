@@ -86,7 +86,9 @@ Immediately before writing any completion message, execute this sequence and ver
 ```bash
 # 1. All checks pass on the latest commit?
 gh pr checks <PR#> --repo <owner>/<repo>
-# Expected: every check is in state "pass" (the second column). None is "fail", "pending", "skipping" or "cancel".
+# Expected: every check is in state "pass" (the second column). None is "fail", "pending" or "cancel". A "skipping"
+# check is acceptable only as condition 1's exception: intentionally conditional, and you can prove the skip path was
+# taken (for example Bito skipped by its own configuration).
 
 # 2. Latest commit on the PR head is what we expect?
 gh api repos/<owner>/<repo>/pulls/<PR#> --jq '.head.sha'
@@ -102,15 +104,15 @@ gh pr view <PR#> --repo <owner>/<repo> --json statusCheckRollup --jq '.statusChe
 # 4. Every thread resolved, or (rule condition 3) its LATEST comment is ours? Outdated threads count too.
 #    --paginate walks every page of threads; comments(last:1) is the latest comment, not the first.
 #    Every request is checked: a failed or malformed response is a gate ERROR, never a count of 0.
+#    Only gh is needed: its built-in --jq does the filtering (no separate jq install), and awk counts.
 ME=$(gh api user --jq .login) && [ -n "$ME" ] \
-  && PAGES=$(gh api graphql --paginate -f query='query($o:String!,$r:String!,$pr:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$pr){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{id isResolved comments(last:1){nodes{author{login}}}}}}}}' \
-       -F o=<owner> -F r=<repo> -F pr=<PR#>) \
-  && printf '%s' "$PAGES" | jq -se --arg me "$ME" '
-       if length == 0 or any(.[]; has("errors") or (.data.repository.pullRequest.reviewThreads.nodes | type) != "array")
-       then error("malformed or failed response")
-       else [.[].data.repository.pullRequest.reviewThreads.nodes[]
-             | select(.isResolved == false and .comments.nodes[0].author.login != $me)] | length end' \
+  && LATEST=$(gh api graphql --paginate -f query='query($o:String!,$r:String!,$pr:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$pr){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{id isResolved comments(last:1){nodes{author{login}}}}}}}}' \
+       -F o=<owner> -F r=<repo> -F pr=<PR#> \
+       --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false) | (.comments.nodes[0].author.login // "(deleted user)")') \
+  && printf '%s\n' "$LATEST" | awk -v me="$ME" 'NF && $0 != me { n++ } END { print n + 0 }' \
   || echo "GATE ERROR: the thread query failed, so the gate is NOT satisfied"
+# A GraphQL error or a malformed page makes gh exit non-zero (the --jq iteration fails on a missing node list),
+# so a failure is a GATE ERROR, never a count of 0.
 # Expected: 0. A thread left open with our reply as the latest comment is listed as "Awaiting reviewer" in the report.
 
 # 5. No new or EDITED comments or reviews since our last poll? Bots often update one summary comment in
@@ -118,7 +120,7 @@ ME=$(gh api user --jq .login) && [ -n "$ME" ] \
 FP=$( set -o pipefail   # a failed request fails the fingerprint instead of hashing an empty list
   { gh api --paginate "repos/<owner>/<repo>/issues/<PR#>/comments" --jq '.[] | "issue \(.id) \(.updated_at)"' \
     && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/comments" --jq '.[] | "review-comment \(.id) \(.updated_at)"' \
-    && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/reviews" --jq '.[] | "review \(.id) \(.state) \(.submitted_at) \(.body | @base64)"'; } \
+    && gh api --paginate "repos/<owner>/<repo>/pulls/<PR#>/reviews" --jq '.[] | "review \(.id) \(.state) \(.submitted_at) \(.body // "" | @base64)"'; } \
     | sort | git hash-object --stdin ) && echo "comments fingerprint: $FP" \
   || echo "GATE ERROR: comments unavailable, so the gate is NOT satisfied"   # no fingerprint is printed on failure
 # Review bodies are part of the fingerprint: a review has no update time, and its body can be edited.
