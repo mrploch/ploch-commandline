@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-10-05, against commit `6a2c931` |
+| Last verified | 2026-10-05, against commit `6a2c931`; PLO-903 (2026-11) updated the tracker findings without re-measuring sizes |
 | Verified by | Listing and measuring every committed agent file; comparing with a live Claude Code session |
 | Index | [`CLAUDE.md`](../../CLAUDE.md) |
 
@@ -33,8 +33,8 @@ repository is checked out inside the workspace.
 | ~~`.cursorrules`~~ | 0 | deleted | Cursor | Removed (PLO-653) |
 | ~~`.contextstream/config.json`~~ | 0 | deleted | ContextStream | Removed (PLO-653) |
 | ~~`.cursor/mcp.json`~~ | 0 | deleted | Cursor | Removed (PLO-653) |
-| `.claude/rules/` | 27 | 154 KB | Claude Code, all of it, every session | Reduce; see section 3 |
-| `.claude/skills/` | 9 | 228 KB | Claude Code, on demand | Keep 4 of 6 skills |
+| `.claude/rules/` | 32 | 154 KB at 27 files; not re-measured | Claude Code, all of it, every session | Reduce; see section 3. PLO-903 added `issue-tracking`, `linear-session-logging`, `no-committed-secrets`, `response-closing` and `response-links` |
+| `.claude/skills/` | 9 | 228 KB (measured with 6 skills) | Claude Code, on demand | Keep; re-measure before trimming |
 | `.claude/mrploch-dev/` | 2 | 35 KB | Nothing; unregistered plugin | Remove |
 | `.agents/` | 12 | 183 KB | Codex, Antigravity | Regenerate from one source or remove |
 | `.cursor/rules/` | 26 | 137 KB | Cursor | Stale mirror; regenerate or remove |
@@ -47,7 +47,7 @@ and no committed MCP server list for Claude Code.
 
 ## 3. Rules
 
-All 27 files in `.claude/rules/` load unconditionally — about 38,600 tokens per session. None has
+All 27 files that `.claude/rules/` held when this was measured loaded unconditionally — about 38,600 tokens per session (earlier snapshot; PLO-903 brought the count to 32 and this was not re-measured). None has
 path scoping.
 
 | Relevance here | Rules | Size |
@@ -55,17 +55,19 @@ path scoping.
 | Not applicable: no database, web API, deployed site or setup scripts | `data-access`, `data-project`, `data-provider-project`, `domain-model`, `qa`, `local-setup-scripts`, `rules` | 42 KB |
 | About a tenth applies (library families, test projects, casing) | `project-naming` | 32 KB |
 | Partly applies | `project-structure`, `sample-apps`, `dependencies` | 10 KB |
-| Applies | `agent`, `branch-naming`, `code-quality`, `commits`, `documentation`, `external-ai-review`, `naming`, `notes-keeping`, `pr-checks-completion-gate`, `pr-descriptions`, `summaries`, `todo-tasks-execution`, `traceability`, `work-traceability`, `worktrees`, `writing-dotnet-tests` | 70 KB |
+| Applies | `agent`, `branch-naming`, `code-quality`, `commits`, `documentation`, `external-ai-review`, `naming`, `notes-keeping`, `pr-checks-completion-gate`, `pr-descriptions`, `summaries`, `todo-tasks-execution`, `traceability`, `work-traceability`, `worktrees`, `writing-dotnet-tests`, and since PLO-903 `issue-tracking`, `linear-session-logging`, `no-committed-secrets`, `response-closing`, `response-links` (the sizes in this table are the pre-PLO-903 measurement) | 70 KB |
 
 Problems in the committed rules:
 
-- **They describe the old tracker.** `commits.md` and `branch-naming.md` require
-  `Refs: #<issue-number>` and GitHub issue numbers. Practice, and the workspace copies, use Linear
-  (`PLO-<n>`). No committed rule mentions Linear.
+- **The tracker rules were stale until PLO-903.** `commits.md`, `branch-naming.md`,
+  `pr-descriptions.md`, `traceability.md` and `work-traceability.md` required GitHub issue numbers.
+  [PLO-903](https://linear.app/ploch/issue/PLO-903) moved them to Linear (`PLO-<n>`) and committed
+  `issue-tracking.md`, which defines the tracker.
 - **`rules.md` describes a different system:** `.cursor/rules/*.mdc` as the source of truth and an
   `ai-rules install` step that does not exist here.
-- **Dead tool references.** `external-ai-review.md` and several skills call MCP tools for Codex and
-  Gemini reviewers that are not configured. `todo-tasks-execution.md` points at a skill that does
+- **Dead tool references.** `external-ai-review.md` and several skills called MCP tools for Codex and
+  Gemini reviewers that were not configured; since PLO-903 Codex runs as the isolated `codex exec` CLI,
+  so only the Gemini MCP tools can be missing. `todo-tasks-execution.md` points at a skill that does
   not exist.
 - **ContextStream** instructions and configuration were in ten committed files; PLO-653 removed them. The
   notes-keeping rule still names "ContextStream calls" as an example of what not to log, matching the workspace rule.
@@ -109,7 +111,7 @@ of context before the first prompt, about 96,000 of them rules.
 | 1 | The rule set loads twice: repository copy and workspace copy | About 46,000 tokens per session |
 | 2 | Eight rule pairs differ between the copies, and both versions load | Contradictory instructions on reviewers, follow-up issues and tracking |
 | 3 | Rules for projects this repository does not have | About 10,600 tokens per loaded copy |
-| 4 | Committed rules name the wrong tracker | Wrong commit footers and branch names |
+| 4 | ~~Committed rules name the wrong tracker~~ Resolved by PLO-903: the rules now follow `issue-tracking.md` (Linear) | Was: wrong commit footers and branch names |
 | 5 | Dead references to reviewer tools and a missing skill | Agents stall or improvise |
 | 6 | `AGENTS.md` and `GEMINI.md` carry no repository knowledge | Other agents start blind; the 63 KB of ContextStream noise was removed (PLO-653); `GEMINI.md` now points at `docs/ai/`, `AGENTS.md` does not yet |
 | 7 | Three mirrors of rules and skills, each drifted differently | 560 KB to keep in step by hand |

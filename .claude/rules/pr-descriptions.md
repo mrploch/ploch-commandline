@@ -39,14 +39,15 @@ Omit this section entirely if there are no breaking changes.
 
 ## Related
 
-- Closes #<issue-number>
-- Related to #<other-issue>
+- Closes PLO-<n>        <!-- or Refs PLO-<n> for agreed partial work; see Rules below -->
+- Related to PLO-<other>
 - Depends on <other-pr-url> (if cross-repo dependency)
 ```
 
 ## Rules
 
-- **Link the issue:** Always include `Closes #<issue-number>` or `Refs #<issue-number>` to automatically link and (optionally) close the issue on merge.
+- **Link the issue:** Use `Closes PLO-<n>` when the PR completes the issue, and `Refs PLO-<n>` for partial work. Both are Linear magic words that link the PR; only `Closes` moves the issue to Done on merge. See [`issue-tracking.md`](./issue-tracking.md).
+- **Synced GitHub twin in the same repository:** mirror the same choice. Add `Closes #<n>` only alongside `Closes PLO-<n>`; for partial work write `Refs #<n>`, which links the twin without closing it. Skip the twin for one in another repository.
 - **Document decisions:** If you chose approach A over approach B, explain why. Reviewers and future maintainers need this context.
 - **Be specific:** "Updated the data layer" is insufficient. "Added `GetBySpecificationAsync` method to `IReadRepositoryAsync<TEntity>` for Ardalis.Specification support" is specific.
 - **Include test evidence:** Mention test counts, coverage percentages, or specific scenarios tested.

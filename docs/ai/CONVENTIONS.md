@@ -108,7 +108,7 @@ section 10 says so.
 - Body follows [`.github/pull_request_template.md`](../../.github/pull_request_template.md):
   "Describe your changes" (with Summary, Changes, Design decisions, Testing sub-sections),
   "Issue ticket number and link", and the checklist.
-- The body carries `Closes PLO-<n>` so Linear closes the issue on merge.
+- The body carries `Closes PLO-<n>` when the PR completes the issue, so Linear closes it on merge, and `Refs PLO-<n>` for agreed partial work, which links without closing.
 - Pull requests are **squash-merged**; the commit subject ends with `(#<pr>)`.
 - A pull request is complete when every check is green, static-analysis services report no new
   findings, and every review thread has a reply and is resolved. Bot threads count.
@@ -130,6 +130,5 @@ section 10 says so.
 | Branches use the Linear identifier | Older branches use the GitHub number | Same cause; new branches comply |
 | Target framework is net9.0 | Everything targets net10.0 | Workspace notes are out of date |
 | Licence is MIT | The repository is Apache-2.0 | Workspace notes are out of date |
-| Committed `commits.md`, `branch-naming.md`, `traceability.md` and `work-traceability.md` rules require GitHub issues and `#<n>` references | Linear issues and `PLO-<n>` are used | The committed rule copies are stale |
 | Sub-packages include Autofac | No Autofac package exists | Removed before the rewrite |
 | Test stack lists AutoFixture | AutoFixture is used only through `[AutoMockData]` | Indirect |
